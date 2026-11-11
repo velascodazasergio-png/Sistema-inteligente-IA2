@@ -1,0 +1,91 @@
+/* ==========================================================
+   Design tokens — identidad visual "AI Operations"
+   Toda la interfaz consume estas variables: cambiar un valor
+   aquí actualiza la aplicación completa.
+   ========================================================== */
+:root {
+  color-scheme: dark;
+
+  /* Fondo y superficies (de más oscuro a más claro) */
+  --bg: #070b14;
+  --surface: #0e1524;
+  --surface-2: #141d30;
+  --surface-3: #1b2640;
+  --border: rgba(148, 163, 184, 0.12);
+  --border-strong: rgba(148, 163, 184, 0.22);
+
+  /* Iluminación sutil del fondo */
+  --glow-primary: rgba(59, 130, 246, 0.10);
+  --glow-accent: rgba(139, 92, 246, 0.08);
+
+  /* Texto (contraste AA sobre --surface) */
+  --text: #e6ebf5;
+  --text-muted: #94a3c0;
+  --text-faint: #7b8aa6;
+
+  /* Marca */
+  --primary: #3b82f6;          /* azul eléctrico: acentos y gráficos */
+  --primary-strong: #2563eb;   /* fondo de botones (texto blanco AA) */
+  --primary-text: #7cb3ff;     /* enlaces y texto de acento */
+  --primary-soft: rgba(59, 130, 246, 0.14);
+  --accent: #8b5cf6;           /* violeta tecnológico */
+  --accent-soft: rgba(139, 92, 246, 0.14);
+  --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+
+  /* Estados semánticos */
+  --success: #10b981;
+  --success-text: #6ee7b7;
+  --success-soft: rgba(16, 185, 129, 0.14);
+  --warning: #f59e0b;
+  --warning-text: #fcd34d;
+  --warning-soft: rgba(245, 158, 11, 0.14);
+  --danger: #ef4444;
+  --danger-text: #fca5a5;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+
+  /* Tipografía (fuentes del sistema: sin dependencias externas) */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+
+  /* Espaciado (escala de 4px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2.5rem;
+
+  /* Formas y profundidad */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  --focus-color: #60a5fa;
+
+  /* Layout */
+  --sidebar-w: 248px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 64px;
+
+  /* Movimiento */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 220ms;
+  --dur-slow: 420ms;
+
+  /* Capas */
+  --z-topbar: 30;
+  --z-backdrop: 35;
+  --z-sidebar: 40;
+  --z-dropdown: 50;
+  --z-toast: 60;
+}

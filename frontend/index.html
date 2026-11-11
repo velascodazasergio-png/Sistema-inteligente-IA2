@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Plataforma de gestión de incidentes tecnológicos con analítica y asistencia mediante IA.">
+  <title>Incidentes IA · Centro de soporte</title>
+  <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
+
+  <link rel="stylesheet" href="css/variables.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
+
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <!-- Sprite de iconos SVG propios. Se referencian con <use href="#id">. -->
+  <svg class="sprite" aria-hidden="true" focusable="false">
+    <symbol id="i-logo" viewBox="0 0 24 24"><path d="M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z"/><circle cx="12" cy="12" r="3"/><path d="M12 9V5.5M14.6 13.5l3 1.75M9.4 13.5l-3 1.75"/></symbol>
+    <symbol id="i-dashboard" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="7" height="9" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="5" rx="1.5"/><rect x="13.5" y="11.5" width="7" height="9" rx="1.5"/><rect x="3.5" y="15.5" width="7" height="5" rx="1.5"/></symbol>
+    <symbol id="i-incident" viewBox="0 0 24 24"><path d="M12 3.5l9 15.5H3z"/><path d="M12 10v4M12 16.75v.01"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5a2 2 0 0 1 2-2h13v14H6a2 2 0 0 0-2 2z"/><path d="M4 19.5a2 2 0 0 0 2 2h13v-4"/><path d="M8.5 8h6M8.5 11.5h4"/></symbol>
+    <symbol id="i-sparkles" viewBox="0 0 24 24"><path d="M11 3l1.8 4.7 4.7 1.8-4.7 1.8L11 16l-1.8-4.7-4.7-1.8 4.7-1.8z"/><path d="M18 14.5l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8z"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3.5 3.5V8H8"/><path d="M12 7.5V12l3 2"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M3.5 20.5h17"/><rect x="5.5" y="11" width="3" height="6.5" rx=".75"/><rect x="10.5" y="6.5" width="3" height="11" rx=".75"/><rect x="15.5" y="9" width="3" height="8.5" rx=".75"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24"><path d="M4 6.5h9M17 6.5h3M4 12h3M11 12h9M4 17.5h11M19 17.5h1"/><circle cx="15" cy="6.5" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="17.5" r="2"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+    <symbol id="i-sidebar" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15"/><path d="M15 10l-2 2 2 2"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+    <symbol id="i-plug" viewBox="0 0 24 24"><path d="M9 3.5v4M15 3.5v4"/><path d="M6.5 7.5h11v3a5.5 5.5 0 0 1-11 0z"/><path d="M12 16v4.5"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 8v4.5M12 15.75v.01"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 11v5M12 8.25v.01"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Saltar al contenido</a>
+
+  <div class="app" id="app" data-sidebar="expanded">
+    <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+      <div class="sidebar__brand">
+        <span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="#i-logo"/></svg></span>
+        <div class="brand-text label">
+          <strong>Incidentes IA</strong>
+          <span>Centro de soporte</span>
+        </div>
+        <button class="icon-btn sidebar__close" id="sidebar-close" type="button" aria-label="Cerrar menú">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"/></svg>
+        </button>
+      </div>
+
+      <nav class="sidebar__nav">
+        <ul class="nav-list" id="nav-list"></ul>
+      </nav>
+
+      <div class="sidebar__footer">
+        <button class="nav-link sidebar__collapse" id="sidebar-toggle" type="button"
+                aria-expanded="true" aria-label="Contraer menú" data-label="Contraer menú">
+          <svg class="icon" aria-hidden="true"><use href="#i-sidebar"/></svg>
+          <span class="label">Contraer menú</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <div class="main-column">
+      <header class="topbar">
+        <button class="icon-btn topbar__menu" id="menu-open" type="button"
+                aria-label="Abrir menú" aria-controls="sidebar" aria-expanded="false">
+          <svg class="icon" aria-hidden="true"><use href="#i-menu"/></svg>
+        </button>
+
+        <div class="topbar__heading">
+          <span class="topbar__eyebrow" id="topbar-eyebrow"></span>
+          <p class="topbar__title" id="topbar-title">Cargando…</p>
+        </div>
+
+        <div class="search" role="search">
+          <label for="global-search" class="sr-only">Ir a una sección</label>
+          <svg class="icon" aria-hidden="true"><use href="#i-search"/></svg>
+          <input id="global-search" type="search" placeholder="Ir a una sección…" autocomplete="off"
+                 spellcheck="false" role="combobox" aria-expanded="false" aria-autocomplete="list"
+                 aria-controls="search-results">
+          <kbd class="kbd" aria-hidden="true">Ctrl K</kbd>
+          <ul class="search__results" id="search-results" role="listbox" aria-label="Secciones" hidden></ul>
+        </div>
+
+        <div class="topbar__actions">
+          <a class="status" id="api-status" href="#/configuracion" data-state="checking">
+            <span class="status__dot" aria-hidden="true"></span>
+            <span class="status__text" aria-live="polite">Comprobando API…</span>
+          </a>
+          <a class="btn btn--primary topbar__cta" href="#/asistente">
+            <svg class="icon" aria-hidden="true"><use href="#i-sparkles"/></svg>
+            <span class="topbar__cta-label">Consultar IA</span>
+          </a>
+        </div>
+      </header>
+
+      <main class="view" id="main" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+  <noscript>
+    <p class="noscript">Esta aplicación necesita JavaScript para funcionar.</p>
+  </noscript>
+</body>
+</html>
