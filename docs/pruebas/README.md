@@ -118,7 +118,7 @@ Accesibilidad revisada en el código:
 | 6 | La columna de acciones quedaba fuera de pantalla | Tabla más ancha que la vista | `7dfe954` |
 | 7 | Una descripción de 15 a 19 caracteres pasaba el backend y fallaba en n8n | Mínimos distintos (15 frente a 20) | `a4a2a8a` |
 | 8 | Las consultas quedaban "Pendientes" para siempre si n8n fallaba | No existía el endpoint de fallos | `a4a2a8a` |
-| 9 | Un paso con un número ("evento 4740.") se cortaba en dos | Separación de pasos demasiado amplia | este commit |
+| 9 | Un paso con un número ("evento 4740.") se cortaba en dos | Separación de pasos demasiado amplia | `69a3077` |
 
 ## 7. Pendientes
 
