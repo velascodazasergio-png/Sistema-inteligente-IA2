@@ -123,6 +123,15 @@ Notas:
 - **Artículos**: el backend arma `content` (lo que indexa n8n) a partir de Problema, Síntomas, Causa y Solución. Los artículos antiguos solo tienen `content`; al editarlos se cargan en Problema para reorganizarlos.
 - **Editar un artículo verificado** cambiando su título o contenido lo deja sin verificar (regla del backend).
 
+## Pruebas
+
+```bash
+# Desde la raíz del repositorio (Node 18 o superior, sin dependencias)
+node --test "frontend/tests/*.test.mjs"
+```
+
+23 pruebas unitarias de la lógica: cálculos de analítica, formato, interpretación de las respuestas de la IA, catálogos y el cliente HTTP (con `fetch` simulado).
+
 ## Endpoints usados
 
 | Método | Ruta | Uso |

@@ -5,6 +5,7 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026.
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
 | Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 24 | ✅ 24 / 24 |
+| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 23 | ✅ 23 / 23 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
 | Flujo de IA de punta a punta | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 7 | ✅ 7 / 7 |
@@ -51,6 +52,23 @@ mvn test
 | 22 | Seguridad | `rejectsCallbackWithWrongToken` | Con un token incorrecto dan 401 | ✅ |
 | 23 | Seguridad | `acceptsCallbackWithToken` | Con el token correcto pasan el filtro | ✅ |
 | 24 | Seguridad | `doesNotProtectOtherEndpoints` | El resto de la API no exige el token | ✅ |
+
+## 1b. Pruebas unitarias del frontend
+
+**Ubicación:** [`frontend/tests/logic.test.mjs`](../../frontend/tests/logic.test.mjs). Usan el ejecutor de pruebas que trae Node 18 o superior, sin dependencias ni navegador.
+
+```bash
+node --test "frontend/tests/*.test.mjs"
+# tests 23 · pass 23 · fail 0
+```
+
+| Grupo | Casos | Qué valida |
+|---|---:|---|
+| `format.js` | 4 | Semana ISO, porcentajes, conteos, fechas inválidas |
+| `analytics-utils.js` | 4 | Pendientes, críticos abiertos y rangos de tiempo con las reglas del backend; periodo anterior; variación sin dividir entre cero |
+| `ai-response.js` | 5 | Separación de la respuesta RAG en solución, explicación, pasos y advertencias; pasos sin cortar números ("4740.", "2.3"); resumen por estado |
+| `catalogs.js` / `ui.js` | 4 | Estado "Sin resultados" deducido, los 5 estados del backend, escape de HTML ante valores inesperados |
+| `api.js` y servicio de IA | 6 | URL y parámetros, cuerpo JSON, mensajes de error de Spring (400 y 409), error de red, validación previa de la descripción |
 
 ## 2. Contrato de la API
 
@@ -123,4 +141,4 @@ Accesibilidad revisada en el código:
 ## 7. Pendientes
 
 - Probar una consulta real con OpenRouter y Qdrant, con las claves del equipo.
-- Pruebas automáticas del frontend (hoy son manuales y visuales).
+- Pruebas de extremo a extremo del frontend en navegador (hoy son capturas revisadas manualmente).

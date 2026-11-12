@@ -129,11 +129,11 @@ Las claves nunca se escriben en el código ni en el repositorio: van en `.env` o
 ## Pruebas
 
 ```bash
-cd backend
-mvn test
+cd backend && mvn test                      # backend: 24 pruebas de integración
+node --test "frontend/tests/*.test.mjs"     # frontend: 23 pruebas unitarias (Node 18+)
 ```
 
-24 pruebas de integración con MockMvc sobre H2 y los datos iniciales. Cubren:
+Las 24 pruebas de integración del backend con MockMvc sobre H2 y los datos iniciales. Cubren:
 
 - validaciones y la regla de incidentes cerrados;
 - filtros de analítica;
