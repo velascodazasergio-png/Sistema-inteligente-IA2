@@ -16,4 +16,3 @@ public interface AiQueryRepository extends JpaRepository<AiQuery, Long> {
 
     List<AiQuery> findByQueryStatusOrderByQueriedAtDesc(QueryStatus queryStatus);
 }
-

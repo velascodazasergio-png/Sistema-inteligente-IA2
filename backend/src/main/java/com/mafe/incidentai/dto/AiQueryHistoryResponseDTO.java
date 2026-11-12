@@ -50,4 +50,3 @@ public record AiQueryHistoryResponseDTO(
             LocalDateTime ratedAt
     ) {}
 }
-

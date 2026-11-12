@@ -72,7 +72,7 @@ public class IncidentService {
         return mapToResponseDTO(updatedIncident);
     }
 
-    // Filtra incidentes de forma dinamica combinando categoria, prioridad, usuario y rango de fechas
+    // Filtra incidentes de forma dinamica combinando categoria, prioridad, estado, usuario y rango de fechas
     @Transactional(readOnly = true)
     public List<IncidentResponseDTO> filterIncidents(
             Long categoryId,
@@ -122,4 +122,3 @@ public class IncidentService {
         );
     }
 }
-

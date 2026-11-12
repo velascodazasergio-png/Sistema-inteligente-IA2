@@ -9,7 +9,17 @@ import java.util.List;
 // Repositorio para consultar articulos de la base de conocimiento
 public interface KnowledgeArticleRepository extends JpaRepository<KnowledgeArticle, Long>, JpaSpecificationExecutor<KnowledgeArticle> {
 
-    // Consulta derivada que retorna unicamente los articulos activos y verificados (listos para usar por la IA)
+    // Consulta JPQL explicita que trae solo los articulos activos y verificados (listos para alimentar el RAG de n8n)
+    @Query("""
+            SELECT ka
+            FROM KnowledgeArticle ka
+            WHERE ka.active = true
+              AND ka.verified = true
+            ORDER BY ka.updatedAt DESC
+            """)
+    List<KnowledgeArticle> findActiveAndVerifiedArticles();
+
+    // Consulta derivada equivalente en Spring Data JPA
     List<KnowledgeArticle> findByActiveTrueAndVerifiedTrue();
 
     // Consulta articulos activos y verificados filtrando ademas por una categoria especifica

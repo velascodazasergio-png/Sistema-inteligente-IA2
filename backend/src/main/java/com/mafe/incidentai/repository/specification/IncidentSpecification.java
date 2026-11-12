@@ -48,12 +48,12 @@ public final class IncidentSpecification {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
             }
 
-            // 4. Si se envio startDate, filtramos incidentes creados desde esa fecha en adelante
+            // 5. Si se envio startDate, filtramos incidentes creados desde esa fecha en adelante
             if (startDate != null) {
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startDate));
             }
 
-            // 5. Si se envio endDate, filtramos incidentes creados hasta esa fecha limite
+            // 6. Si se envio endDate, filtramos incidentes creados hasta esa fecha limite
             if (endDate != null) {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endDate));
             }
@@ -68,4 +68,3 @@ public final class IncidentSpecification {
         };
     }
 }
-

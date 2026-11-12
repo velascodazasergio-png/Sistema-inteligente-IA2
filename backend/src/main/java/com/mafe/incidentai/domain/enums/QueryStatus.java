@@ -11,4 +11,3 @@ public enum QueryStatus {
     // n8n recibio la consulta pero fallo al procesarla (embeddings, Qdrant o LLM)
     FAILED
 }
-
