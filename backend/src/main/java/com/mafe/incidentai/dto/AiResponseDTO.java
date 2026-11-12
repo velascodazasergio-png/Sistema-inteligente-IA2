@@ -9,7 +9,7 @@ import jakarta.validation.constraints.NotNull;
 
 import java.util.List;
 
-// Contrato DTO que n8n envia de regreso a Spring Boot con el diagnostico de la IA y las fuentes consultadas
+// Contrato DTO que n8n envia de regreso a Spring Boot con el diagnostico de la IA, fuentes y puntajes de similitud
 @Schema(description = "Contrato REST que n8n envia de vuelta con el diagnostico de la IA y sus fuentes documentales")
 public record AiResponseDTO(
 
@@ -50,7 +50,11 @@ public record AiResponseDTO(
             String referenceUrl,
 
             @Schema(description = "Fragmento textual extraido por el flujo RAG en n8n", example = "Error 809 occurs when IKE packets are blocked by NAT-T...")
-            String citedSnippet
+            String citedSnippet,
+
+            @Schema(description = "Puntaje de similitud semantica entre el incidente y la fuente (0.0 a 1.0)", example = "0.89")
+            @DecimalMin(value = "0.0")
+            @DecimalMax(value = "1.0")
+            Double similarityScore
     ) {}
 }
-
