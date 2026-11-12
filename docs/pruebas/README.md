@@ -1,14 +1,15 @@
 # Documento de pruebas
 
-Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026.
+Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La sección 3b recoge la auditoría con n8n, Qdrant y PostgreSQL reales, que encontró dos defectos críticos que las pruebas anteriores no detectaban.
 
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
 | Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 24 | ✅ 24 / 24 |
 | Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 23 | ✅ 23 / 23 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
-| Flujo de IA de punta a punta | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
-| Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 7 | ✅ 7 / 7 |
+| Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
+| Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
+| Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 8 | ✅ 8 / 8 |
 | Interfaz | Navegador sin interfaz (Edge), escritorio y móvil | 8 vistas | ✅ revisadas |
 
 ## 1. Pruebas de integración del backend
@@ -76,7 +77,7 @@ Las 25 peticiones de [`postman_collection.json`](../evidencias/postman_collectio
 
 **Resultado:** 25 de 25. El detalle, con un extracto de cada respuesta, está en [`ejecucion-api.md`](../evidencias/ejecucion-api.md).
 
-## 3. Flujo de IA de punta a punta
+## 3. Contrato del flujo de IA (n8n simulado)
 
 Se reemplazó n8n por un servidor simulado. Ese servidor exige el encabezado de autenticación y responde al backend con el mismo formato y los mismos *callbacks* que el flujo [`02-asistencia-rag.json`](../../n8n/workflows/02-asistencia-rag.json), incluido el `X-Callback-Token`.
 
@@ -86,6 +87,34 @@ Se reemplazó n8n por un servidor simulado. Ese servidor exige el encabezado de 
 | 2 | n8n no encuentra fuentes relevantes | `NO_RESULTS` y aviso de información insuficiente | ✅ |
 | 3 | n8n falla al generar la respuesta | `FAILED` con el código `LLM_FALLO` y su mensaje | ✅ |
 | 4 | n8n apagado o sin token correcto | `COMMUNICATION_ERROR` con el código `N8N_UNREACHABLE` | ✅ |
+
+> **Límite de esta prueba:** el servidor simulado aceptaba la petición del backend aunque llegara con HTTP/2. El n8n real no la contesta (defecto 10), así que esta prueba no demuestra la integración real. Esa la cubre la sección 3b.
+
+## 3b. Auditoría con los servicios reales
+
+Entorno: `docker compose` con PostgreSQL, el backend del repositorio, n8n 1.80 con los dos flujos importados y activos, y Qdrant 1.12 con la colección `knowledge_articles` de 1536 dimensiones. OpenRouter se configuró con una **clave inválida a propósito**, porque el equipo no tenía clave en el momento de la prueba.
+
+Antes de los escenarios se reinició el backend dos veces, para probar la persistencia en PostgreSQL. Cada cifra de la API se comparó con una consulta SQL en la misma base.
+
+| # | Escenario | Resultado obtenido | Estado |
+|---|---|---|---|
+| 1 | Incidente de conectividad con soluciones relevantes | La consulta llega a n8n y OpenRouter y queda `FAILED / EMBEDDING_FALLO` en unos 2 s | ⏸️ No verificable sin clave |
+| 2 | Error de ejecución de una aplicación | Igual que el 1 | ⏸️ No verificable sin clave |
+| 3 | Incidente sin conocimiento suficiente | Igual que el 1. La rama "sin información" existe en el flujo, pero no se ejecutó | ⏸️ No verificable sin clave |
+| 4 | Incidentes por categoría frente a SQL | Las 6 categorías y el top de categorías coinciden con `GROUP BY` en PostgreSQL | ✅ |
+| 5 | Evolución semanal | Las 9 semanas coinciden con el recálculo SQL por semana ISO | ✅ |
+| 6 | Desactivar un artículo | El flujo 01 real borra su vector de Qdrant (`deleted: [10]`) y el artículo sale de los utilizables. El flujo 02 además filtra por activo y verificado y revalida cada fuente en Spring Boot | ✅ |
+| 7 | Descripción vacía | 400 en `/incidents` y en `/ai-assistance/request`; no se crea ninguna consulta | ✅ |
+| 8 | Fallo en embeddings | OpenRouter responde 401. El flujo 02 reporta el fallo y la consulta queda `FAILED / EMBEDDING_FALLO` en la base. El flujo 01 responde 502 `INDEXACION_FALLO` | ✅ |
+| 9 | Historial de un incidente | Devuelve estados, fallos, fuentes y similitud (0,93) | ✅ |
+| 10 | Calificar una respuesta | 201 y fila guardada en `ratings`. Una segunda calificación da 409 y un puntaje fuera de rango da 400. El promedio del dashboard (4,6) coincide con `AVG(score)` | ✅ |
+
+Otras comprobaciones:
+- **Seguridad:** sin token o con un token incorrecto, los webhooks de n8n responden 403; los callbacks del backend sin token responden 401.
+- **Filtros:** los de prioridad, categoría y fechas cambian los resultados y coinciden con SQL (`CRITICAL`: 38 incidentes y 84,21 %; octubre: 83).
+- **Datos iniciales:** sin fechas inválidas, sin resueltos sin fecha y sin descripciones repetidas.
+
+**Pendiente:** repetir los escenarios 1, 2 y 3 con la clave de OpenRouter del equipo.
 
 ## 4. Despliegue con Docker Compose
 
@@ -97,9 +126,10 @@ Probado con Docker 29.4 y Compose v5.1. Los puertos del host se reasignaron solo
 | 2 | `data.sql` se carga en PostgreSQL 16 | ✅ |
 | 3 | El dashboard en PostgreSQL da los mismos valores que en H2 (86,67 %, 4,74 h, filtro: 8 incidentes y 87,5 %) | ✅ |
 | 4 | Registrar un incidente y un artículo en PostgreSQL (los ID continúan en 151 y 11) | ✅ |
-| 5 | Al reiniciar el backend los datos se conservan y la carga inicial no se duplica | ✅ |
+| 5 | Al reiniciar el backend los datos se conservan, la carga inicial no se duplica y se pueden seguir creando registros | ✅ (desde `11b3192`; antes las altas daban 500 tras reiniciar, defecto 11) |
 | 6 | El frontend (nginx), Qdrant y n8n responden; se crea la colección en Qdrant | ✅ |
-| 7 | Los dos flujos se importan en n8n 1.80 | ✅ |
+| 7 | Los dos flujos se importan y se activan en n8n 1.80 | ✅ |
+| 8 | Los healthchecks del backend, Qdrant y n8n pasan a `healthy` y n8n espera a sus dependencias | ✅ |
 
 No se probó una llamada real a OpenRouter, porque requiere una clave propia.
 
@@ -137,8 +167,14 @@ Accesibilidad revisada en el código:
 | 7 | Una descripción de 15 a 19 caracteres pasaba el backend y fallaba en n8n | Mínimos distintos (15 frente a 20) | `a4a2a8a` |
 | 8 | Las consultas quedaban "Pendientes" para siempre si n8n fallaba | No existía el endpoint de fallos | `a4a2a8a` |
 | 9 | Un paso con un número ("evento 4740.") se cortaba en dos | Separación de pasos demasiado amplia | `69a3077` |
+| 10 | **Crítico.** Con el n8n real, toda consulta terminaba en `COMMUNICATION_ERROR` a los 15 s | El `HttpClient` del JDK usa HTTP/2 y pide `Upgrade: h2c`; n8n lo trata como un websocket y no responde | `8c054dd` |
+| 11 | **Crítico.** Tras reiniciar el backend con PostgreSQL, toda alta daba 500 | `data.sql` reinicia los contadores de id en cada arranque | `11b3192` |
+| 12 | PostgreSQL y Qdrant se publicaban en todas las interfaces de red; faltaban healthchecks | Configuración del Compose | `0d56832` |
 
 ## 7. Pendientes
 
-- Probar una consulta real con OpenRouter y Qdrant, con las claves del equipo.
+- Probar una consulta real con OpenRouter y Qdrant, con las claves del equipo (escenarios 1, 2 y 3).
+- Flujo 02: quitar los dos nodos duplicados, que tienen el mismo nombre y el mismo `id`.
+- Indexación automática: hoy el flujo 01 se dispara a mano, así que un artículo nuevo o editado no se encuentra hasta reindexar.
+- Integrar en `main` los dos últimos commits de la rama `mafe` (6 archivos en conflicto).
 - Pruebas de extremo a extremo del frontend en navegador (hoy son capturas revisadas manualmente).
