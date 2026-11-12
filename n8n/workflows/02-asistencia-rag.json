@@ -555,7 +555,7 @@
         }
       },
       "id": "a86826f2-6c01-463a-a397-3f39462bde19",
-      "name": "Reportar fallo a Spring Boot (endpoint pendiente)",
+      "name": "Reportar fallo a Spring Boot",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -828,7 +828,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
@@ -839,7 +839,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
@@ -850,7 +850,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
@@ -861,7 +861,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
