@@ -1,18 +1,20 @@
 // Analítica (RF06): indicadores y distribuciones filtrables por fecha,
 // categoría y prioridad.
-// Los endpoints de /api/v1/analytics no aceptan filtros todavía, así que con
-// filtros los indicadores se calculan sobre GET /api/v1/incidents (datos reales
-// ya filtrados por el backend), con las mismas reglas que usa el backend:
-//   resuelto = RESOLVED o CLOSED; tiempo de atención = updatedAt − createdAt.
+// - KPI, ranking de categorías y tendencia semanal: GET /api/v1/analytics/dashboard
+//   (calculados con consultas en la base de datos, con los mismos filtros).
+// - Distribución por estado, prioridad y tiempos: GET /api/v1/incidents con los
+//   mismos filtros, contados en el cliente.
 
 import { pageHeader, icon, escapeHtml } from '../ui.js';
 import { kpiCard, animateCounters } from '../components/kpi-card.js';
 import { barChart, columnChart, lineChart, donutChart } from '../components/charts.js';
 import { skeletonKpis, skeletonChart } from '../components/skeleton.js';
 import { errorState } from '../components/states.js';
-import { listIncidents, catalogsFromIncidents } from '../services/incidents.service.js';
+import { getDashboard } from '../services/analytics.service.js';
+import { listIncidents } from '../services/incidents.service.js';
+import { listCategories } from '../services/catalogs.service.js';
 import { ESTADO_INCIDENTE, PRIORIDAD, ESTADOS_FINALES, optionsHtml } from '../catalogs.js';
-import { parseDate, countBy } from '../format.js';
+import { parseDate, formatYearWeek } from '../format.js';
 
 const HOUR = 3600 * 1000;
 const TIME_BUCKETS = [
@@ -33,56 +35,24 @@ const chartCard = (id, title, subtitle, wide = false) => `
     <div id="${id}">${skeletonChart(220)}</div>
   </section>`;
 
+// Misma regla que el backend: tiempo de atención = updatedAt − createdAt.
 const resolutionHours = (i) => {
   const start = parseDate(i.createdAt);
   const end = parseDate(i.updatedAt);
   return start && end && end >= start ? (end - start) / HOUR : null;
 };
 
-// Lunes de la semana de una fecha, como clave AAAA-MM-DD.
-function weekKey(date) {
-  const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-const weekLabel = new Intl.DateTimeFormat('es-CO', { day: 'numeric', month: 'short' });
-
-function compute(incidents) {
-  const resolved = incidents.filter((i) => ESTADOS_FINALES.includes(i.status));
-  const hours = resolved.map(resolutionHours).filter((h) => h != null);
-  const weeks = new Map();
-  incidents.forEach((i) => {
-    const date = parseDate(i.createdAt);
-    if (!date) return;
-    const key = weekKey(date);
-    const entry = weeks.get(key) ?? { reported: 0, resolved: 0 };
-    entry.reported += 1;
-    if (ESTADOS_FINALES.includes(i.status)) entry.resolved += 1;
-    weeks.set(key, entry);
-  });
-  const weekly = [...weeks].sort(([a], [b]) => a.localeCompare(b));
-
+function distributions(incidents) {
+  const hours = incidents.filter((i) => ESTADOS_FINALES.includes(i.status)).map(resolutionHours).filter((h) => h != null);
   return {
-    total: incidents.length,
-    resolved: resolved.length,
-    pending: incidents.length - resolved.length,
-    rate: incidents.length ? (resolved.length / incidents.length) * 100 : null,
-    avgHours: hours.length ? hours.reduce((a, b) => a + b, 0) / hours.length : null,
+    pending: incidents.filter((i) => !ESTADOS_FINALES.includes(i.status)).length,
     critical: incidents.filter((i) => i.priority === 'CRITICAL' && !ESTADOS_FINALES.includes(i.status)).length,
-    byCategory: countBy(incidents, (i) => i.categoryName ?? 'Sin categoría').map(({ key, count }) => ({ label: key, value: count })),
     byStatus: Object.entries(ESTADO_INCIDENTE).map(([k, e]) => ({ label: e.label, color: e.color, value: incidents.filter((i) => i.status === k).length })),
     byPriority: Object.entries(PRIORIDAD).map(([k, e]) => ({ label: e.label, color: e.color, value: incidents.filter((i) => i.priority === k).length })),
     times: TIME_BUCKETS.map((b, idx) => ({
       label: b.label,
       value: hours.filter((h) => h < b.max && h >= (TIME_BUCKETS[idx - 1]?.max ?? 0)).length,
     })),
-    weekly: {
-      labels: weekly.map(([key]) => weekLabel.format(new Date(`${key}T00:00:00`))),
-      series: [
-        { name: 'Registrados', values: weekly.map(([, w]) => w.reported) },
-        { name: 'Resueltos', values: weekly.map(([, w]) => w.resolved) },
-      ],
-    },
   };
 }
 
@@ -108,7 +78,7 @@ export async function render(container, { route, signal }) {
 
       <div id="a-kpis">${skeletonKpis(6)}</div>
 
-      <div class="dash-grid" id="a-charts">
+      <div class="dash-grid">
         ${chartCard('ac-weekly', 'Tendencia semanal', 'Registrados frente a resueltos', true)}
         ${chartCard('ac-category', 'Categorías con más problemas', 'Número de incidentes')}
         ${chartCard('ac-times', 'Tiempos de resolución', 'Incidentes resueltos según cuánto tardaron')}
@@ -123,33 +93,43 @@ export async function render(container, { route, signal }) {
   const kpis = container.querySelector('#a-kpis');
   let charts = null;
 
-  function draw(stats) {
+  function draw(dashboard, dist) {
     kpis.innerHTML = `
       <div class="kpi-grid">
-        ${kpiCard({ label: 'Incidentes', value: stats.total, icon: 'i-inbox' })}
-        ${kpiCard({ label: 'Resueltos o cerrados', value: stats.resolved, icon: 'i-check-circle', tone: 'success' })}
-        ${kpiCard({ label: 'Pendientes', value: stats.pending, icon: 'i-hourglass', tone: 'warning' })}
-        ${kpiCard({ label: 'Porcentaje de resolución', value: stats.rate, format: 'percent', icon: 'i-percent', tone: 'accent', progress: stats.rate })}
-        ${kpiCard({ label: 'Tiempo promedio de atención', value: stats.avgHours, format: 'duration', icon: 'i-clock' })}
-        ${kpiCard({ label: 'Críticos sin resolver', value: stats.critical, icon: 'i-alert', tone: 'danger' })}
+        ${kpiCard({ label: 'Incidentes', value: dashboard.totalIncidents, icon: 'i-inbox' })}
+        ${kpiCard({ label: 'Resueltos o cerrados', value: dashboard.resolvedIncidents, icon: 'i-check-circle', tone: 'success' })}
+        ${kpiCard({ label: 'Pendientes', value: dist.pending, icon: 'i-hourglass', tone: 'warning' })}
+        ${kpiCard({ label: 'Porcentaje de resolución', value: dashboard.resolutionRatePercentage, format: 'percent', icon: 'i-percent', tone: 'accent', progress: dashboard.resolutionRatePercentage })}
+        ${kpiCard({ label: 'Tiempo promedio de atención', value: dashboard.averageResolutionTimeHours, format: 'duration', icon: 'i-clock' })}
+        ${kpiCard({ label: 'Críticos sin resolver', value: dist.critical, icon: 'i-alert', tone: 'danger' })}
       </div>`;
     animateCounters(kpis);
 
+    const weeks = dashboard.weeklyTrends ?? [];
+    const weekly = {
+      labels: weeks.map((w) => formatYearWeek(w.yearWeek)),
+      series: [
+        { name: 'Registrados', values: weeks.map((w) => w.totalReported) },
+        { name: 'Resueltos', values: weeks.map((w) => w.totalResolved) },
+      ],
+    };
+    const byCategory = (dashboard.topCategories ?? []).map((c) => ({ label: c.categoryName, value: c.incidentCount }));
+
     if (charts) {
-      charts.weekly.update(stats.weekly);
-      charts.category.update(stats.byCategory);
-      charts.times.update(stats.times);
-      charts.status.update(stats.byStatus);
-      charts.priority.update(stats.byPriority);
+      charts.weekly.update(weekly);
+      charts.category.update(byCategory);
+      charts.times.update(dist.times);
+      charts.status.update(dist.byStatus);
+      charts.priority.update(dist.byPriority);
       return;
     }
     const $ = (id) => container.querySelector(id);
     charts = {
-      weekly: lineChart($('#ac-weekly'), { title: 'Tendencia semanal', labelHeader: 'Semana', integer: true, data: stats.weekly, signal }),
-      category: barChart($('#ac-category'), { title: 'Incidentes por categoría', data: stats.byCategory, signal }),
-      times: columnChart($('#ac-times'), { title: 'Distribución de tiempos de resolución', labelHeader: 'Rango', integer: true, data: stats.times, signal }),
-      status: donutChart($('#ac-status'), { title: 'Incidentes por estado', centerLabel: 'incidentes', data: stats.byStatus, signal }),
-      priority: donutChart($('#ac-priority'), { title: 'Incidentes por prioridad', centerLabel: 'incidentes', data: stats.byPriority, signal }),
+      weekly: lineChart($('#ac-weekly'), { title: 'Tendencia semanal', labelHeader: 'Semana', integer: true, data: weekly, signal }),
+      category: barChart($('#ac-category'), { title: 'Incidentes por categoría', data: byCategory, signal }),
+      times: columnChart($('#ac-times'), { title: 'Distribución de tiempos de resolución', labelHeader: 'Rango', integer: true, data: dist.times, signal }),
+      status: donutChart($('#ac-status'), { title: 'Incidentes por estado', centerLabel: 'incidentes', data: dist.byStatus, signal }),
+      priority: donutChart($('#ac-priority'), { title: 'Incidentes por prioridad', centerLabel: 'incidentes', data: dist.byPriority, signal }),
     };
   }
 
@@ -161,9 +141,10 @@ export async function render(container, { route, signal }) {
     }
     errorEl.textContent = '';
     scope.textContent = 'Cargando…';
+    let dashboard;
     let incidents;
     try {
-      incidents = await listIncidents(filters, { signal });
+      [dashboard, incidents] = await Promise.all([getDashboard(filters, { signal }), listIncidents(filters, { signal })]);
     } catch (error) {
       if (signal.aborted) return;
       scope.textContent = '';
@@ -172,18 +153,21 @@ export async function render(container, { route, signal }) {
     }
     if (signal.aborted) return;
     const active = Object.values(filters).filter(Boolean).length;
-    scope.textContent = active ? `${incidents.length} incidentes con ${active} ${active === 1 ? 'filtro' : 'filtros'}` : `${incidents.length} incidentes, sin filtros`;
-    draw(compute(incidents));
-    return incidents;
+    scope.textContent = active
+      ? `${dashboard.totalIncidents} incidentes con ${active} ${active === 1 ? 'filtro' : 'filtros'}`
+      : `${dashboard.totalIncidents} incidentes, sin filtros`;
+    draw(dashboard, distributions(incidents));
   }
 
   form.addEventListener('submit', (event) => { event.preventDefault(); load(); });
   form.addEventListener('reset', () => setTimeout(load));
 
-  // La primera carga, sin filtros, también llena el selector de categorías.
-  const all = await load();
-  if (all) {
-    form.elements.categoryId.insertAdjacentHTML('beforeend', catalogsFromIncidents(all).categories
-      .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''));
-  }
+  listCategories({}, { signal })
+    .then((categories) => {
+      form.elements.categoryId.insertAdjacentHTML('beforeend', categories
+        .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''));
+    })
+    .catch(() => {}); // Si falla, el filtro queda en "Todas"; el error principal lo muestra load().
+
+  await load();
 }

@@ -8,7 +8,8 @@ import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
 import { errorState, emptyHtml } from '../components/states.js';
 import { skeletonLines } from '../components/skeleton.js';
 import { renderAiQuery } from '../components/ai-response.js';
-import { listIncidents, catalogsFromIncidents } from '../services/incidents.service.js';
+import { listIncidents } from '../services/incidents.service.js';
+import { listUsers, toOptions } from '../services/catalogs.service.js';
 import { requestAssistance, getIncidentHistory } from '../services/ai-assistance.service.js';
 import { ESTADO_INCIDENTE, PRIORIDAD, badge } from '../catalogs.js';
 import { formatDateTime } from '../format.js';
@@ -31,8 +32,10 @@ export async function render(container, { route, signal }) {
 
   const root = container.querySelector('#assistant');
   let incidents;
+  let users;
   try {
-    incidents = await listIncidents({}, { signal });
+    [incidents, users] = await Promise.all([listIncidents({}, { signal }), listUsers({}, { signal })]);
+    users = toOptions(users);
   } catch (error) {
     if (signal.aborted) return;
     errorState(root, error, () => render(container, { route, signal }));
@@ -40,7 +43,6 @@ export async function render(container, { route, signal }) {
   }
   if (signal.aborted) return;
 
-  const { users } = catalogsFromIncidents(incidents);
   // Regla del backend: no se puede consultar a la IA sobre un incidente cerrado.
   const available = incidents.filter((i) => i.status !== 'CLOSED').sort((a, b) => b.id - a.id);
 

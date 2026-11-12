@@ -20,9 +20,7 @@ export const PRIORIDAD = {
   CRITICAL: { label: 'Crítica', tone: 'danger', color: 'var(--danger)' },
 };
 
-// QueryStatus. El enunciado también pide "Sin resultados": el backend aún
-// no tiene ese valor, así que la vista lo deduce cuando una respuesta
-// completada llega sin fuentes (ver estadoConsulta()).
+// QueryStatus. NO_RESULTS: n8n respondió sin documentos relevantes.
 export const ESTADO_CONSULTA = {
   PENDING: { label: 'Pendiente', tone: 'warning' },
   COMPLETED: { label: 'Respondida', tone: 'success' },
@@ -34,6 +32,8 @@ export const ESTADO_CONSULTA = {
 export const ESTADOS_FINALES = ['RESOLVED', 'CLOSED'];
 
 // Estado a mostrar para una consulta del historial (AiQueryHistoryResponseDTO).
+// Las consultas COMPLETED sin fuentes (registradas antes de existir NO_RESULTS)
+// también se muestran como "Sin resultados".
 export function estadoConsulta(query) {
   if (query.queryStatus === 'COMPLETED' && !query.aiResponse?.sources?.length) return 'NO_RESULTS';
   return query.queryStatus;

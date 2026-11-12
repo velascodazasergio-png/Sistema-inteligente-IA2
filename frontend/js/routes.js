@@ -32,12 +32,7 @@ export const routes = [
     icon: 'i-book',
     description: 'Artículos técnicos verificados. Solo los activos y verificados se usan como fuentes del asistente.',
     keywords: ['articulos', 'kb', 'soluciones', 'documentos'],
-    needs: [
-      'Listado y búsqueda de artículos técnicos.',
-      'Crear, consultar y editar artículos: título, problema, síntomas, causa y solución.',
-      'Activar / desactivar un artículo y marcarlo como verificado.',
-    ],
-    note: 'La entidad KnowledgeArticle ya existe en el backend, pero todavía no tiene un controlador REST.',
+    load: () => import('./views/conocimiento.js'),
   },
   {
     path: 'asistente',

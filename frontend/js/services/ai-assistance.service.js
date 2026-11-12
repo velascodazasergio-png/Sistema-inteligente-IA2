@@ -27,6 +27,10 @@ export function requestAssistance(incident, additionalContext = '', options) {
   }, options);
 }
 
+/** GET /history — todas las consultas, de la más reciente a la más antigua. Filtro opcional por QueryStatus. */
+export const getAiHistory = ({ status } = {}, options) =>
+  api.get(`${BASE}/history`, { ...options, query: { status: status || undefined } });
+
 /** GET /incidents/{id}/history — AiQueryHistoryResponseDTO[] */
 export const getIncidentHistory = (incidentId, options) =>
   api.get(`${BASE}/incidents/${incidentId}/history`, options);

@@ -589,6 +589,39 @@ input[type="date"].input {
   list-style: none;
 }
 
+/* ---------- Base de conocimiento ---------- */
+.kb-usable {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success-text);
+}
+
+.kb-usable .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.kb-content {
+  white-space: pre-wrap;
+}
+
+.filters__grid--wide {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+}
+
+.filters .history-stats {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
+
+.detail-links--top {
+  margin: 0 0 var(--space-4);
+}
+
 /* ---------- Responsive ---------- */
 @media (max-width: 1023px) {
   .assistant {

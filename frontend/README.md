@@ -54,15 +54,18 @@ frontend/
     │   └── ai-response.js      # Respuesta de la IA: pasos, fuentes, similitud, calificación
     ├── services/               # Un archivo por recurso del backend
     │   ├── incidents.service.js
+    │   ├── catalogs.service.js
+    │   ├── knowledge.service.js
     │   ├── analytics.service.js
     │   └── ai-assistance.service.js
     └── views/                  # Una vista por sección
         ├── dashboard.js        # RF07
         ├── incidentes.js       # RF01
+        ├── conocimiento.js     # RF02
         ├── asistente.js        # RF05
         ├── historial.js        # RF08
         ├── analitica.js        # RF06
-        ├── pending.js          # Secciones sin endpoints (RF02)
+        ├── pending.js          # Sección sin endpoints (respaldo)
         ├── configuracion.js
         └── componentes.js      # Catálogo con datos de demostración
 ```
@@ -104,42 +107,42 @@ Los gráficos incluyen una tabla oculta con los mismos datos para lectores de pa
 
 | Módulo | Qué hace | Estado |
 |---|---|---|
-| Dashboard (RF07) | 6 KPI del SQL del backend, evolución semanal, ranking de categorías, distribución por estado y prioridad, incidentes recientes | ✅ |
-| Incidentes (RF01) | Filtros (categoría, prioridad, estado, usuario, fechas), tabla con búsqueda y orden, registro con validación en tiempo real, detalle y cambio de estado | ✅ |
+| Dashboard (RF07) | 6 KPI calculados en la base de datos, evolución semanal, ranking de categorías, distribución por estado y prioridad, incidentes recientes | ✅ |
+| Incidentes (RF01) | Filtros en el servidor (categoría, prioridad, estado, usuario, fechas), tabla con búsqueda y orden, registro con validación en tiempo real, detalle y cambio de estado | ✅ |
+| Base de conocimiento (RF02) | Búsqueda en título y contenido, filtros por categoría, estado y verificación, crear y editar, activar o desactivar, verificar | ✅ |
 | Asistente IA (RF05) | Elige un incidente, añade contexto y consulta; espera la respuesta de n8n consultando el historial; muestra diagnóstico, pasos, fuentes con similitud y confianza | ✅ |
-| Historial (RF08) | Consultas de un incidente con su respuesta, fuentes y calificación; calificar de 1 a 5 con comentario | ✅ |
-| Analítica (RF06) | KPI y gráficos filtrables por fecha, categoría y prioridad; distribución de tiempos de resolución | ✅ |
-| Base de conocimiento (RF02) | — | ⏳ Falta el controlador en el backend |
+| Historial (RF08) | Todas las consultas con filtros por estado e incidente, resumen y detalle; calificar de 1 a 5 con comentario | ✅ |
+| Analítica (RF06) | KPI, ranking y tendencia calculados en la base de datos con filtros de fecha, categoría y prioridad; distribución de estados, prioridades y tiempos | ✅ |
 
-Decisiones tomadas por límites actuales del backend:
+Notas:
 
-- **Categorías y usuarios** de los formularios salen de los incidentes registrados, porque no hay endpoints para esos catálogos.
-- **Analítica con filtros**: `/api/v1/analytics/*` no acepta filtros, así que con filtros los indicadores se calculan en el cliente sobre `GET /api/v1/incidents` (ya filtrado por el backend) y con las mismas reglas del backend. Sin filtros, los resultados coinciden con los del SQL.
-- **"Sin resultados"**: el enum `QueryStatus` no lo incluye. Se muestra cuando una consulta `COMPLETED` llega sin fuentes.
-- **Estado del incidente** se filtra en el cliente: el endpoint no recibe ese parámetro.
+- **"Sin resultados"**: el backend marca `NO_RESULTS` cuando n8n responde sin fuentes. Las consultas antiguas `COMPLETED` sin fuentes también se muestran así.
+- **Distribuciones de Analítica** (estado, prioridad, tiempos) se cuentan en el cliente sobre `GET /api/v1/incidents` con los mismos filtros; los demás indicadores salen del SQL.
+- **Editar un artículo verificado** cambiando su título o contenido lo deja sin verificar (regla del backend).
 
 ## Endpoints usados
 
 | Método | Ruta | Uso |
 |---|---|---|
 | GET | `/api-docs` | Comprobar que el backend está levantado |
-| GET | `/api/v1/incidents` | Listado y filtros (Incidentes, Dashboard, Analítica, Asistente, Historial) |
+| GET | `/api/v1/categories`, `/api/v1/users` | Catálogos de formularios y filtros |
+| GET | `/api/v1/incidents` | Listado con filtros `categoryId`, `priority`, `status`, `userId`, `startDate`, `endDate` |
+| GET | `/api/v1/incidents/{id}` | Detalle (enlaces `#/incidentes?id=…`) |
 | POST | `/api/v1/incidents` | Registrar incidente |
 | PATCH | `/api/v1/incidents/{id}/status` | Cambiar estado |
-| GET | `/api/v1/analytics/dashboard` | KPI, top de categorías y tendencia semanal |
+| GET | `/api/v1/knowledge-articles` | Buscar artículos: `q`, `categoryId`, `active`, `verified` |
+| POST / PUT | `/api/v1/knowledge-articles[/{id}]` | Crear y editar artículos |
+| PATCH | `/api/v1/knowledge-articles/{id}/status` | Activar, desactivar o verificar |
+| GET | `/api/v1/analytics/dashboard` | KPI, top de categorías y tendencia semanal, con filtros |
 | POST | `/api/v1/ai-assistance/request` | Solicitar análisis a la IA |
-| GET | `/api/v1/ai-assistance/incidents/{id}/history` | Historial y espera de la respuesta |
+| GET | `/api/v1/ai-assistance/history` | Historial global (filtro `status`) |
+| GET | `/api/v1/ai-assistance/incidents/{id}/history` | Espera de la respuesta en el asistente |
 | POST | `/api/v1/ai-assistance/responses/{id}/ratings` | Calificar una respuesta |
 
 `POST /api/v1/ai-assistance/responses` lo usa n8n; el frontend no lo llama.
 
-## Pendientes con backend
+## Pendientes
 
-1. **Base de conocimiento (RF02)**: la entidad `KnowledgeArticle` existe, pero no tiene controlador REST.
-2. **Catálogos**: endpoints para listar categorías y usuarios.
-3. **Detalle**: `GET /api/v1/incidents/{id}`.
-4. **Historial global**: listado de todas las consultas, no solo por incidente.
-5. **Filtros en analítica**: que `/api/v1/analytics/*` acepte fecha, categoría y prioridad para calcularlo todo en SQL.
-6. **Estado "Sin resultados"** en `QueryStatus`.
-7. **Paginación en el servidor** cuando crezca el volumen de incidentes.
-8. **Autenticación**: no hay mecanismo definido. Cuando exista, se añade en `api.js`.
+1. **Flujo n8n**: sin n8n en ejecución, toda consulta nueva queda en estado *Error*. El webhook esperado es `n8n.webhook.assistance-url`.
+2. **Paginación en el servidor** cuando crezca el volumen de incidentes.
+3. **Autenticación**: no hay mecanismo definido. Cuando exista, se añade en `api.js`.

@@ -1,32 +1,32 @@
-// Historial de consultas (RF08): consultas a la IA de un incidente, con su
+// Historial de consultas (RF08): todas las consultas a la IA con su estado,
 // respuesta, fuentes, similitud y calificación.
-// Endpoints: GET /api/v1/ai-assistance/incidents/{id}/history,
+// Endpoints: GET /api/v1/ai-assistance/history,
 //            POST /api/v1/ai-assistance/responses/{id}/ratings
-// El backend aún no tiene un listado global de consultas: se elige el incidente.
 
 import { pageHeader, icon, escapeHtml } from '../ui.js';
-import { errorState, emptyHtml } from '../components/states.js';
+import { errorState } from '../components/states.js';
 import { skeletonLines } from '../components/skeleton.js';
 import { starsHtml } from '../components/rating.js';
+import { createDataTable } from '../components/data-table.js';
+import { openModal } from '../components/modal.js';
 import { renderAiQuery } from '../components/ai-response.js';
-import { listIncidents, catalogsFromIncidents } from '../services/incidents.service.js';
-import { getIncidentHistory } from '../services/ai-assistance.service.js';
-import { ESTADO_INCIDENTE, PRIORIDAD, badge, estadoConsulta, labelOf, ESTADO_CONSULTA } from '../catalogs.js';
+import { getAiHistory } from '../services/ai-assistance.service.js';
+import { listUsers, toOptions } from '../services/catalogs.service.js';
+import { ESTADO_CONSULTA, badge, estadoConsulta, labelOf, optionsHtml } from '../catalogs.js';
+import { formatDateTime, formatRatio, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
 
-function statsHtml(history) {
-  const ratings = history.map((q) => q.aiResponse?.rating?.score).filter(Number.isFinite);
+function statsHtml(entries) {
+  const ratings = entries.map((q) => q.aiResponse?.rating?.score).filter(Number.isFinite);
   const average = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
-  const byStatus = history.reduce((acc, q) => {
-    const status = estadoConsulta(q);
-    acc[status] = (acc[status] ?? 0) + 1;
-    return acc;
-  }, {});
+  const counts = Object.keys(ESTADO_CONSULTA).map((status) => [status, entries.filter((q) => estadoConsulta(q) === status).length]);
   return `
     <dl class="history-stats">
-      <div><dt>Consultas</dt><dd>${history.length}</dd></div>
-      ${Object.entries(byStatus).map(([status, count]) => `<div><dt>${escapeHtml(labelOf(ESTADO_CONSULTA, status))}</dt><dd>${count}</dd></div>`).join('')}
-      <div><dt>Calificación promedio</dt><dd>${average != null ? `${starsHtml(average)} <span class="cell-muted">${average.toLocaleString('es-CO', { maximumFractionDigits: 1 })} (${ratings.length})</span>` : '<span class="cell-muted">Sin calificar</span>'}</dd></div>
+      <div><dt>Consultas</dt><dd>${entries.length}</dd></div>
+      ${counts.map(([status, count]) => `<div><dt>${escapeHtml(labelOf(ESTADO_CONSULTA, status))}</dt><dd>${count}</dd></div>`).join('')}
+      <div><dt>Calificación promedio</dt><dd>${average != null
+        ? `${starsHtml(average)} <span class="cell-muted">${average.toLocaleString('es-CO', { maximumFractionDigits: 1 })} (${ratings.length})</span>`
+        : '<span class="cell-muted">Sin calificar</span>'}</dd></div>
     </dl>`;
 }
 
@@ -36,9 +36,11 @@ export async function render(container, { route, signal }) {
     <div class="stack stack--tight" id="history">${skeletonLines(4)}</div>`;
 
   const root = container.querySelector('#history');
-  let incidents;
+  let entries;
+  let users;
   try {
-    incidents = await listIncidents({}, { signal });
+    [entries, users] = await Promise.all([getAiHistory({}, { signal }), listUsers({}, { signal })]);
+    users = toOptions(users);
   } catch (error) {
     if (signal.aborted) return;
     errorState(root, error, () => render(container, { route, signal }));
@@ -46,86 +48,108 @@ export async function render(container, { route, signal }) {
   }
   if (signal.aborted) return;
 
-  const { users } = catalogsFromIncidents(incidents);
-  const sorted = [...incidents].sort((a, b) => b.id - a.id);
+  // Incidentes que tienen al menos una consulta, para el filtro.
+  const incidents = [...new Map(entries.map((q) => [q.incidentId, q.incidentTitle])).entries()]
+    .sort((a, b) => b[0] - a[0]);
 
   root.innerHTML = `
-    <div class="card">
-      <div class="field">
-        <label for="h-incident">Incidente</label>
-        <select class="input" id="h-incident">
-          <option value="">Selecciona un incidente…</option>
-          ${sorted.map((i) => `<option value="${i.id}">#${i.id} · ${escapeHtml(i.title)}</option>`).join('')}
-        </select>
-        <p class="field__hint">El backend guarda el historial por incidente. Un listado global de consultas está pendiente.</p>
+    <form class="card filters" id="h-filters" aria-label="Filtros del historial">
+      <div class="filters__grid filters__grid--wide">
+        <div class="field"><label for="h-status">Estado</label>
+          <select class="input" id="h-status" name="status"><option value="">Todos</option>${optionsHtml(ESTADO_CONSULTA)}</select></div>
+        <div class="field"><label for="h-incident">Incidente</label>
+          <select class="input" id="h-incident" name="incidentId"><option value="">Todos</option>
+            ${incidents.map(([id, title]) => `<option value="${id}">#${id} · ${escapeHtml(title ?? '')}</option>`).join('')}
+          </select></div>
       </div>
-      <div id="h-summary"></div>
-    </div>
-    <div id="h-list" aria-live="polite">
-      ${emptyHtml('Elige un incidente', 'Verás todas las consultas que se hicieron al asistente, sus respuestas, las fuentes usadas y su calificación.', 'i-history')}
-    </div>`;
+      <div id="h-stats"></div>
+    </form>
+    <section class="card" aria-label="Consultas a la IA"><div id="h-table"></div></section>`;
 
-  const select = root.querySelector('#h-incident');
-  const summary = root.querySelector('#h-summary');
-  const list = root.querySelector('#h-list');
-  let requestId = 0;
+  const form = root.querySelector('#h-filters');
+  const stats = root.querySelector('#h-stats');
 
-  async function show() {
-    const incident = incidents.find((i) => String(i.id) === select.value);
-    const myRequest = ++requestId;
-    if (!incident) {
-      summary.innerHTML = '';
-      list.innerHTML = emptyHtml('Elige un incidente', '', 'i-history');
-      return;
-    }
-    history.replaceState(null, '', `#/historial?incidente=${incident.id}`);
+  const table = createDataTable(root.querySelector('#h-table'), {
+    caption: 'Consultas realizadas al asistente IA',
+    searchPlaceholder: 'Buscar por incidente, diagnóstico o fuente…',
+    emptyMessage: 'No hay consultas con estos filtros.',
+    pageSize: 10,
+    initialSort: { key: 'queriedAt', dir: 'desc' },
+    columns: [
+      { key: 'aiQueryId', label: 'ID', align: 'right', render: (q) => `<span class="cell-id">#${q.aiQueryId}</span>`, text: (q) => String(q.aiQueryId) },
+      {
+        key: 'queriedAt', label: 'Fecha', render: (q) => `<span class="cell-muted">${formatDateTime(q.queriedAt)}</span>`,
+        text: (q) => formatDateTime(q.queriedAt), sortValue: (q) => parseDate(q.queriedAt),
+      },
+      {
+        key: 'incidentTitle', label: 'Incidente',
+        render: (q) => `<span class="cell-title" title="${escapeHtml(q.incidentTitle)}">#${q.incidentId} · ${escapeHtml(q.incidentTitle)}</span>`,
+        text: (q) => `${q.incidentId} ${q.incidentTitle} ${q.aiResponse?.suggestedDiagnosis ?? ''} ${(q.aiResponse?.sources ?? []).map((s) => s.sourceTitle).join(' ')}`,
+      },
+      {
+        key: 'status', label: 'Estado', render: (q) => badge(ESTADO_CONSULTA, estadoConsulta(q)),
+        text: (q) => labelOf(ESTADO_CONSULTA, estadoConsulta(q)), sortValue: (q) => Object.keys(ESTADO_CONSULTA).indexOf(estadoConsulta(q)),
+      },
+      {
+        key: 'confidence', label: 'Confianza', align: 'right',
+        render: (q) => `<span class="cell-muted">${formatRatio(q.aiResponse?.confidenceScore)}</span>`,
+        text: () => '', sortValue: (q) => q.aiResponse?.confidenceScore ?? -1,
+      },
+      {
+        key: 'sources', label: 'Fuentes', align: 'right',
+        render: (q) => `<span class="cell-muted">${q.aiResponse ? q.aiResponse.sources.length : '—'}</span>`,
+        text: () => '', sortValue: (q) => q.aiResponse?.sources.length ?? -1,
+      },
+      {
+        key: 'rating', label: 'Calificación',
+        render: (q) => (q.aiResponse?.rating ? starsHtml(q.aiResponse.rating.score)
+          : q.aiResponse ? '<span class="badge badge--neutral">Pendiente</span>' : '<span class="cell-muted">—</span>'),
+        text: () => '', sortValue: (q) => q.aiResponse?.rating?.score ?? -1,
+      },
+    ],
+    onRowClick: (query) => openDetail(query),
+  });
 
-    list.innerHTML = skeletonLines(5);
-    let entries;
-    try {
-      entries = await getIncidentHistory(incident.id, { signal });
-    } catch (error) {
-      if (signal.aborted || myRequest !== requestId) return;
-      errorState(list, error, show);
-      return;
-    }
-    if (signal.aborted || myRequest !== requestId) return;
+  const filtered = () => {
+    const { status, incidentId } = Object.fromEntries(new FormData(form));
+    return entries.filter((q) => (!status || estadoConsulta(q) === status) && (!incidentId || String(q.incidentId) === incidentId));
+  };
 
-    entries.sort((a, b) => b.aiQueryId - a.aiQueryId);
-    summary.innerHTML = `
-      <div class="incident-summary">
-        <div class="cluster">${badge(PRIORIDAD, incident.priority)}${badge(ESTADO_INCIDENTE, incident.status)}
-          <span class="cell-muted">${escapeHtml(incident.categoryName)}</span></div>
-        ${entries.length ? statsHtml(entries) : ''}
-      </div>`;
+  const refresh = () => {
+    const rows = filtered();
+    table.setRows(rows);
+    stats.innerHTML = statsHtml(rows);
+  };
 
-    if (!entries.length) {
-      list.innerHTML = `
-        <div class="card">${emptyHtml('Sin consultas', 'Este incidente todavía no se ha consultado con el asistente.', 'i-sparkles')}
-          ${incident.status !== 'CLOSED' ? `<div class="cluster cluster--center"><a class="btn btn--primary" href="#/asistente?incidente=${incident.id}">${icon('i-sparkles')}Consultar ahora</a></div>` : ''}
-        </div>`;
-      return;
-    }
+  form.addEventListener('change', refresh);
+  form.addEventListener('submit', (event) => event.preventDefault());
 
-    list.innerHTML = `<ol class="timeline">${entries.map((q) => `<li class="timeline__item" data-query="${q.aiQueryId}"></li>`).join('')}</ol>`;
-    entries.forEach((query) => {
-      renderAiQuery(list.querySelector(`[data-query="${query.aiQueryId}"]`), query, {
-        users,
-        onRated: (rating) => {
-          query.aiResponse.rating = rating;
-          summary.querySelector('.history-stats')?.replaceWith(
-            Object.assign(document.createElement('div'), { innerHTML: statsHtml(entries) }).firstElementChild,
-          );
-        },
-      });
+  function openDetail(query) {
+    const modal = openModal({ title: `Consulta #${query.aiQueryId}`, size: 'lg', body: '<div data-query></div>' });
+    const slot = modal.body.querySelector('[data-query]');
+    slot.insertAdjacentHTML('beforebegin', `
+      <p class="detail-links detail-links--top">
+        <a class="btn btn--ghost" href="#/incidentes?id=${query.incidentId}">${icon('i-incident')}Incidente #${query.incidentId}</a>
+        <a class="btn btn--ghost" href="#/asistente?incidente=${query.incidentId}">${icon('i-sparkles')}Nueva consulta</a>
+      </p>`);
+    modal.body.querySelectorAll('.detail-links a').forEach((a) => a.addEventListener('click', () => modal.close()));
+    renderAiQuery(slot, query, {
+      users,
+      heading: query.incidentTitle,
+      onRated: (rating) => {
+        query.aiResponse.rating = rating;
+        refresh();
+      },
     });
   }
 
-  select.addEventListener('change', show);
-
+  // #/historial?incidente=12 llega desde el detalle de un incidente.
   const preselected = routeParams().get('incidente');
-  if (preselected && incidents.some((i) => String(i.id) === preselected)) {
-    select.value = preselected;
-    show();
+  if (preselected) form.elements.incidentId.value = incidents.some(([id]) => String(id) === preselected) ? preselected : '';
+  refresh();
+  if (preselected && !form.elements.incidentId.value) {
+    table.setRows([]);
+    stats.innerHTML = `<p class="cell-muted">El incidente #${escapeHtml(preselected)} todavía no tiene consultas a la IA.
+      <a href="#/asistente?incidente=${escapeHtml(preselected)}">Consultar ahora</a></p>`;
   }
 }

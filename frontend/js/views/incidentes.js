@@ -5,7 +5,8 @@ import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
 import { openModal } from '../components/modal.js';
 import { errorState } from '../components/states.js';
-import { listIncidents, createIncident, updateIncidentStatus, catalogsFromIncidents } from '../services/incidents.service.js';
+import { listIncidents, getIncident, createIncident, updateIncidentStatus } from '../services/incidents.service.js';
+import { listCategories, listUsers, toOptions } from '../services/catalogs.service.js';
 import { ESTADO_INCIDENTE, PRIORIDAD, badge, optionsHtml, labelOf } from '../catalogs.js';
 import { formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
@@ -54,7 +55,7 @@ export async function render(container, { route, signal }) {
   const form = container.querySelector('#inc-filters');
   const filterError = container.querySelector('#f-error');
   const createButton = container.querySelector('[data-action="create"]');
-  let catalogs = { categories: [], users: [] };
+  let catalogs = { categories: [], activeCategories: [], users: [] };
   let incidents = [];
 
   const table = createDataTable(container.querySelector('#inc-table'), {
@@ -86,7 +87,7 @@ export async function render(container, { route, signal }) {
 
   const readFilters = () => Object.fromEntries(new FormData(form));
 
-  // El estado se filtra en el cliente: el endpoint no recibe ese parámetro.
+  // Tras crear o actualizar, se respeta el filtro de estado ya aplicado.
   const showRows = () => {
     const { status } = readFilters();
     table.setRows(status ? incidents.filter((i) => i.status === status) : incidents);
@@ -125,28 +126,40 @@ export async function render(container, { route, signal }) {
     load();
   });
   form.addEventListener('reset', () => setTimeout(load));
-  form.elements.status.addEventListener('change', showRows);
   createButton.addEventListener('click', () => openCreate());
 
-  // Primera carga sin filtros: también sirve para armar los catálogos.
+  // Primera carga: incidentes y catálogos en paralelo.
   table.setLoading(true);
   try {
-    incidents = await listIncidents({}, { signal });
+    const [rows, categories, users] = await Promise.all([
+      listIncidents({}, { signal }),
+      listCategories({}, { signal }),
+      listUsers({}, { signal }),
+    ]);
+    incidents = rows;
+    catalogs = {
+      categories,
+      activeCategories: categories.filter((c) => c.active),
+      users: toOptions(users),
+    };
   } catch (error) {
     if (signal.aborted) return;
     errorState(container.querySelector('#inc-table-card'), error, () => render(container, { route, signal }));
     return;
   }
   if (signal.aborted) return;
-  catalogs = catalogsFromIncidents(incidents);
   fill();
   createButton.disabled = false;
   table.setLoading(false);
   showRows();
 
   // #/incidentes?id=12 abre directamente el detalle (enlaces del dashboard).
-  const linked = incidents.find((i) => String(i.id) === routeParams().get('id'));
-  if (linked) openDetail(linked);
+  const linkedId = routeParams().get('id');
+  if (linkedId) {
+    getIncident(linkedId, { signal })
+      .then((incident) => { if (!signal.aborted) openDetail(incident); })
+      .catch((error) => { if (!signal.aborted) toast(error.message, { type: 'error' }); });
+  }
 
   /* ---------- Detalle y cambio de estado ---------- */
   function openDetail(incident) {
@@ -229,7 +242,7 @@ export async function render(container, { route, signal }) {
           <div class="form-row">
             <div class="field">
               <label for="c-category">Categoría</label>
-              <select class="input" id="c-category" name="categoryId" aria-describedby="c-categoryId-error">${selectOptions(catalogs.categories, 'Selecciona…')}</select>
+              <select class="input" id="c-category" name="categoryId" aria-describedby="c-categoryId-error">${selectOptions(catalogs.activeCategories, 'Selecciona…')}</select>
               <p class="field__error" id="c-categoryId-error" aria-live="polite"></p>
             </div>
             <div class="field">
@@ -243,7 +256,6 @@ export async function render(container, { route, signal }) {
               <p class="field__error" id="c-userId-error" aria-live="polite"></p>
             </div>
           </div>
-          <p class="field__hint">Las listas de categorías y usuarios salen de los incidentes ya registrados, porque el backend todavía no expone esos catálogos.</p>
           <div class="form__actions">
             <button class="btn btn--primary" type="submit">${icon('i-check')}Registrar incidente</button>
             <button class="btn btn--ghost" type="button" data-cancel>Cancelar</button>
