@@ -48,12 +48,17 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
 
     // 4. Obtiene la tendencia semanal agrupando por Ano-Semana ISO en PostgreSQL
     @Query(value = """
-            SELECT TO_CHAR(DATE_TRUNC('week', i.created_at), 'YYYY-"W"IW') AS yearWeek,
-                   COUNT(i.id) AS totalReported,
-                   SUM(CASE WHEN i.status IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) AS totalResolved
-            FROM incidents i
-            GROUP BY DATE_TRUNC('week', i.created_at)
-            ORDER BY DATE_TRUNC('week', i.created_at) ASC
+            SELECT w.yearWeek,
+                   COUNT(*) AS totalReported,
+                   SUM(CASE WHEN w.status IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) AS totalResolved
+            FROM (
+                SELECT TO_CHAR(DATE_TRUNC('week', i.created_at), 'YYYY-"W"IW') AS yearWeek,
+                       DATE_TRUNC('week', i.created_at) AS weekStart,
+                       i.status AS status
+                FROM incidents i
+            ) w
+            GROUP BY w.yearWeek, w.weekStart
+            ORDER BY w.weekStart ASC
             """, nativeQuery = true)
     List<Object[]> findWeeklyTrendsRaw();
 }
