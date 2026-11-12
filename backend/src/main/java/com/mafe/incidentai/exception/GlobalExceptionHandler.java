@@ -2,9 +2,11 @@ package com.mafe.incidentai.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -54,6 +56,27 @@ public class GlobalExceptionHandler {
         body.put("error", "Validation Error");
         body.put("details", fieldErrors);
 
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // Parametro de URL con formato invalido (p. ej. un estado o una fecha inexistentes)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return badRequest("Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'");
+    }
+
+    // Cuerpo JSON mal formado o con un valor de enum desconocido
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return badRequest("Malformed request body or invalid field value");
+    }
+
+    private ResponseEntity<Map<String, Object>> badRequest(String message) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", message);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
