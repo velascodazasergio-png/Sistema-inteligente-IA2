@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## 1. Solicitud desde Spring Boot",
+        "content": "## 1. Solicitud desde Spring Boot\nSpring Boot llama a este webhook automáticamente tras editar, verificar o activar/desactivar un artículo (`{\"articleId\": N}`). Para reindexar todo: `{\"all\": true}`.",
         "height": 540,
         "width": 560,
         "color": 4
@@ -246,6 +246,37 @@
     {
       "parameters": {
         "method": "PUT",
+        "url": "={{ $env.QDRANT_URL }}/collections/{{ $env.QDRANT_COLLECTION }}",
+        "options": {
+          "timeout": 15000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ vectors: { size: Number($env.EMBEDDING_DIM), distance: 'Cosine' } }) }}"
+      },
+      "id": "50f524fd-7949-42a1-b7a3-831b54f227b4",
+      "name": "Asegurar colección en Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1965,
+        480
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Qdrant API Key"
+        }
+      },
+      "notes": "Crea la colección si no existe (tamaño EMBEDDING_DIM, distancia coseno). Si ya existe, Qdrant responde 409 y el flujo sigue.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "PUT",
         "url": "={{ $env.QDRANT_URL }}/collections/{{ $env.QDRANT_COLLECTION }}/points?wait=true",
         "options": {
           "timeout": 30000
@@ -254,7 +285,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ points: $json.points }) }}"
+        "jsonBody": "={{ JSON.stringify({ points: $('Armar puntos').first().json.points }) }}"
       },
       "id": "b96b3b0e-bde3-4073-bd73-127b3b918e4b",
       "name": "Guardar vectores en Qdrant (upsert)",
@@ -526,7 +557,7 @@
       "main": [
         [
           {
-            "node": "Guardar vectores en Qdrant (upsert)",
+            "node": "Asegurar colección en Qdrant",
             "type": "main",
             "index": 0
           }
@@ -610,6 +641,17 @@
         [
           {
             "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asegurar colección en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Guardar vectores en Qdrant (upsert)",
             "type": "main",
             "index": 0
           }
