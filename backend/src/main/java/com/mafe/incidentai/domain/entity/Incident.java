@@ -13,7 +13,16 @@ import java.util.List;
 
 // Entidad central que representa un incidente tecnologico reportado en la organizacion
 @Entity
-@Table(name = "incidents")
+@Table(
+    name = "incidents",
+    indexes = {
+        @Index(name = "idx_incidents_category_id", columnList = "category_id"),
+        @Index(name = "idx_incidents_user_id", columnList = "user_id"),
+        @Index(name = "idx_incidents_priority", columnList = "priority"),
+        @Index(name = "idx_incidents_status", columnList = "status"),
+        @Index(name = "idx_incidents_created_at", columnList = "created_at")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -43,6 +52,10 @@ public class Incident {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    // Fecha de resolucion del incidente (se registra cuando pasa a estado RESOLVED o CLOSED)
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
     // Dueno de la relacion N:1 con User (FetchType.LAZY evita el problema de consultas N+1)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
@@ -64,11 +77,16 @@ public class Incident {
         if (this.status == null) {
             this.status = IncidentStatus.OPEN;
         }
+        if ((this.status == IncidentStatus.RESOLVED || this.status == IncidentStatus.CLOSED) && this.resolvedAt == null) {
+            this.resolvedAt = this.updatedAt;
+        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
+        if ((this.status == IncidentStatus.RESOLVED || this.status == IncidentStatus.CLOSED) && this.resolvedAt == null) {
+            this.resolvedAt = this.updatedAt;
+        }
     }
 }
-

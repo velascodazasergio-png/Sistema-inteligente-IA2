@@ -19,6 +19,6 @@ public record IncidentResponseDTO(
         Long categoryId,
         String categoryName,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        LocalDateTime resolvedAt
 ) {}
-

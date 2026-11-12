@@ -9,7 +9,13 @@ import java.time.LocalDateTime;
 
 // Entidad que almacena articulos de la base de conocimiento (manuales, guias o soluciones documentadas para el RAG)
 @Entity
-@Table(name = "knowledge_articles")
+@Table(
+    name = "knowledge_articles",
+    indexes = {
+        @Index(name = "idx_kb_category_id", columnList = "category_id"),
+        @Index(name = "idx_kb_active_verified", columnList = "is_active, is_verified")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
