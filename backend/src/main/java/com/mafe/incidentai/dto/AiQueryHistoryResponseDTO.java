@@ -11,6 +11,7 @@ import java.util.List;
 public record AiQueryHistoryResponseDTO(
         Long aiQueryId,
         Long incidentId,
+        String incidentTitle,
         String sentPrompt,
         QueryStatus queryStatus,
         LocalDateTime queriedAt,

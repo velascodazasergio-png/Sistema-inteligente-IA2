@@ -1,5 +1,6 @@
 package com.mafe.incidentai.controller;
 
+import com.mafe.incidentai.domain.enums.QueryStatus;
 import com.mafe.incidentai.dto.*;
 import com.mafe.incidentai.service.AiAssistanceService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -75,6 +76,17 @@ public class AiAssistanceController {
             @Valid @RequestBody CreateRatingRequestDTO request) {
         RatingResponseDTO response = aiAssistanceService.rateAiResponse(aiResponseId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // 5. Consulta el historial global de consultas a la IA
+    @Operation(
+        summary = "Get global AI query history",
+        description = "Devuelve todas las consultas a la IA, de la mas reciente a la mas antigua. Filtro opcional por estado."
+    )
+    @GetMapping("/history")
+    public ResponseEntity<List<AiQueryHistoryResponseDTO>> getAiHistory(
+            @RequestParam(required = false) QueryStatus status) {
+        return ResponseEntity.ok(aiAssistanceService.getAiHistory(status));
     }
 
     // 4. Consulta el historial completo de consultas a la IA (AiQuery) para un incidente

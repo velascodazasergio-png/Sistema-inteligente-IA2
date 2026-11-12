@@ -4,6 +4,8 @@ package com.mafe.incidentai.domain.enums;
 public enum QueryStatus {
     PENDING,
     COMPLETED,
+    // n8n respondio, pero no encontro documentos relevantes en la base de conocimiento
+    NO_RESULTS,
     COMMUNICATION_ERROR
 }
 
