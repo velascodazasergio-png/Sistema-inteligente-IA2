@@ -3,7 +3,7 @@
 // - Estado, prioridad y tiempos de resolución: GET /api/v1/incidents con los mismos filtros.
 // - Comparación temporal: el mismo endpoint para el periodo anterior de igual duración.
 
-import { pageHeader, icon, escapeHtml } from '../ui.js';
+import { pageHeader, icon, escapeHtml, avatar } from '../ui.js';
 import { kpiCard, animateCounters } from '../components/kpi-card.js';
 import { barChart, columnChart, lineChart, donutChart } from '../components/charts.js';
 import { skeletonKpis, skeletonChart, skeletonLines } from '../components/skeleton.js';
@@ -45,8 +45,10 @@ const trendSeries = (rows, labelFn) => ({
 
 export async function render(container, { route, signal }) {
   container.innerHTML = `
-    ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+    ${pageHeader(route)}
     <div class="stack" id="dash">
+      <section class="hero" id="d-hero" aria-label="Resumen del periodo">${skeletonLines(3)}</section>
+
       <form class="card filters" id="d-filters" aria-label="Filtros del dashboard">
         <div class="filters__grid">
           <div class="field"><label for="d-period">Periodo</label>
@@ -125,22 +127,78 @@ export async function render(container, { route, signal }) {
       return delta == null ? undefined : { delta, goodWhen, period };
     };
     const p = prev?.data;
+    // Series semanales reales para los minigráficos de las tarjetas
+    const weeks = d.weeklyTrends ?? [];
+    const reported = weeks.map((w) => w.totalReported);
+    const resolved = weeks.map((w) => w.totalResolved);
+    const backlog = weeks.map((w) => w.totalReported - w.totalResolved);
+    const rate = weeks.map((w) => (w.totalReported ? (w.totalResolved / w.totalReported) * 100 : 0));
     return `
       <div class="kpi-grid">
-        ${kpiCard({ label: 'Total de incidentes', value: d.totalIncidents, icon: 'i-inbox', trend: trend(d.totalIncidents, p?.totalIncidents, 'down') })}
-        ${kpiCard({ label: 'Pendientes', value: pending, icon: 'i-hourglass', tone: 'warning', hint: `${dist.critical} críticos`,
+        ${kpiCard({ label: 'Total de incidentes', value: d.totalIncidents, icon: 'i-inbox', spark: reported, trend: trend(d.totalIncidents, p?.totalIncidents, 'down') })}
+        ${kpiCard({ label: 'Pendientes', value: pending, icon: 'i-hourglass', tone: 'warning', hint: `${dist.critical} críticos`, spark: backlog,
           trend: trend(pending, p ? p.totalIncidents - p.resolvedIncidents : null, 'down') })}
-        ${kpiCard({ label: 'Resueltos o cerrados', value: d.resolvedIncidents, icon: 'i-check-circle', tone: 'success', trend: trend(d.resolvedIncidents, p?.resolvedIncidents, 'up') })}
+        ${kpiCard({ label: 'Resueltos o cerrados', value: d.resolvedIncidents, icon: 'i-check-circle', tone: 'success', spark: resolved, trend: trend(d.resolvedIncidents, p?.resolvedIncidents, 'up') })}
         ${kpiCard({ label: 'Porcentaje de resolución', value: d.resolutionRatePercentage, format: 'percent', icon: 'i-percent', tone: 'accent',
-          progress: d.resolutionRatePercentage, trend: trend(d.resolutionRatePercentage, p?.resolutionRatePercentage, 'up') })}
+          spark: rate, progress: d.resolutionRatePercentage, trend: trend(d.resolutionRatePercentage, p?.resolutionRatePercentage, 'up') })}
         ${kpiCard({ label: 'Tiempo promedio de atención', value: d.averageResolutionTimeHours, format: 'duration', icon: 'i-clock',
           trend: trend(d.averageResolutionTimeHours, p?.averageResolutionTimeHours, 'down'), hint: prev ? '' : 'Desde el registro hasta la resolución' })}
         ${kpiCard({ label: 'Calificación de la IA', value: d.averageAiRatingScore || null, icon: 'i-star', tone: 'accent', hint: 'Promedio sobre 5 estrellas' })}
       </div>`;
   }
 
+  // Resumen del periodo: frases calculadas con los datos reales del backend
+  function heroHtml(d, dist, prev) {
+    const now = new Date();
+    const hour = now.getHours();
+    const greeting = hour < 12 ? 'Buenos días' : hour < 19 ? 'Buenas tardes' : 'Buenas noches';
+    const today = new Intl.DateTimeFormat('es-CO', { weekday: 'long', day: 'numeric', month: 'long' }).format(now);
+    const pending = (d.totalIncidents ?? 0) - (d.resolvedIncidents ?? 0);
+    const rate = d.resolutionRatePercentage ?? 0;
+    const top = d.topCategories?.[0];
+    const delta = prev ? pctChange(d.totalIncidents, prev.data.totalIncidents) : null;
+    const fmt = (n, digits = 1) => Number(n).toLocaleString('es-CO', { maximumFractionDigits: digits });
+    const circumference = 2 * Math.PI * 52;
+    const offset = circumference * (1 - Math.min(Math.max(rate, 0), 100) / 100);
+
+    const chips = [
+      dist.critical ? `<li class="hero__chip hero__chip--danger">${icon('i-alert')}${dist.critical} ${dist.critical === 1 ? 'crítico' : 'críticos'} sin resolver</li>` : '',
+      top ? `<li class="hero__chip">${icon('i-layers')}Más frecuente: ${escapeHtml(top.categoryName)} (${fmt(top.percentageOfTotal)} %)</li>` : '',
+      d.averageResolutionTimeHours ? `<li class="hero__chip">${icon('i-clock')}Atención promedio: ${fmt(d.averageResolutionTimeHours)} h</li>` : '',
+      delta != null ? `<li class="hero__chip ${delta > 0 ? 'hero__chip--warning' : 'hero__chip--success'}">${icon(delta > 0 ? 'i-trend-up' : 'i-trend-down')}${delta > 0 ? '+' : ''}${fmt(delta)} % de registros vs. periodo anterior</li>` : '',
+    ].join('');
+
+    return `
+      <div class="hero__body">
+        <p class="hero__greeting">${greeting} · <span>${today}</span></p>
+        <h2 class="hero__title">${pending
+          ? `<strong>${pending}</strong> ${pending === 1 ? 'incidente requiere' : 'incidentes requieren'} atención`
+          : 'Todo al día: no hay incidentes pendientes'}</h2>
+        <ul class="hero__chips">${chips}</ul>
+        <div class="hero__actions">
+          <a class="btn btn--primary" href="#/incidentes?nuevo=1">${icon('i-plus')}Nuevo incidente</a>
+          <a class="btn btn--ghost" href="#/asistente">${icon('i-sparkles')}Consultar a la IA</a>
+          <a class="btn btn--ghost" href="#/analitica">${icon('i-chart')}Ver analítica</a>
+        </div>
+      </div>
+      <div class="hero__gauge" role="img" aria-label="Porcentaje de resolución: ${fmt(rate)} %">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <defs>
+            <linearGradient id="hero-gauge" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0" stop-color="#3b82f6"/><stop offset="1" stop-color="#a78bfa"/>
+            </linearGradient>
+          </defs>
+          <circle class="hero__gauge-track" cx="60" cy="60" r="52"/>
+          <circle class="hero__gauge-value" cx="60" cy="60" r="52"
+                  stroke-dasharray="${circumference.toFixed(1)}" stroke-dashoffset="${offset.toFixed(1)}"/>
+        </svg>
+        <div class="hero__gauge-label"><strong>${fmt(rate)}<small>%</small></strong><span>resuelto</span></div>
+      </div>`;
+  }
+
   function draw(d, incidents, prev) {
     const dist = distributions(incidents);
+    $('#d-hero').innerHTML = heroHtml(d, dist, prev);
     kpis.innerHTML = kpisHtml(d, dist, prev);
     animateCounters(kpis);
 
@@ -174,6 +232,7 @@ export async function render(container, { route, signal }) {
         ${recent.map((i) => `
           <li>
             <a class="recent-item" href="#/incidentes?id=${i.id}">
+              ${avatar(i.userFullName, 'md')}
               <span class="recent-item__main">
                 <span class="cell-title">${escapeHtml(i.title)}</span>
                 <span class="cell-muted">#${i.id} · ${escapeHtml(i.categoryName ?? '')} · ${formatDateTime(i.createdAt)}</span>

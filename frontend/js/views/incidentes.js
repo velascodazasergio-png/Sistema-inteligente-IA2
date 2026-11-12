@@ -1,7 +1,7 @@
 // Incidentes (RF01): registro, consulta, filtrado y cambio de estado.
 // Endpoints: GET/POST /api/v1/incidents, PATCH /api/v1/incidents/{id}/status
 
-import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
+import { pageHeader, icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
 import { openModal, confirmDialog } from '../components/modal.js';
 import { errorState } from '../components/states.js';
@@ -26,7 +26,7 @@ const RULES = {
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     <div class="page-header-row">
-      ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+      ${pageHeader(route)}
       <button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}Nuevo incidente</button>
     </div>
 
@@ -66,8 +66,13 @@ export async function render(container, { route, signal }) {
     initialSort: { key: 'createdAt', dir: 'desc' },
     columns: [
       { key: 'id', label: 'ID', align: 'right', render: (r) => `<span class="cell-id">#${r.id}</span>`, text: (r) => String(r.id) },
-      { key: 'title', label: 'Título', render: (r) => `<span class="cell-title cell-title--narrow" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</span>` },
-      { key: 'categoryName', label: 'Categoría', render: (r) => `<span class="cell-muted cell-wrap">${escapeHtml(r.categoryName)}</span>` },
+      // Título y categoría en la misma celda: ahorra una columna y mantiene la tabla dentro de la pantalla
+      {
+        key: 'title', label: 'Incidente · categoría',
+        render: (r) => `<span class="cell-stack"><span class="cell-title" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</span>
+          <span class="cell-sub">${escapeHtml(r.categoryName)}</span></span>`,
+        text: (r) => `${r.title} ${r.categoryName}`,
+      },
       {
         key: 'priority', label: 'Prioridad', render: (r) => badge(PRIORIDAD, r.priority),
         text: (r) => labelOf(PRIORIDAD, r.priority), sortValue: (r) => Object.keys(PRIORIDAD).indexOf(r.priority),
@@ -76,7 +81,7 @@ export async function render(container, { route, signal }) {
         key: 'status', label: 'Estado', render: (r) => badge(ESTADO_INCIDENTE, r.status),
         text: (r) => labelOf(ESTADO_INCIDENTE, r.status), sortValue: (r) => Object.keys(ESTADO_INCIDENTE).indexOf(r.status),
       },
-      { key: 'userFullName', label: 'Responsable', render: (r) => `<span class="cell-muted">${escapeHtml(r.userFullName)}</span>` },
+      { key: 'userFullName', label: 'Responsable', render: (r) => `<span class="person cell-muted">${avatar(r.userFullName)}${escapeHtml(r.userFullName)}</span>` },
       {
         key: 'createdAt', label: 'Fecha', render: (r) => `<span class="cell-muted" title="${formatDateTime(r.createdAt)}">${formatDate(r.createdAt)}</span>`,
         text: (r) => formatDateTime(r.createdAt), sortValue: (r) => parseDate(r.createdAt),
@@ -176,6 +181,9 @@ export async function render(container, { route, signal }) {
   showRows();
 
   // #/incidentes?id=12 abre directamente el detalle (enlaces del dashboard).
+  // #/incidentes?nuevo=1 abre el formulario de registro (acceso rápido del dashboard).
+  if (routeParams().get('nuevo') === '1') openCreate();
+
   const linkedId = routeParams().get('id');
   if (linkedId) {
     getIncident(linkedId, { signal })

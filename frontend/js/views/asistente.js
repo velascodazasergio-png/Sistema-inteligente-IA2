@@ -43,7 +43,7 @@ const EMPTY_THREAD = () => emptyHtml('Elige un incidente', 'Verás aquí cada co
 
 export async function render(container, { route, signal }) {
   container.innerHTML = `
-    ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+    ${pageHeader(route)}
     <div class="assistant" id="assistant">${skeletonLines(4)}</div>`;
 
   const root = container.querySelector('#assistant');
@@ -154,7 +154,9 @@ export async function render(container, { route, signal }) {
         return;
       }
       history.forEach((q) => appendTurn(incident, q));
-      thread.scrollTop = thread.scrollHeight;
+      // Se muestra el inicio de la última consulta, no el final, para leer la respuesta desde el diagnóstico
+      const last = thread.lastElementChild;
+      if (last) thread.scrollTop = last.offsetTop - thread.offsetTop;
     } catch (error) {
       if (signal.aborted) return;
       thread.innerHTML = emptyHtml('No se pudo cargar la conversación', error.message, 'i-alert');

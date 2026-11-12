@@ -24,7 +24,31 @@ body {
     radial-gradient(60rem 40rem at 85% -10%, var(--glow-primary), transparent 60%),
     radial-gradient(50rem 35rem at -10% 110%, var(--glow-accent), transparent 60%);
   background-attachment: fixed;
+  font-feature-settings: "cv11", "ss01";
   -webkit-font-smoothing: antialiased;
+}
+
+/* Retícula muy tenue de fondo, desvanecida hacia los bordes */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(148, 163, 184, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+  mask-image: radial-gradient(ellipse 80% 60% at 60% 0%, #000 30%, transparent 75%);
+}
+
+/* Cifras alineadas en columnas e indicadores */
+.kpi__value,
+.meter__value,
+.cell-id,
+.table td,
+.history-stats dd {
+  font-variant-numeric: tabular-nums;
 }
 
 h1, h2, h3, h4, p, dl, dd {

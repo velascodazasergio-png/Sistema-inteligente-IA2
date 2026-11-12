@@ -25,6 +25,7 @@ export function render(container, { signal }) {
   container.innerHTML = `
     ${pageHeader({
       title: 'Configuración',
+      icon: 'i-settings',
       description: 'Ajustes guardados solo en este navegador. No se envían al servidor.',
     })}
 

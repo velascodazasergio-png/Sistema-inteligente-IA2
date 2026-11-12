@@ -44,8 +44,9 @@ function trendHtml(trend) {
  *        Variación porcentual frente al periodo anterior (si hay histórico).
  * @param {number} [o.progress] 0–100: dibuja una barra de progreso.
  * @param {string} [o.hint]    Texto auxiliar en el pie.
+ * @param {number[]} [o.spark] Serie corta (p. ej. semanal) para un minigráfico de tendencia.
  */
-export function kpiCard({ label, value, format = 'number', icon: iconName, tone = 'primary', trend, progress, hint }) {
+export function kpiCard({ label, value, format = 'number', icon: iconName, tone = 'primary', trend, progress, hint, spark }) {
   const hasValue = typeof value === 'number' && Number.isFinite(value);
   const fmt = FORMATTERS[format] ?? FORMATTERS.number;
   const clamped = Math.min(100, Math.max(0, progress ?? 0));
@@ -62,11 +63,31 @@ export function kpiCard({ label, value, format = 'number', icon: iconName, tone 
              aria-valuemin="0" aria-valuemax="100" aria-valuenow="${clamped}">
           <span style="--progress:${clamped}%"></span>
         </div>` : ''}
+      ${hasValue ? sparkHtml(spark, label) : ''}
       <div class="kpi__foot">
         ${hasValue ? trendHtml(trend) : '<span>Sin datos</span>'}
         ${hint ? `<span>${escapeHtml(hint)}</span>` : ''}
       </div>
     </article>`;
+}
+
+// Minigráfico de línea y área. Usa el color del tono de la tarjeta (--kpi-color).
+function sparkHtml(values, label) {
+  const data = (values ?? []).filter(Number.isFinite);
+  if (data.length < 2) return '';
+  const w = 120;
+  const h = 32;
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const span = max - min || 1;
+  const points = data.map((v, i) => [(i / (data.length - 1)) * w, h - 3 - ((v - min) / span) * (h - 6)]);
+  const line = points.map(([x, y], i) => `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+  return `
+    <svg class="kpi__spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" role="img"
+         aria-label="Tendencia de ${escapeHtml(label)}: ${data.join(', ')}">
+      <path class="kpi__spark-area" d="${line} L${w} ${h} L0 ${h} Z"/>
+      <path class="kpi__spark-line" d="${line}"/>
+    </svg>`;
 }
 
 // Cuenta de 0 al valor real cuando la tarjeta entra en pantalla (una vez).

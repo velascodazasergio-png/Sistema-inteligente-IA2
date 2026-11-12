@@ -16,13 +16,31 @@ export function escapeHtml(value) {
 export const normalizeText = (text) =>
   String(text ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 
-export function pageHeader({ eyebrow, title, description }) {
+// Encabezado de página. Acepta la ruta completa ({ rf, title, description, icon })
+// o los campos sueltos ({ eyebrow, title, description, icon }).
+export function pageHeader({ eyebrow, rf, title, description, icon: iconName }) {
+  const tag = eyebrow ?? rf;
   return `
     <header class="page-header">
-      ${eyebrow ? `<span class="page-header__eyebrow">${escapeHtml(eyebrow)}</span>` : ''}
-      <h1 class="page-title" tabindex="-1">${escapeHtml(title)}</h1>
-      ${description ? `<p class="page-header__desc">${escapeHtml(description)}</p>` : ''}
+      <span class="page-header__icon" aria-hidden="true">${icon(iconName ?? 'i-logo')}</span>
+      <div class="page-header__text">
+        <div class="page-header__meta">
+          ${tag ? `<span class="page-header__eyebrow">${escapeHtml(tag)}</span>` : ''}
+          <span class="page-header__crumb">Incidentes IA / ${escapeHtml(title)}</span>
+        </div>
+        <h1 class="page-title" tabindex="-1">${escapeHtml(title)}</h1>
+        ${description ? `<p class="page-header__desc">${escapeHtml(description)}</p>` : ''}
+      </div>
     </header>`;
+}
+
+// Avatar con iniciales y un color estable derivado del nombre.
+export function avatar(name, size = 'sm') {
+  const clean = String(name ?? '').trim();
+  const initials = clean.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
+  let hash = 0;
+  for (const ch of clean) hash = (hash * 31 + ch.charCodeAt(0)) % 360;
+  return `<span class="avatar avatar--${size}" style="--avatar-hue: ${hash}" aria-hidden="true">${escapeHtml(initials)}</span>`;
 }
 
 // Marca un botón como ocupado mientras dura una operación asíncrona.

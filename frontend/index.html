@@ -8,6 +8,11 @@
   <title>Incidentes IA · Centro de soporte</title>
   <link rel="icon" href="assets/icons/favicon.svg" type="image/svg+xml">
 
+  <!-- Tipografía: Inter (interfaz) y JetBrains Mono (cifras y códigos). Si no hay internet se usan las fuentes del sistema. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
   <link rel="stylesheet" href="css/variables.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/layout.css">
@@ -80,6 +85,13 @@
       </nav>
 
       <div class="sidebar__footer">
+        <a class="sidebar-status label" id="sidebar-status" href="#/configuracion" data-state="checking">
+          <span class="status__dot" aria-hidden="true"></span>
+          <span class="sidebar-status__text">
+            <strong data-status-text>Comprobando API…</strong>
+            <span data-status-host>localhost:8080</span>
+          </span>
+        </a>
         <button class="nav-link sidebar__collapse" id="sidebar-toggle" type="button"
                 aria-expanded="true" aria-label="Contraer menú" data-label="Contraer menú">
           <svg class="icon" aria-hidden="true"><use href="#i-sidebar"/></svg>

@@ -63,7 +63,7 @@ async function render() {
   } catch (error) {
     if (signal.aborted) return;
     console.error(error);
-    view.innerHTML = pageHeader({ title: route.title, description: 'No se pudo cargar esta sección.' });
+    view.innerHTML = pageHeader({ ...route, description: 'No se pudo cargar esta sección.' });
     toast('No se pudo cargar la sección. Recarga la página.', { type: 'error' });
   }
 

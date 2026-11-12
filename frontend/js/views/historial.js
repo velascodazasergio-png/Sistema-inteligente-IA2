@@ -32,7 +32,7 @@ function statsHtml(entries) {
 
 export async function render(container, { route, signal }) {
   container.innerHTML = `
-    ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+    ${pageHeader(route)}
     <div class="stack stack--tight" id="history">${skeletonLines(4)}</div>`;
 
   const root = container.querySelector('#history');
