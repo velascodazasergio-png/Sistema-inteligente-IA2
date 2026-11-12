@@ -32,7 +32,11 @@ Plataforma para registrar incidentes de soporte, administrar una base de conocim
 | [frontend/](frontend/) | Cliente web en HTML, CSS y JavaScript sin frameworks. Ver [frontend/README.md](frontend/README.md) |
 | [n8n/workflows/](n8n/workflows/) | Flujo 01: indexación en Qdrant (RF03). Flujo 02: asistencia RAG (RF04, RF05) |
 | [database/data.sql](database/data.sql) | Datos iniciales: 150 incidentes, usuarios, categorías y artículos |
-| [docs/](docs/) | Diagramas, evidencias, pruebas, informe de análisis y presentación |
+| [docs/diagramas/](docs/diagramas/) | Modelo entidad-relación, arquitectura y secuencia del flujo RAG (Mermaid) |
+| [docs/informe-analisis/](docs/informe-analisis/) | Informe de análisis de datos con las consultas SQL, resultados y conclusiones |
+| [docs/pruebas/](docs/pruebas/) | Documento de pruebas: integración, API, flujo de IA, Docker e interfaz |
+| [docs/evidencias/](docs/evidencias/) | Swagger, OpenAPI, colección Postman, ejecución de la API y capturas |
+| [docs/presentacion/](docs/presentacion/) | Presentación final (HTML, se abre con doble clic) |
 
 ## Requisitos funcionales
 
@@ -89,14 +93,23 @@ Pasos después del primer arranque:
      -H "Content-Type: application/json" \
      -d '{"vectors": {"size": 1536, "distance": "Cosine"}}'
    ```
-2. **Importar los flujos** de `n8n/workflows/` en n8n (están montados en `/workflows`).
+2. **Importar los flujos** de `n8n/workflows/` desde la interfaz de n8n (*Workflows → Import from File*). La CLI (`n8n import:workflow`) espera una lista de flujos, así que con ella hay que envolver cada archivo en `[ … ]`.
 3. **Crear las credenciales en n8n** (tipo *Header Auth*):
    - Webhook del flujo 02: nombre `N8N_WEBHOOK_AUTH_HEADER` y valor `N8N_WEBHOOK_AUTH_VALUE` del `.env`.
    - OpenRouter: `Authorization: Bearer <clave>`.
    - Qdrant, si tiene clave.
 4. **Activar los flujos** y ejecutar el flujo 01 para indexar los artículos verificados.
 
-> El archivo de Compose no se probó en el equipo donde se escribió (Docker no estaba disponible). La ejecución local con H2 sí está probada.
+> **Probado** con Docker 29 y Compose v5:
+> - los 5 servicios arrancan;
+> - el backend carga `data.sql` en PostgreSQL y el dashboard devuelve los mismos valores que con H2 (86,67 % y 4,74 h);
+> - el registro de incidentes y artículos funciona;
+> - un reinicio conserva los datos;
+> - los dos flujos se importan en n8n.
+>
+> No se probó una consulta real a OpenRouter: requiere una clave propia.
+>
+> Si los puertos 5432, 5500, 5678, 6333 u 8080 ya están ocupados en tu equipo, cámbialos en `docker-compose.yml`.
 
 ## Variables de entorno
 

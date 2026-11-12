@@ -34,7 +34,8 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 | Endpoints nuevos del backend: catálogos, detalle, artículos, historial global, filtros de analítica, tendencia mensual | Código generado | `cdb337e` … `c916110`, `3d9e99d`, `e5dd773` |
 | Integración con los flujos n8n: autenticación del webhook, endpoint de fallos, token de callback | Análisis de los flujos y código | `a4a2a8a` |
 | Pruebas de integración del backend (24 casos) | Código generado | `91f530f` |
-| README, Docker Compose, `.env.example` y este documento | Redacción | — |
+| README, Docker Compose, `.env.example` y este documento | Redacción y prueba del Compose | — |
+| Diagramas, informe de análisis, documento de pruebas, evidencias y presentación (`docs/`) | Generados a partir del código y de consultas reales a la base | — |
 
 ### Decisiones técnicas tomadas con apoyo de la IA
 
@@ -63,7 +64,7 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 
 ### Limitaciones conocidas
 
-- No se probó con OpenRouter ni con Qdrant reales, ni con Docker Compose (Docker no estaba disponible en el equipo).
+- Docker Compose se probó con PostgreSQL, Qdrant y n8n reales (arranque, carga de datos, reinicio e importación de flujos), pero no se probó una consulta real a OpenRouter porque requiere una clave propia. El flujo de IA de punta a punta se validó con un n8n simulado que respeta el contrato del flujo 02.
 - La autenticación de usuarios no está definida en el proyecto. El frontend no tiene inicio de sesión.
 
 ---
