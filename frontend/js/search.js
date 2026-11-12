@@ -4,10 +4,7 @@
 
 import { routes } from './routes.js';
 import { navigate } from './router.js';
-import { icon, escapeHtml } from './ui.js';
-
-const normalize = (text) =>
-  text.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+import { icon, escapeHtml, normalizeText as normalize } from './ui.js';
 
 const index = routes.map((route) => ({
   route,

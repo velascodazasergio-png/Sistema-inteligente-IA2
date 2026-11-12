@@ -14,7 +14,7 @@ const STATUS_INTERVAL_MS = 30000;
 
 /* ---------- Navegación lateral ---------- */
 function renderNav() {
-  document.getElementById('nav-list').innerHTML = routes.map((route) => `
+  document.getElementById('nav-list').innerHTML = routes.filter((route) => route.nav !== false).map((route) => `
     <li>
       <a class="nav-link" href="#/${route.path}" data-route="${route.path}"
          data-label="${escapeHtml(route.title)}" aria-label="${escapeHtml(route.title)}">

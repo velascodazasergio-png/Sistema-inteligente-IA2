@@ -12,6 +12,10 @@ export function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
 
+// Minúsculas y sin tildes: para búsquedas que ignoren acentos.
+export const normalizeText = (text) =>
+  String(text ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
+
 export function pageHeader({ eyebrow, title, description }) {
   return `
     <header class="page-header">

@@ -101,4 +101,15 @@ export const routes = [
     keywords: ['ajustes', 'api', 'url', 'conexion', 'backend'],
     load: () => import('./views/configuracion.js'),
   },
+  {
+    // Catálogo de componentes con datos de demostración. No aparece en la
+    // sidebar; se abre en #/componentes o desde el buscador.
+    path: 'componentes',
+    title: 'Componentes',
+    icon: 'i-layers',
+    description: 'Catálogo de componentes reutilizables (datos de demostración).',
+    keywords: ['catalogo', 'demo', 'ui', 'design system'],
+    nav: false,
+    load: () => import('./views/componentes.js'),
+  },
 ];
