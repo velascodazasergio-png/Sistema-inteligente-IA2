@@ -1,5 +1,5 @@
 // Pruebas unitarias de la lógica del frontend (sin navegador ni dependencias).
-// Ejecutar desde la raíz del repositorio:  node --test frontend/tests
+// Ejecutar desde la raíz del repositorio:  node --test "frontend/tests/*.test.mjs"
 // Cubren cálculos, formato, interpretación de respuestas de la IA, catálogos y el cliente HTTP.
 
 import { test, describe, beforeEach, afterEach } from 'node:test';
