@@ -124,8 +124,8 @@ public class AiAssistanceService {
         // Persistimos AiResponse y en cascada todas sus ResponseSource
         AiResponse savedResponse = aiResponseRepository.save(aiResponse);
 
-        // Marcamos la consulta original como COMPLETED
-        aiQuery.setQueryStatus(QueryStatus.COMPLETED);
+        // COMPLETED si hubo fuentes; NO_RESULTS si n8n no encontro documentos relevantes
+        aiQuery.setQueryStatus(savedResponse.getSources().isEmpty() ? QueryStatus.NO_RESULTS : QueryStatus.COMPLETED);
         aiQueryRepository.save(aiQuery);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -185,6 +185,15 @@ public class AiAssistanceService {
                 .toList();
     }
 
+    // 5. Historial global de consultas a la IA, con filtro opcional por estado
+    @Transactional(readOnly = true)
+    public List<AiQueryHistoryResponseDTO> getAiHistory(QueryStatus status) {
+        List<AiQuery> queries = status != null
+                ? aiQueryRepository.findByQueryStatusOrderByQueriedAtDesc(status)
+                : aiQueryRepository.findAllByOrderByQueriedAtDesc();
+        return queries.stream().map(this::mapToHistoryDTO).toList();
+    }
+
     // Transforma una entidad AiQuery y su arbol de relaciones (AiResponse -> ResponseSource / Rating) a DTO
     private AiQueryHistoryResponseDTO mapToHistoryDTO(AiQuery query) {
         AiResponse response = query.getAiResponse();
@@ -230,6 +239,7 @@ public class AiAssistanceService {
         return new AiQueryHistoryResponseDTO(
                 query.getId(),
                 query.getIncident().getId(),
+                query.getIncident().getTitle(),
                 query.getSentPrompt(),
                 query.getQueryStatus(),
                 query.getQueriedAt(),
@@ -237,4 +247,3 @@ public class AiAssistanceService {
         );
     }
 }
-

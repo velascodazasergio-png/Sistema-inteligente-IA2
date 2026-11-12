@@ -10,5 +10,6 @@ import java.util.List;
 public interface AiQueryRepository extends JpaRepository<AiQuery, Long> {
     List<AiQuery> findByIncidentIdOrderByQueriedAtDesc(Long incidentId);
     List<AiQuery> findByQueryStatus(QueryStatus queryStatus);
+    List<AiQuery> findByQueryStatusOrderByQueriedAtDesc(QueryStatus queryStatus);
+    List<AiQuery> findAllByOrderByQueriedAtDesc();
 }
-

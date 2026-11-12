@@ -4,6 +4,6 @@ package com.mafe.incidentai.domain.enums;
 public enum QueryStatus {
     PENDING,
     COMPLETED,
+    NO_RESULTS,
     COMMUNICATION_ERROR
 }
-
