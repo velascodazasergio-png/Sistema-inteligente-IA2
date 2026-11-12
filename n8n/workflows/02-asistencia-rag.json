@@ -458,7 +458,16 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Token",
+              "value": "={{ $env.CALLBACK_TOKEN }}"
+            }
+          ]
+        }
       },
       "id": "96f739de-dac1-4515-a728-d80ce1c309e2",
       "name": "Enviar respuesta a Spring Boot",
@@ -534,7 +543,16 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Token",
+              "value": "={{ $env.CALLBACK_TOKEN }}"
+            }
+          ]
+        }
       },
       "id": "a86826f2-6c01-463a-a397-3f39462bde19",
       "name": "Reportar fallo a Spring Boot (endpoint pendiente)",
