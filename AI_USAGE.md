@@ -34,6 +34,7 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 | Endpoints nuevos del backend: catálogos, detalle, artículos, historial global, filtros de analítica, tendencia mensual | Código generado | `cdb337e` … `c916110`, `3d9e99d`, `e5dd773` |
 | Integración con los flujos n8n: autenticación del webhook, endpoint de fallos, token de callback | Análisis de los flujos y código | `a4a2a8a` |
 | Pruebas de integración del backend (24 casos) | Código generado | `91f530f` |
+| Pruebas unitarias del frontend (23 casos) | Código generado | — |
 | README, Docker Compose, `.env.example` y este documento | Redacción y prueba del Compose | — |
 | Diagramas, informe de análisis, documento de pruebas, evidencias y presentación (`docs/`) | Generados a partir del código y de consultas reales a la base | — |
 
@@ -57,7 +58,7 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 
 ### Verificación
 
-- `mvn test`: 24 pruebas de integración en verde.
+- `mvn test`: 24 pruebas de integración en verde. `node --test`: 23 pruebas unitarias del frontend en verde.
 - Flujo de IA de punta a punta probado con un n8n simulado que respeta el contrato del flujo 02: respondida, sin resultados, fallo y error de conexión.
 - Capturas en navegador sin interfaz, en escritorio y en móvil, de cada módulo con datos reales del backend.
 - Los cálculos del cliente se contrastaron con los del SQL: por ejemplo, 86,67 % de resolución y 4,74 h de tiempo promedio.
@@ -71,10 +72,53 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 
 ## 2. Rama `mafe` — backend (Mafeqm)
 
-> **Por completar por la integrante:** herramientas de IA usadas (si las hubo), componentes asistidos y decisiones tomadas con su apoyo.
+**Uso de IA:** ⚠️ *pendiente de confirmar por la integrante* (herramienta, modelo y en qué partes la usó). Si no usó IA, debe indicarlo aquí.
+
+### Trabajo registrado en el repositorio (17 commits, del 10 al 12 de noviembre)
+
+| Componente | Commits |
+|---|---|
+| Proyecto Spring Boot con JPA, Validation, H2 y OpenAPI | `536c8cd` |
+| Entidades JPA y relaciones (incidentes, artículos, consultas IA, respuestas, fuentes, calificaciones) | `7c36beb`, `6de2b4a`, `d4b0225` |
+| Repositorios y consultas derivadas | `d5bda62` |
+| Contratos DTO para n8n y controlador base en Swagger | `58f5a64` |
+| `GlobalExceptionHandler` y excepciones de dominio | `194e821` |
+| `IncidentService` con Specifications y validación de estados | `dcc4eb0` |
+| `N8nWebhookClient` con timeouts | `19f8def` |
+| Persistencia encadenada de respuestas, fuentes y similitud | `4ee4e9e` |
+| Endpoints de calificación e historial por incidente | `17b41ba` |
+| Consultas analíticas y `AnalyticsService` (RF06) | `6075206`, `369e9ea` |
+| `data.sql` con 150 incidentes sintéticos | `08218bb` |
+| Catálogos, base de conocimiento, detalle, historial global, filtros (versión propia de cambios de `devsergy`) | `527d742`, `fd396c2`, `bcde55b` |
+
+### Cambios hechos sobre su código desde `devsergy`
+
+Están documentados en la sección 1:
+- **Correcciones:** BOM en `data.sql`, consulta semanal y CORS.
+- **Ampliaciones:** endpoints, estados `NO_RESULTS` y `FAILED`, secciones de artículos y pruebas.
+
+En el merge final (`e41c35b`) se conservó su consulta JPQL `findActiveAndVerifiedArticles` y sus comentarios.
 
 ## 3. Rama `dev-Lisseth` — flujos n8n (lissethkatherine)
 
-> **Por completar por la integrante:** herramientas de IA usadas (si las hubo), componentes asistidos y decisiones tomadas con su apoyo.
->
-> Cambio hecho desde `devsergy` sobre su flujo: se agregó el encabezado `X-Callback-Token` (`$env.CALLBACK_TOKEN`) a los nodos que llaman a Spring Boot. Ningún otro nodo se modificó.
+**Uso de IA:** ⚠️ *pendiente de confirmar por la integrante* (herramienta, modelo y en qué partes la usó). Si no usó IA, debe indicarlo aquí.
+
+### Trabajo registrado en el repositorio (2 commits, 12 de noviembre)
+
+| Componente | Commit |
+|---|---|
+| Flujo 01: indexación de artículos verificados en Qdrant con embeddings de OpenRouter (RF03) | `e642290` |
+| Flujo 02: asistencia RAG con búsqueda vectorial, revalidación en Spring Boot, generación con LLM y reporte de fallos (RF04, RF05) | `fa8059a` |
+
+**Decisiones de diseño visibles en los flujos:**
+- nunca se fabrica una respuesta;
+- umbral de similitud configurable;
+- cada fuente se revalida en el backend antes de usarse;
+- los fallos se clasifican con un código.
+
+### Cambios hechos sobre sus flujos desde `devsergy`
+
+- Encabezado `X-Callback-Token` (`$env.CALLBACK_TOKEN`) en los 2 nodos que llaman a Spring Boot (`7dc1a0e`).
+- El nodo "Reportar fallo a Spring Boot (endpoint pendiente)" pasó a llamarse "Reportar fallo a Spring Boot", porque el endpoint ya existe. Se actualizaron sus conexiones y se verificó que el flujo se importa en n8n 1.80.
+
+Ningún otro nodo se modificó.
