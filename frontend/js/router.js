@@ -31,6 +31,8 @@ function updateChrome(route) {
     if (link.dataset.route === route.path) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   });
+  // Cada módulo tiene su propio color de acento (css/color.css)
+  document.documentElement.dataset.module = route.path;
   titleEl.textContent = route.title;
   eyebrowEl.textContent = route.rf ?? 'Sistema';
   document.title = `${route.title} · Incidentes IA`;

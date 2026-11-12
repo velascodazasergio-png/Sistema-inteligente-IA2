@@ -70,7 +70,7 @@ export async function render(container, { route, signal }) {
         ${kpiCard({ label: 'Resueltos o cerrados', value: dashboard.resolvedIncidents, icon: 'i-check-circle', tone: 'success' })}
         ${kpiCard({ label: 'Pendientes', value: dist.pending, icon: 'i-hourglass', tone: 'warning' })}
         ${kpiCard({ label: 'Porcentaje de resolución', value: dashboard.resolutionRatePercentage, format: 'percent', icon: 'i-percent', tone: 'accent', progress: dashboard.resolutionRatePercentage })}
-        ${kpiCard({ label: 'Tiempo promedio de atención', value: dashboard.averageResolutionTimeHours, format: 'duration', icon: 'i-clock' })}
+        ${kpiCard({ label: 'Tiempo promedio de atención', value: dashboard.averageResolutionTimeHours, format: 'duration', icon: 'i-clock', tone: 'info' })}
         ${kpiCard({ label: 'Críticos sin resolver', value: dist.critical, icon: 'i-alert', tone: 'danger' })}
       </div>`;
     animateCounters(kpis);
