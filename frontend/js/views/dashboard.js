@@ -141,9 +141,9 @@ export async function render(container, { route, signal }) {
         ${kpiCard({ label: 'Resueltos o cerrados', value: d.resolvedIncidents, icon: 'i-check-circle', tone: 'success', spark: resolved, trend: trend(d.resolvedIncidents, p?.resolvedIncidents, 'up') })}
         ${kpiCard({ label: 'Porcentaje de resolución', value: d.resolutionRatePercentage, format: 'percent', icon: 'i-percent', tone: 'accent',
           spark: rate, progress: d.resolutionRatePercentage, trend: trend(d.resolutionRatePercentage, p?.resolutionRatePercentage, 'up') })}
-        ${kpiCard({ label: 'Tiempo promedio de atención', value: d.averageResolutionTimeHours, format: 'duration', icon: 'i-clock',
+        ${kpiCard({ label: 'Tiempo promedio de atención', value: d.averageResolutionTimeHours, format: 'duration', icon: 'i-clock', tone: 'info',
           trend: trend(d.averageResolutionTimeHours, p?.averageResolutionTimeHours, 'down'), hint: prev ? '' : 'Desde el registro hasta la resolución' })}
-        ${kpiCard({ label: 'Calificación de la IA', value: d.averageAiRatingScore || null, icon: 'i-star', tone: 'accent', hint: 'Promedio sobre 5 estrellas' })}
+        ${kpiCard({ label: 'Calificación de la IA', value: d.averageAiRatingScore || null, icon: 'i-star', tone: 'pink', hint: 'Promedio sobre 5 estrellas' })}
       </div>`;
   }
 

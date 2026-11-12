@@ -1,0 +1,279 @@
+/* ==========================================================
+   Capa de color: cada módulo tiene su propio acento.
+   El router pone <html data-module="ruta"> y esta hoja ajusta
+   la sidebar, el encabezado, las tarjetas y los botones.
+   Se carga al final para sobrescribir los estilos base.
+   ========================================================== */
+
+/* ---------- Paleta por módulo ----------
+   --module / --module-2: acento y su pareja del degradado.
+   --module-text: versión clara para texto sobre fondo oscuro (AA).
+   --module-btn: tonos oscuros para el botón (texto blanco AA). */
+:root {
+  --module: #3b82f6;
+  --module-2: #06b6d4;
+  --module-text: #93c5fd;
+  --module-btn: linear-gradient(135deg, #2563eb 0%, #0e7490 100%);
+
+  --info: #06b6d4;
+  --info-text: #67e8f9;
+  --info-soft: rgba(6, 182, 212, 0.16);
+  --pink: #ec4899;
+  --pink-text: #f9a8d4;
+  --pink-soft: rgba(236, 72, 153, 0.16);
+
+  /* Fondo con más color */
+  --glow-primary: rgba(59, 130, 246, 0.18);
+  --glow-accent: rgba(168, 85, 247, 0.16);
+}
+
+:root[data-module="incidentes"] {
+  --module: #f97316;
+  --module-2: #f43f5e;
+  --module-text: #fdba74;
+  --module-btn: linear-gradient(135deg, #c2410c 0%, #be123c 100%);
+}
+
+:root[data-module="conocimiento"] {
+  --module: #10b981;
+  --module-2: #84cc16;
+  --module-text: #6ee7b7;
+  --module-btn: linear-gradient(135deg, #047857 0%, #0f766e 100%);
+}
+
+:root[data-module="asistente"] {
+  --module: #a855f7;
+  --module-2: #ec4899;
+  --module-text: #d8b4fe;
+  --module-btn: linear-gradient(135deg, #7e22ce 0%, #be185d 100%);
+}
+
+:root[data-module="historial"] {
+  --module: #06b6d4;
+  --module-2: #6366f1;
+  --module-text: #67e8f9;
+  --module-btn: linear-gradient(135deg, #0e7490 0%, #4338ca 100%);
+}
+
+:root[data-module="analitica"] {
+  --module: #ec4899;
+  --module-2: #f59e0b;
+  --module-text: #f9a8d4;
+  --module-btn: linear-gradient(135deg, #be185d 0%, #b45309 100%);
+}
+
+:root[data-module="configuracion"],
+:root[data-module="componentes"] {
+  --module: #64748b;
+  --module-2: #3b82f6;
+  --module-text: #cbd5e1;
+  --module-btn: linear-gradient(135deg, #475569 0%, #1d4ed8 100%);
+}
+
+/* ---------- Fondo ---------- */
+body {
+  background-image:
+    radial-gradient(60rem 40rem at 85% -10%, color-mix(in srgb, var(--module) 22%, transparent), transparent 60%),
+    radial-gradient(45rem 32rem at 40% 120%, color-mix(in srgb, var(--module-2) 14%, transparent), transparent 60%),
+    radial-gradient(50rem 35rem at -10% 40%, var(--glow-accent), transparent 60%);
+  transition: background-image var(--dur-slow);
+}
+
+/* Franja de color bajo la barra superior */
+.topbar {
+  border-image: linear-gradient(90deg, var(--module), var(--module-2), transparent 80%) 1;
+}
+
+/* ---------- Marca ---------- */
+.brand-mark {
+  background: conic-gradient(from 210deg, #3b82f6, #8b5cf6, #ec4899, #f97316, #10b981, #06b6d4, #3b82f6);
+  box-shadow: 0 6px 22px -6px rgba(236, 72, 153, 0.7);
+}
+
+/* ---------- Sidebar: cada sección con su color ---------- */
+.nav-link { --nav: #3b82f6; --nav-2: #06b6d4; }
+.nav-link[data-route="incidentes"] { --nav: #f97316; --nav-2: #f43f5e; }
+.nav-link[data-route="conocimiento"] { --nav: #10b981; --nav-2: #84cc16; }
+.nav-link[data-route="asistente"] { --nav: #a855f7; --nav-2: #ec4899; }
+.nav-link[data-route="historial"] { --nav: #06b6d4; --nav-2: #6366f1; }
+.nav-link[data-route="analitica"] { --nav: #ec4899; --nav-2: #f59e0b; }
+.nav-link[data-route="configuracion"] { --nav: #94a3b8; --nav-2: #3b82f6; }
+
+.nav-link__icon {
+  background: color-mix(in srgb, var(--nav) 14%, transparent);
+  color: color-mix(in srgb, var(--nav) 70%, #fff);
+}
+
+.nav-link:hover .nav-link__icon {
+  border-color: color-mix(in srgb, var(--nav) 40%, transparent);
+  background: color-mix(in srgb, var(--nav) 24%, transparent);
+}
+
+.nav-link[aria-current="page"] {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--nav) 22%, transparent), transparent);
+}
+
+.nav-link[aria-current="page"] .nav-link__icon {
+  border-color: color-mix(in srgb, var(--nav) 55%, transparent);
+  background: linear-gradient(135deg, var(--nav), var(--nav-2));
+  box-shadow: 0 6px 18px -6px var(--nav);
+}
+
+.nav-link[aria-current="page"]::before {
+  background: linear-gradient(180deg, var(--nav), var(--nav-2));
+  box-shadow: 0 0 14px var(--nav);
+}
+
+.nav-link[aria-current="page"] .nav-link__rf {
+  color: color-mix(in srgb, var(--nav) 65%, #fff);
+}
+
+/* ---------- Encabezado de página ---------- */
+.page-header__icon {
+  border-color: color-mix(in srgb, var(--module) 45%, transparent);
+  background:
+    radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.28), transparent 60%),
+    linear-gradient(135deg, var(--module), var(--module-2));
+  color: #fff;
+  box-shadow: 0 12px 32px -10px var(--module), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.page-header__eyebrow {
+  border-color: color-mix(in srgb, var(--module) 45%, transparent);
+  background: color-mix(in srgb, var(--module) 16%, transparent);
+  color: var(--module-text);
+}
+
+.page-title {
+  background: linear-gradient(120deg, #f1f5fb 15%, var(--module-text) 55%, color-mix(in srgb, var(--module-2) 60%, #fff) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* ---------- Tarjetas ---------- */
+.card::before {
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--module), var(--module-2), transparent);
+  opacity: 0.75;
+}
+
+/* ---------- Botón principal con el color del módulo ---------- */
+.btn--primary {
+  background: var(--module-btn);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 8px 22px -10px var(--module);
+}
+
+.btn--primary:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    0 12px 30px -8px var(--module);
+}
+
+/* Foco y controles de formulario */
+.input:focus,
+.input:focus-visible {
+  border-color: var(--module);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--module) 25%, transparent);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--module);
+}
+
+/* ---------- KPI: fondo tintado, filo y valor de color ---------- */
+.kpi[data-tone="info"] { --kpi-color: var(--info); --kpi-soft: var(--info-soft); }
+.kpi[data-tone="pink"] { --kpi-color: var(--pink); --kpi-soft: var(--pink-soft); }
+
+.kpi {
+  border-color: color-mix(in srgb, var(--kpi-color) 22%, transparent);
+  background:
+    linear-gradient(160deg, color-mix(in srgb, var(--kpi-color) 14%, transparent) 0%, transparent 55%),
+    linear-gradient(180deg, rgba(20, 29, 48, 0.88), rgba(14, 21, 36, 0.88));
+}
+
+.kpi::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--kpi-color), color-mix(in srgb, var(--kpi-color) 40%, #fff), transparent);
+  pointer-events: none;
+}
+
+.kpi::before {
+  background: radial-gradient(circle, color-mix(in srgb, var(--kpi-color) 30%, transparent), transparent 70%);
+}
+
+.kpi__icon {
+  background: linear-gradient(135deg, var(--kpi-color), color-mix(in srgb, var(--kpi-color) 55%, #000));
+  color: #fff;
+  box-shadow: 0 8px 18px -8px var(--kpi-color);
+}
+
+.kpi__value {
+  background: linear-gradient(120deg, #fff 30%, color-mix(in srgb, var(--kpi-color) 55%, #fff));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* ---------- Tablas ---------- */
+.table th {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--module) 14%, transparent), color-mix(in srgb, var(--module-2) 6%, transparent)),
+    rgba(13, 20, 34, 0.96);
+  color: var(--module-text);
+  border-bottom-color: color-mix(in srgb, var(--module) 35%, transparent);
+}
+
+.table tbody tr:hover td {
+  background: color-mix(in srgb, var(--module) 7%, transparent);
+}
+
+/* ---------- Insignias más vivas ---------- */
+.badge--info { background: rgba(59, 130, 246, 0.2); border-color: rgba(96, 165, 250, 0.5); color: #93c5fd; }
+.badge--accent { background: rgba(168, 85, 247, 0.2); border-color: rgba(192, 132, 252, 0.5); color: #d8b4fe; }
+.badge--success { background: rgba(16, 185, 129, 0.2); border-color: rgba(52, 211, 153, 0.5); color: #6ee7b7; }
+.badge--warning { background: rgba(245, 158, 11, 0.2); border-color: rgba(251, 191, 36, 0.5); color: #fcd34d; }
+.badge--danger { background: rgba(239, 68, 68, 0.22); border-color: rgba(248, 113, 113, 0.55); color: #fca5a5; }
+.badge--neutral { background: rgba(100, 116, 139, 0.2); border-color: rgba(148, 163, 184, 0.4); }
+
+/* ---------- Dashboard: héroe multicolor ---------- */
+.hero {
+  border-color: rgba(236, 72, 153, 0.28);
+  background:
+    radial-gradient(36rem 20rem at 0% 0%, rgba(59, 130, 246, 0.38), transparent 60%),
+    radial-gradient(28rem 18rem at 55% 120%, rgba(16, 185, 129, 0.22), transparent 60%),
+    radial-gradient(30rem 18rem at 100% 0%, rgba(236, 72, 153, 0.3), transparent 60%),
+    linear-gradient(135deg, rgba(17, 26, 46, 0.95), rgba(12, 18, 32, 0.95));
+}
+
+/* ---------- Avatar del asistente con los colores del módulo ---------- */
+.ai-avatar {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+}
+
+/* ---------- Selector Tarjetas/Tabla y estados vacíos ---------- */
+.segmented-toggle .btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--module) 22%, transparent);
+  border-color: color-mix(in srgb, var(--module) 50%, transparent);
+  color: var(--module-text);
+}
+
+.empty-state__icon:not(.empty-state__icon--danger) {
+  border-color: color-mix(in srgb, var(--module) 40%, transparent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--module) 30%, transparent), color-mix(in srgb, var(--module-2) 22%, transparent));
+  color: var(--module-text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body { transition: none; }
+}

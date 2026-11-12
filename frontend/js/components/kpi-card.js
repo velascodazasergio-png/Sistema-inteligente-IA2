@@ -39,7 +39,7 @@ function trendHtml(trend) {
  * @param {number|null} o.value Valor real recibido del backend.
  * @param {'number'|'percent'|'duration'} [o.format]
  * @param {string} o.icon      Id del icono del sprite.
- * @param {'primary'|'accent'|'success'|'warning'|'danger'} [o.tone]
+ * @param {'primary'|'accent'|'success'|'warning'|'danger'|'info'|'pink'} [o.tone]
  * @param {{delta:number, goodWhen?:'up'|'down', period?:string}} [o.trend]
  *        Variación porcentual frente al periodo anterior (si hay histórico).
  * @param {number} [o.progress] 0–100: dibuja una barra de progreso.
