@@ -79,7 +79,7 @@ public class KnowledgeArticleService {
     public KnowledgeArticleResponseDTO updateArticle(Long articleId, KnowledgeArticleRequestDTO request) {
         KnowledgeArticle article = findArticle(articleId);
         boolean contentChanged = !Objects.equals(article.getTitle(), request.title().trim())
-                || !Objects.equals(article.getContent(), request.content().trim());
+                || !Objects.equals(article.getContent(), composeContent(request));
         apply(article, request);
         if (contentChanged) {
             article.setVerified(false);
@@ -117,11 +117,33 @@ public class KnowledgeArticleService {
             article.setAuthorUser(author);
         }
         article.setTitle(request.title().trim());
-        article.setContent(request.content().trim());
+        article.setProblem(request.problem().trim());
+        article.setSymptoms(blankToNull(request.symptoms()));
+        article.setCause(blankToNull(request.cause()));
+        article.setSolution(request.solution().trim());
+        article.setContent(composeContent(request));
         article.setReferenceUrl(request.referenceUrl() == null || request.referenceUrl().isBlank()
                 ? null
                 : request.referenceUrl().trim());
         article.setCategory(category);
+    }
+
+    // Arma el texto completo que indexa el flujo RAG a partir de las secciones del articulo
+    static String composeContent(KnowledgeArticleRequestDTO request) {
+        StringBuilder text = new StringBuilder("Problema: ").append(request.problem().trim());
+        String symptoms = blankToNull(request.symptoms());
+        String cause = blankToNull(request.cause());
+        if (symptoms != null) {
+            text.append("\nSintomas: ").append(symptoms);
+        }
+        if (cause != null) {
+            text.append("\nCausa: ").append(cause);
+        }
+        return text.append("\nSolucion: ").append(request.solution().trim()).toString();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private KnowledgeArticle findArticle(Long articleId) {
@@ -135,6 +157,10 @@ public class KnowledgeArticleService {
                 a.getId(),
                 a.getTitle(),
                 a.getContent(),
+                a.getProblem(),
+                a.getSymptoms(),
+                a.getCause(),
+                a.getSolution(),
                 a.getReferenceUrl(),
                 a.getActive(),
                 a.getVerified(),

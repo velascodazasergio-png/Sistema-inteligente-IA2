@@ -6,7 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-// Datos para crear o editar un articulo de la base de conocimiento (RF02)
+// Datos para crear o editar un articulo de la base de conocimiento (RF02).
+// El contenido completo (content) lo arma el backend a partir de las secciones.
 @Schema(description = "Datos para crear o editar un articulo tecnico de la base de conocimiento")
 public record KnowledgeArticleRequestDTO(
         @Schema(description = "Titulo del articulo", example = "IPSec VPN Error 809 Troubleshooting Runbook")
@@ -14,10 +15,23 @@ public record KnowledgeArticleRequestDTO(
         @Size(min = 5, max = 180, message = "Title must be between 5 and 180 characters")
         String title,
 
-        @Schema(description = "Contenido tecnico: problema, sintomas, causa y solucion", example = "Verify UDP ports 500 and 4500 on perimeter firewall and restart IKEEXT.")
-        @NotBlank(message = "Content is required")
-        @Size(min = 20, message = "Content must contain at least 20 characters")
-        String content,
+        @Schema(description = "Descripcion del problema", example = "Remote users cannot establish the corporate VPN tunnel.")
+        @NotBlank(message = "Problem is required")
+        @Size(min = 10, max = 4000, message = "Problem must be between 10 and 4000 characters")
+        String problem,
+
+        @Schema(description = "Sintomas observables (opcional)", example = "Windows 11 shows error 809 when connecting.")
+        @Size(max = 4000, message = "Symptoms cannot exceed 4000 characters")
+        String symptoms,
+
+        @Schema(description = "Causa raiz (opcional)", example = "The perimeter firewall blocks UDP 500 and 4500 (NAT-T).")
+        @Size(max = 4000, message = "Cause cannot exceed 4000 characters")
+        String cause,
+
+        @Schema(description = "Solucion o pasos para resolverlo", example = "1. Allow UDP 500/4500 on the firewall. 2. Restart IKEEXT on the client.")
+        @NotBlank(message = "Solution is required")
+        @Size(min = 10, max = 8000, message = "Solution must be between 10 and 8000 characters")
+        String solution,
 
         @Schema(description = "URL de referencia opcional (http o https)", example = "https://kb.enterprise.io/net/vpn-error-809")
         @Size(max = 500, message = "Reference URL cannot exceed 500 characters")
