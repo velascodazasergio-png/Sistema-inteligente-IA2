@@ -30,6 +30,13 @@ public class AiQuery {
     @Column(name = "queried_at", nullable = false, updatable = false)
     private LocalDateTime queriedAt;
 
+    // Codigo y mensaje del fallo cuando la consulta termina en COMMUNICATION_ERROR o FAILED
+    @Column(name = "failure_code", length = 60)
+    private String failureCode;
+
+    @Column(name = "failure_message", length = 500)
+    private String failureMessage;
+
     // Dueno de la relacion N:1 con Incident
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "incident_id", nullable = false)

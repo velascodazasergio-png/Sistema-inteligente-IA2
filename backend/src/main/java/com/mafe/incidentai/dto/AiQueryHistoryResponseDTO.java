@@ -15,6 +15,8 @@ public record AiQueryHistoryResponseDTO(
         String sentPrompt,
         QueryStatus queryStatus,
         LocalDateTime queriedAt,
+        String failureCode,
+        String failureMessage,
         AiResponseSummaryDTO aiResponse
 ) {
     // Resumen de la respuesta generada por n8n asociada a la consulta

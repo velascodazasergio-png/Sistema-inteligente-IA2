@@ -25,11 +25,21 @@ public class N8nWebhookClient {
     @Value("${n8n.webhook.assistance-url}")
     private String n8nWebhookUrl;
 
+    // Autenticacion del webhook (credencial "Header Auth" en n8n). Si el valor esta vacio no se envia.
+    @Value("${n8n.webhook.auth-header-name:X-N8N-Token}")
+    private String authHeaderName;
+
+    @Value("${n8n.webhook.auth-header-value:}")
+    private String authHeaderValue;
+
     // Dispara el webhook de n8n enviando el ID de la consulta IA y los datos del incidente; retorna true si n8n respondio 2xx
     public boolean triggerIncidentAnalysis(Long aiQueryId, AiAssistanceRequestDTO request) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (authHeaderValue != null && !authHeaderValue.isBlank()) {
+                headers.set(authHeaderName, authHeaderValue);
+            }
 
             // Construimos el payload JSON incluyendo el aiQueryId para que n8n sepa a que consulta asociar su respuesta
             Map<String, Object> payload = new HashMap<>();

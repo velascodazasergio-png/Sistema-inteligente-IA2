@@ -69,6 +69,8 @@ public class AiAssistanceService {
         // Si hubo timeout o error de conexion con n8n, reflejamos el estado COMMUNICATION_ERROR en la base de datos
         if (!deliveredToN8n) {
             savedQuery.setQueryStatus(QueryStatus.COMMUNICATION_ERROR);
+            savedQuery.setFailureCode("N8N_UNREACHABLE");
+            savedQuery.setFailureMessage("The AI service (n8n) did not accept the request or timed out");
             aiQueryRepository.save(savedQuery);
         }
 
@@ -124,6 +126,9 @@ public class AiAssistanceService {
         // Persistimos AiResponse y en cascada todas sus ResponseSource
         AiResponse savedResponse = aiResponseRepository.save(aiResponse);
 
+        // Una respuesta valida reemplaza un error previo (p. ej. timeout del webhook)
+        aiQuery.setFailureCode(null);
+        aiQuery.setFailureMessage(null);
         // COMPLETED si hubo fuentes; NO_RESULTS si n8n no encontro documentos relevantes
         aiQuery.setQueryStatus(savedResponse.getSources().isEmpty() ? QueryStatus.NO_RESULTS : QueryStatus.COMPLETED);
         aiQueryRepository.save(aiQuery);
@@ -133,6 +138,34 @@ public class AiAssistanceService {
         result.put("aiResponseId", savedResponse.getId());
         result.put("aiQueryId", aiQuery.getId());
         result.put("registeredSources", savedResponse.getSources().size());
+        result.put("queryStatus", aiQuery.getQueryStatus().name());
+        result.put("timestamp", LocalDateTime.now().toString());
+        return result;
+    }
+
+    // Registra el fallo que reporta n8n: la consulta pasa a FAILED con su codigo y mensaje.
+    // Solo aplica a consultas sin respuesta; asi un fallo tardio no pisa una respuesta valida.
+    @Transactional
+    public Map<String, Object> reportFailure(Long aiQueryId, AiFailureReportDTO report) {
+        if (report.aiQueryId() != null && !report.aiQueryId().equals(aiQueryId)) {
+            throw new BusinessRuleException("aiQueryId in the body does not match the URL");
+        }
+        AiQuery aiQuery = aiQueryRepository.findById(aiQueryId)
+                .orElseThrow(() -> new ResourceNotFoundException("AI Query not found with ID: " + aiQueryId));
+        if (aiQuery.getAiResponse() != null
+                || aiQuery.getQueryStatus() == QueryStatus.COMPLETED
+                || aiQuery.getQueryStatus() == QueryStatus.NO_RESULTS) {
+            throw new BusinessRuleException("AI Query " + aiQueryId + " already has a response");
+        }
+
+        aiQuery.setQueryStatus(QueryStatus.FAILED);
+        aiQuery.setFailureCode(report.errorCode().trim());
+        aiQuery.setFailureMessage(report.message().trim());
+        aiQueryRepository.save(aiQuery);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("message", "AI failure registered");
+        result.put("aiQueryId", aiQuery.getId());
         result.put("queryStatus", aiQuery.getQueryStatus().name());
         result.put("timestamp", LocalDateTime.now().toString());
         return result;
@@ -243,6 +276,8 @@ public class AiAssistanceService {
                 query.getSentPrompt(),
                 query.getQueryStatus(),
                 query.getQueriedAt(),
+                query.getFailureCode(),
+                query.getFailureMessage(),
                 responseSummary
         );
     }
