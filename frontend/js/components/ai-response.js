@@ -43,9 +43,16 @@ export function parseResponse(response) {
   return {
     explanation: match ? (match[2]?.trim() ?? '') : diagnosis,
     solution: match ? match[1].trim() : '',
-    steps: stepsPart.split(/\n+|\s+(?=\d+[.)]\s)/).map((s) => s.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean),
+    steps: splitSteps(stepsPart),
     warnings: warningsPart.split('\n').map((w) => w.replace(/^\s*-\s*/, '').trim()).filter(Boolean),
   };
+}
+
+// Pasos: uno por línea; si todo viene en una línea, se separa por "1. … 2. …".
+// Solo números de 1 o 2 dígitos marcan un paso, para no cortar "evento 4740." o "versión 2.3".
+function splitSteps(text) {
+  const parts = /\n/.test(text.trim()) ? text.split(/\n+/) : text.split(/\s+(?=\d{1,2}[.)]\s)/);
+  return parts.map((s) => s.replace(/^\s*\d{1,2}[.)]\s+/, '').trim()).filter(Boolean);
 }
 
 const meter = (value, label) => `
