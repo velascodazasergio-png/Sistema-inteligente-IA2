@@ -3,6 +3,7 @@ package com.mafe.incidentai.service;
 import com.mafe.incidentai.dto.AnalyticsDashboardDTO;
 import com.mafe.incidentai.dto.AnalyticsFilterRequest;
 import com.mafe.incidentai.dto.CategoryMetricDTO;
+import com.mafe.incidentai.dto.MonthlyTrendDTO;
 import com.mafe.incidentai.dto.WeeklyTrendDTO;
 import com.mafe.incidentai.exception.BusinessRuleException;
 import com.mafe.incidentai.repository.IncidentRepository;
@@ -54,7 +55,8 @@ public class AnalyticsService {
                 avgResolutionHours,
                 avgRatingScore,
                 getTopCategories(f, totalIncidents),
-                getWeeklyTrends(f)
+                getWeeklyTrends(f),
+                getMonthlyTrends(f)
         );
     }
 
@@ -88,6 +90,20 @@ public class AnalyticsService {
                 .stream()
                 .map(row -> new WeeklyTrendDTO(
                         String.format("%d-W%02d", ((Number) row[0]).intValue(), ((Number) row[1]).intValue()),
+                        ((Number) row[2]).longValue(),
+                        row[3] != null ? ((Number) row[3]).longValue() : 0L
+                ))
+                .toList();
+    }
+
+    // Serie de incidentes reportados vs resueltos agrupados por mes, con etiqueta "AAAA-MM"
+    @Transactional(readOnly = true)
+    public List<MonthlyTrendDTO> getMonthlyTrends(AnalyticsFilterRequest f) {
+        validate(f);
+        return incidentRepository.findMonthlyTrendsFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate())
+                .stream()
+                .map(row -> new MonthlyTrendDTO(
+                        String.format("%d-%02d", ((Number) row[0]).intValue(), ((Number) row[1]).intValue()),
                         ((Number) row[2]).longValue(),
                         row[3] != null ? ((Number) row[3]).longValue() : 0L
                 ))

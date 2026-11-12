@@ -3,6 +3,7 @@ package com.mafe.incidentai.controller;
 import com.mafe.incidentai.dto.AnalyticsDashboardDTO;
 import com.mafe.incidentai.dto.AnalyticsFilterRequest;
 import com.mafe.incidentai.dto.CategoryMetricDTO;
+import com.mafe.incidentai.dto.MonthlyTrendDTO;
 import com.mafe.incidentai.dto.WeeklyTrendDTO;
 import com.mafe.incidentai.service.AnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +40,7 @@ public class AnalyticsController {
     // 1. Devuelve el resumen consolidado de todos los indicadores analiticos para el dashboard
     @Operation(
         summary = "Get consolidated analytics dashboard KPIs",
-        description = "Calcula en base de datos la tasa de resolucion, tiempo promedio en horas, calificacion promedio de IA, top categorias y tendencias semanales."
+        description = "Calcula en base de datos la tasa de resolucion, tiempo promedio en horas, calificacion promedio de IA, top categorias y tendencias semanales y mensuales."
     )
     @GetMapping("/dashboard")
     public ResponseEntity<AnalyticsDashboardDTO> getDashboardMetrics(@ParameterObject AnalyticsFilterRequest filter) {
@@ -64,5 +65,15 @@ public class AnalyticsController {
     @GetMapping("/weekly-trends")
     public ResponseEntity<List<WeeklyTrendDTO>> getWeeklyTrends(@ParameterObject AnalyticsFilterRequest filter) {
         return ResponseEntity.ok(analyticsService.getWeeklyTrends(filter));
+    }
+
+    // 4. Devuelve la evolucion mensual de incidentes reportados vs resueltos
+    @Operation(
+        summary = "Get monthly incident trends",
+        description = "Agrupa los incidentes por mes (AAAA-MM) mostrando el volumen de incidentes reportados y resueltos."
+    )
+    @GetMapping("/monthly-trends")
+    public ResponseEntity<List<MonthlyTrendDTO>> getMonthlyTrends(@ParameterObject AnalyticsFilterRequest filter) {
+        return ResponseEntity.ok(analyticsService.getMonthlyTrends(filter));
     }
 }

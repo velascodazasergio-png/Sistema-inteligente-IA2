@@ -87,4 +87,21 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                                             @Param("priority") Priority priority,
                                             @Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate);
+
+    // 6. Tendencia mensual: incidentes reportados y resueltos por anio y mes
+    @Query("""
+            SELECT EXTRACT(YEAR FROM i.createdAt), EXTRACT(MONTH FROM i.createdAt), COUNT(i),
+                   SUM(CASE WHEN i.status IN
+            """ + RESOLVED_STATUSES + """
+                   THEN 1 ELSE 0 END)
+            FROM Incident i
+            WHERE
+            """ + ANALYTICS_FILTERS + """
+            GROUP BY EXTRACT(YEAR FROM i.createdAt), EXTRACT(MONTH FROM i.createdAt)
+            ORDER BY EXTRACT(YEAR FROM i.createdAt), EXTRACT(MONTH FROM i.createdAt)
+            """)
+    List<Object[]> findMonthlyTrendsFiltered(@Param("categoryId") Long categoryId,
+                                             @Param("priority") Priority priority,
+                                             @Param("startDate") LocalDateTime startDate,
+                                             @Param("endDate") LocalDateTime endDate);
 }

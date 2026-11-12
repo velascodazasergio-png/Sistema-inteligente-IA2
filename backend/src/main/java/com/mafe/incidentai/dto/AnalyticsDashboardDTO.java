@@ -26,6 +26,9 @@ public record AnalyticsDashboardDTO(
         List<CategoryMetricDTO> topCategories,
 
         @Schema(description = "Serie historica de tendencias semanales de incidentes")
-        List<WeeklyTrendDTO> weeklyTrends
+        List<WeeklyTrendDTO> weeklyTrends,
+
+        @Schema(description = "Serie historica de tendencias mensuales de incidentes")
+        List<MonthlyTrendDTO> monthlyTrends
 ) {}
 
