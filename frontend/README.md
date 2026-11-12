@@ -43,6 +43,7 @@ frontend/
     ├── ui.js                   # Iconos, escape de HTML, toasts
     ├── catalogs.js             # Enums del backend → etiqueta y color
     ├── format.js               # Fechas, porcentajes y conteos
+    ├── analytics-utils.js      # Distribuciones, periodos y variaciones (Dashboard y Analítica)
     ├── components/             # Componentes reutilizables (Etapa 2)
     │   ├── charts.js           # barChart, columnChart, lineChart, donutChart (SVG)
     │   ├── kpi-card.js         # kpiCard, animateCounters, formatDuration
@@ -107,9 +108,9 @@ Los gráficos incluyen una tabla oculta con los mismos datos para lectores de pa
 
 | Módulo | Qué hace | Estado |
 |---|---|---|
-| Dashboard (RF07) | 6 KPI calculados en la base de datos, evolución semanal, ranking de categorías, distribución por estado y prioridad, incidentes recientes | ✅ |
-| Incidentes (RF01) | Filtros en el servidor (categoría, prioridad, estado, usuario, fechas), tabla con búsqueda y orden, registro con validación en tiempo real, detalle y cambio de estado | ✅ |
-| Base de conocimiento (RF02) | Búsqueda en título y contenido, filtros por categoría, estado y verificación, crear y editar, activar o desactivar, verificar | ✅ |
+| Dashboard (RF07) | Filtros (periodo rápido, fechas, categoría, prioridad); 6 KPI con comparación frente al periodo anterior de igual duración; evolución semanal y mensual, tiempos de resolución, categorías, estado y prioridad; incidentes recientes. Enlace directo `#/dashboard?periodo=30` | ✅ |
+| Incidentes (RF01) | Filtros en el servidor, tabla con búsqueda, orden, paginación y columna de acciones (detalle, consultar IA, historial); registro con validación en tiempo real; detalle y cambio de estado; confirmación al cerrar un incidente y al descartar un formulario | ✅ |
+| Base de conocimiento (RF02) | Vista de tarjetas o tabla; secciones Problema, Síntomas, Causa y Solución; colores para activo y verificado, pendiente de verificación e inactivo; búsqueda y filtros; crear, editar, activar o desactivar y verificar | ✅ |
 | Asistente IA (RF05) | Elige un incidente, añade contexto y consulta; espera la respuesta de n8n consultando el historial; muestra diagnóstico, pasos, fuentes con similitud y confianza | ✅ |
 | Historial (RF08) | Todas las consultas con filtros por estado e incidente, resumen y detalle; calificar de 1 a 5 con comentario | ✅ |
 | Analítica (RF06) | KPI, ranking y tendencia calculados en la base de datos con filtros de fecha, categoría y prioridad; distribución de estados, prioridades y tiempos | ✅ |
@@ -118,6 +119,7 @@ Notas:
 
 - **"Sin resultados"**: el backend marca `NO_RESULTS` cuando n8n responde sin fuentes. Las consultas antiguas `COMPLETED` sin fuentes también se muestran así.
 - **Distribuciones de Analítica** (estado, prioridad, tiempos) se cuentan en el cliente sobre `GET /api/v1/incidents` con los mismos filtros; los demás indicadores salen del SQL.
+- **Artículos**: el backend arma `content` (lo que indexa n8n) a partir de Problema, Síntomas, Causa y Solución. Los artículos antiguos solo tienen `content`; al editarlos se cargan en Problema para reorganizarlos.
 - **Editar un artículo verificado** cambiando su título o contenido lo deja sin verificar (regla del backend).
 
 ## Endpoints usados
@@ -133,7 +135,7 @@ Notas:
 | GET | `/api/v1/knowledge-articles` | Buscar artículos: `q`, `categoryId`, `active`, `verified` |
 | POST / PUT | `/api/v1/knowledge-articles[/{id}]` | Crear y editar artículos |
 | PATCH | `/api/v1/knowledge-articles/{id}/status` | Activar, desactivar o verificar |
-| GET | `/api/v1/analytics/dashboard` | KPI, top de categorías y tendencia semanal, con filtros |
+| GET | `/api/v1/analytics/dashboard` | KPI, top de categorías y tendencias semanal y mensual, con filtros (también para el periodo anterior) |
 | POST | `/api/v1/ai-assistance/request` | Solicitar análisis a la IA |
 | GET | `/api/v1/ai-assistance/history` | Historial global (filtro `status`) |
 | GET | `/api/v1/ai-assistance/incidents/{id}/history` | Espera de la respuesta en el asistente |

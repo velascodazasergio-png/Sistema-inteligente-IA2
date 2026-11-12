@@ -3,12 +3,12 @@
 
 import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
-import { openModal } from '../components/modal.js';
+import { openModal, confirmDialog } from '../components/modal.js';
 import { errorState } from '../components/states.js';
 import { listIncidents, getIncident, createIncident, updateIncidentStatus } from '../services/incidents.service.js';
 import { listCategories, listUsers, toOptions } from '../services/catalogs.service.js';
 import { ESTADO_INCIDENTE, PRIORIDAD, badge, optionsHtml, labelOf } from '../catalogs.js';
-import { formatDateTime, parseDate } from '../format.js';
+import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
 
 const selectOptions = (items, placeholder) =>
@@ -20,7 +20,7 @@ const RULES = {
   description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 15 ? 'Describe el problema con al menos 15 caracteres.' : ''),
   categoryId: (v) => (v ? '' : 'Elige una categoría.'),
   priority: (v) => (v ? '' : 'Elige una prioridad.'),
-  userId: (v) => (v ? '' : 'Elige quién reporta el incidente.'),
+  userId: (v) => (v ? '' : 'Elige el usuario responsable.'),
 };
 
 export async function render(container, { route, signal }) {
@@ -38,7 +38,7 @@ export async function render(container, { route, signal }) {
             <select class="input" id="f-priority" name="priority"><option value="">Todas</option>${optionsHtml(PRIORIDAD)}</select></div>
           <div class="field"><label for="f-status">Estado</label>
             <select class="input" id="f-status" name="status"><option value="">Todos</option>${optionsHtml(ESTADO_INCIDENTE)}</select></div>
-          <div class="field"><label for="f-user">Reportado por</label><select class="input" id="f-user" name="userId"></select></div>
+          <div class="field"><label for="f-user">Usuario responsable</label><select class="input" id="f-user" name="userId"></select></div>
           <div class="field"><label for="f-start">Desde</label><input class="input" id="f-start" name="startDate" type="date"></div>
           <div class="field"><label for="f-end">Hasta</label><input class="input" id="f-end" name="endDate" type="date"></div>
         </div>
@@ -66,8 +66,8 @@ export async function render(container, { route, signal }) {
     initialSort: { key: 'createdAt', dir: 'desc' },
     columns: [
       { key: 'id', label: 'ID', align: 'right', render: (r) => `<span class="cell-id">#${r.id}</span>`, text: (r) => String(r.id) },
-      { key: 'title', label: 'Título', render: (r) => `<span class="cell-title" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</span>` },
-      { key: 'categoryName', label: 'Categoría', render: (r) => `<span class="cell-muted">${escapeHtml(r.categoryName)}</span>` },
+      { key: 'title', label: 'Título', render: (r) => `<span class="cell-title cell-title--narrow" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</span>` },
+      { key: 'categoryName', label: 'Categoría', render: (r) => `<span class="cell-muted cell-wrap">${escapeHtml(r.categoryName)}</span>` },
       {
         key: 'priority', label: 'Prioridad', render: (r) => badge(PRIORIDAD, r.priority),
         text: (r) => labelOf(PRIORIDAD, r.priority), sortValue: (r) => Object.keys(PRIORIDAD).indexOf(r.priority),
@@ -76,13 +76,35 @@ export async function render(container, { route, signal }) {
         key: 'status', label: 'Estado', render: (r) => badge(ESTADO_INCIDENTE, r.status),
         text: (r) => labelOf(ESTADO_INCIDENTE, r.status), sortValue: (r) => Object.keys(ESTADO_INCIDENTE).indexOf(r.status),
       },
-      { key: 'userFullName', label: 'Reportado por', render: (r) => `<span class="cell-muted">${escapeHtml(r.userFullName)}</span>` },
+      { key: 'userFullName', label: 'Responsable', render: (r) => `<span class="cell-muted">${escapeHtml(r.userFullName)}</span>` },
       {
-        key: 'createdAt', label: 'Registro', render: (r) => `<span class="cell-muted">${formatDateTime(r.createdAt)}</span>`,
+        key: 'createdAt', label: 'Fecha', render: (r) => `<span class="cell-muted" title="${formatDateTime(r.createdAt)}">${formatDate(r.createdAt)}</span>`,
         text: (r) => formatDateTime(r.createdAt), sortValue: (r) => parseDate(r.createdAt),
+      },
+      {
+        key: 'actions', label: 'Acciones', sortable: false, searchable: false, text: () => '',
+        render: (r) => `
+          <span class="row-actions">
+            <button class="icon-btn icon-btn--sm" type="button" data-row-action="view" data-id="${r.id}" aria-label="Ver detalle del incidente #${r.id}" title="Ver detalle">${icon('i-eye')}</button>
+            <button class="icon-btn icon-btn--sm" type="button" data-row-action="ai" data-id="${r.id}" aria-label="Consultar a la IA sobre el incidente #${r.id}" title="Consultar a la IA" ${r.status === 'CLOSED' ? 'disabled' : ''}>${icon('i-sparkles')}</button>
+            <button class="icon-btn icon-btn--sm" type="button" data-row-action="history" data-id="${r.id}" aria-label="Historial de IA del incidente #${r.id}" title="Historial de IA">${icon('i-history')}</button>
+          </span>`,
       },
     ],
     onRowClick: (row) => openDetail(row),
+  });
+
+  // Botones de la columna Acciones (la tabla ignora los clics en botones para la fila).
+  container.querySelector('#inc-table').addEventListener('click', (event) => {
+    const button = event.target.closest('[data-row-action]');
+    if (!button) return;
+    const id = button.dataset.id;
+    if (button.dataset.rowAction === 'ai') location.hash = `#/asistente?incidente=${id}`;
+    else if (button.dataset.rowAction === 'history') location.hash = `#/historial?incidente=${id}`;
+    else {
+      const incident = incidents.find((i) => String(i.id) === id);
+      if (incident) openDetail(incident);
+    }
   });
 
   const readFilters = () => Object.fromEntries(new FormData(form));
@@ -172,7 +194,7 @@ export async function render(container, { route, signal }) {
         <div class="cluster">${badge(PRIORIDAD, incident.priority)}${badge(ESTADO_INCIDENTE, incident.status)}</div>
         <dl class="kv kv--detail">
           <dt>Categoría</dt><dd>${escapeHtml(incident.categoryName)}</dd>
-          <dt>Reportado por</dt><dd>${escapeHtml(incident.userFullName)}</dd>
+          <dt>Usuario responsable</dt><dd>${escapeHtml(incident.userFullName)}</dd>
           <dt>Registro</dt><dd>${formatDateTime(incident.createdAt)}</dd>
           <dt>Última actualización</dt><dd>${formatDateTime(incident.updatedAt)}</dd>
         </dl>
@@ -204,6 +226,16 @@ export async function render(container, { route, signal }) {
       if (next === incident.status) {
         toast('El incidente ya tiene ese estado.', { type: 'info' });
         return;
+      }
+      // Cerrar es irreversible: el backend ya no permite cambiar el estado.
+      if (next === 'CLOSED') {
+        const ok = await confirmDialog({
+          title: `Cerrar incidente #${incident.id}`,
+          message: 'Un incidente cerrado ya no puede cambiar de estado ni consultarse con la IA. ¿Quieres cerrarlo?',
+          confirmLabel: 'Cerrar incidente',
+          danger: true,
+        });
+        if (!ok) return;
       }
       const button = statusForm.querySelector('button');
       setBusy(button, true, 'Guardando…');
@@ -251,7 +283,7 @@ export async function render(container, { route, signal }) {
               <p class="field__error" id="c-priority-error" aria-live="polite"></p>
             </div>
             <div class="field">
-              <label for="c-user">Reportado por</label>
+              <label for="c-user">Usuario responsable</label>
               <select class="input" id="c-user" name="userId" aria-describedby="c-userId-error">${selectOptions(catalogs.users, 'Selecciona…')}</select>
               <p class="field__error" id="c-userId-error" aria-live="polite"></p>
             </div>
@@ -281,7 +313,12 @@ export async function render(container, { route, signal }) {
       field.addEventListener('change', () => { if (touched.has(name)) validateField(name); });
     });
 
-    modal.body.querySelector('[data-cancel]').addEventListener('click', () => modal.close());
+    // Confirmar antes de descartar lo escrito.
+    modal.body.querySelector('[data-cancel]').addEventListener('click', async () => {
+      const dirty = [...new FormData(createForm).values()].some((v) => String(v).trim());
+      if (dirty && !(await confirmDialog({ title: 'Descartar incidente', message: 'Se perderá lo que escribiste en el formulario.', confirmLabel: 'Descartar', danger: true }))) return;
+      modal.close();
+    });
 
     createForm.addEventListener('submit', async (event) => {
       event.preventDefault();

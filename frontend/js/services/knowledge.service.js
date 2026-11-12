@@ -23,9 +23,13 @@ export const searchArticles = (filters = {}, options) => api.get(BASE, {
 
 export const getArticle = (id, options) => api.get(`${BASE}/${id}`, options);
 
-const body = ({ title, content, referenceUrl, categoryId, authorUserId }) => ({
+// El backend arma "content" (lo que indexa n8n) a partir de estas secciones.
+const body = ({ title, problem, symptoms, cause, solution, referenceUrl, categoryId, authorUserId }) => ({
   title: title.trim(),
-  content: content.trim(),
+  problem: problem.trim(),
+  symptoms: symptoms?.trim() || null,
+  cause: cause?.trim() || null,
+  solution: solution.trim(),
   referenceUrl: referenceUrl?.trim() || null,
   categoryId: Number(categoryId),
   authorUserId: authorUserId ? Number(authorUserId) : null,

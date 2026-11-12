@@ -1,16 +1,28 @@
-// Dashboard (RF07): estado general del soporte.
-// Indicadores: GET /api/v1/analytics/dashboard (calculados con SQL en el backend).
-// Distribución por estado y prioridad: GET /api/v1/incidents (conteo en el cliente).
+// Dashboard (RF07): estado general del soporte, filtrable por fecha, categoría y prioridad.
+// - KPI, categorías y evolución semanal/mensual: GET /api/v1/analytics/dashboard (SQL en el backend).
+// - Estado, prioridad y tiempos de resolución: GET /api/v1/incidents con los mismos filtros.
+// - Comparación temporal: el mismo endpoint para el periodo anterior de igual duración.
 
 import { pageHeader, icon, escapeHtml } from '../ui.js';
 import { kpiCard, animateCounters } from '../components/kpi-card.js';
-import { barChart, lineChart, donutChart } from '../components/charts.js';
+import { barChart, columnChart, lineChart, donutChart } from '../components/charts.js';
 import { skeletonKpis, skeletonChart, skeletonLines } from '../components/skeleton.js';
 import { errorState } from '../components/states.js';
 import { getDashboard } from '../services/analytics.service.js';
 import { listIncidents } from '../services/incidents.service.js';
-import { ESTADO_INCIDENTE, PRIORIDAD, badge } from '../catalogs.js';
+import { listCategories } from '../services/catalogs.service.js';
+import { ESTADO_INCIDENTE, PRIORIDAD, badge, optionsHtml } from '../catalogs.js';
 import { formatDateTime, formatYearWeek, parseDate } from '../format.js';
+import { distributions, lastDays, previousPeriod, pctChange, formatYearMonth } from '../analytics-utils.js';
+import { routeParams } from '../router.js';
+
+const PRESETS = [
+  { value: 'all', label: 'Todo el historial' },
+  { value: '7', label: 'Últimos 7 días' },
+  { value: '30', label: 'Últimos 30 días' },
+  { value: '90', label: 'Últimos 90 días' },
+  { value: 'custom', label: 'Personalizado' },
+];
 
 const chartCard = (id, title, subtitle, wide = false) => `
   <section class="card chart-card${wide ? ' chart-card--wide' : ''}" aria-labelledby="${id}-title">
@@ -23,102 +35,141 @@ const chartCard = (id, title, subtitle, wide = false) => `
     <div id="${id}">${skeletonChart(220)}</div>
   </section>`;
 
-// Conteo por cada valor del catálogo, en el orden del catálogo.
-const distribution = (incidents, catalog, field) => Object.entries(catalog).map(([value, entry]) => ({
-  label: entry.label,
-  value: incidents.filter((i) => i[field] === value).length,
-  color: entry.color,
-}));
+const trendSeries = (rows, labelFn) => ({
+  labels: rows.map((r) => labelFn(r)),
+  series: [
+    { name: 'Registrados', values: rows.map((r) => r.totalReported) },
+    { name: 'Resueltos', values: rows.map((r) => r.totalResolved) },
+  ],
+});
 
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
-    <div class="stack">
-      <div id="dash-kpis">${skeletonKpis(6)}</div>
+    <div class="stack" id="dash">
+      <form class="card filters" id="d-filters" aria-label="Filtros del dashboard">
+        <div class="filters__grid">
+          <div class="field"><label for="d-period">Periodo</label>
+            <select class="input" id="d-period" name="period">${PRESETS.map((p) => `<option value="${p.value}">${p.label}</option>`).join('')}</select></div>
+          <div class="field"><label for="d-start">Fecha inicial</label><input class="input" id="d-start" name="startDate" type="date"></div>
+          <div class="field"><label for="d-end">Fecha final</label><input class="input" id="d-end" name="endDate" type="date"></div>
+          <div class="field"><label for="d-category">Categoría</label><select class="input" id="d-category" name="categoryId"><option value="">Todas</option></select></div>
+          <div class="field"><label for="d-priority">Prioridad</label>
+            <select class="input" id="d-priority" name="priority"><option value="">Todas</option>${optionsHtml(PRIORIDAD)}</select></div>
+        </div>
+        <p class="field__error" id="d-error" aria-live="polite"></p>
+        <div class="form__actions">
+          <button class="btn btn--primary" type="submit">${icon('i-filter')}Aplicar filtros</button>
+          <button class="btn btn--ghost" type="reset">Limpiar</button>
+          <span class="cell-muted" id="d-scope" aria-live="polite"></span>
+        </div>
+      </form>
+
+      <div id="d-kpis">${skeletonKpis(6)}</div>
+
       <div class="dash-grid">
-        ${chartCard('dash-weekly', 'Evolución semanal', 'Incidentes registrados y resueltos por semana', true)}
-        ${chartCard('dash-categories', 'Categorías con más incidentes', 'Ranking calculado en el backend')}
-        ${chartCard('dash-status', 'Incidentes por estado', 'Situación actual de todos los incidentes')}
-        ${chartCard('dash-priority', 'Incidentes por prioridad', 'Volumen según nivel de prioridad')}
-        <section class="card" aria-labelledby="dash-recent-title">
+        ${chartCard('dc-weekly', 'Evolución semanal', 'Incidentes registrados y resueltos por semana', true)}
+        ${chartCard('dc-monthly', 'Evolución mensual', 'Incidentes registrados y resueltos por mes')}
+        ${chartCard('dc-times', 'Tiempos de resolución', 'Incidentes resueltos según cuánto tardaron')}
+        ${chartCard('dc-category', 'Incidentes por categoría', 'Ranking calculado en el backend')}
+        ${chartCard('dc-status', 'Incidentes por estado', 'Situación actual')}
+        ${chartCard('dc-priority', 'Incidentes por prioridad', 'Volumen según nivel de prioridad')}
+        <section class="card" aria-labelledby="dc-recent-title">
           <div class="chart-card__head">
             <div>
-              <h2 class="card__title" id="dash-recent-title">Incidentes recientes</h2>
-              <p class="card__subtitle">Últimos registros</p>
+              <h2 class="card__title" id="dc-recent-title">Incidentes recientes</h2>
+              <p class="card__subtitle">Últimos registros del periodo</p>
             </div>
             <a class="btn btn--ghost" href="#/incidentes">Ver todos ${icon('i-arrow-right')}</a>
           </div>
-          <div id="dash-recent">${skeletonLines(5)}</div>
+          <div id="dc-recent">${skeletonLines(5)}</div>
         </section>
       </div>
     </div>`;
 
-  const body = container.querySelector('.stack');
+  const form = container.querySelector('#d-filters');
+  const errorEl = container.querySelector('#d-error');
+  const scope = container.querySelector('#d-scope');
+  const kpis = container.querySelector('#d-kpis');
+  const $ = (id) => container.querySelector(id);
+  let charts = null;
 
-  const load = async () => {
-    let dashboard;
-    let incidents;
-    try {
-      [dashboard, incidents] = await Promise.all([getDashboard({ signal }), listIncidents({}, { signal })]);
-    } catch (error) {
-      if (signal.aborted) return;
-      errorState(body, error, () => render(container, { route, signal }));
-      return;
+  // El selector de periodo rellena las fechas; editar una fecha pasa a "Personalizado".
+  form.elements.period.addEventListener('change', () => {
+    const value = form.elements.period.value;
+    if (value === 'all') {
+      form.elements.startDate.value = '';
+      form.elements.endDate.value = '';
+    } else if (value !== 'custom') {
+      const range = lastDays(Number(value));
+      form.elements.startDate.value = range.startDate;
+      form.elements.endDate.value = range.endDate;
     }
-    if (signal.aborted) return;
+  });
+  // #/dashboard?periodo=30 abre el dashboard con un periodo rápido ya aplicado.
+  const linkedPeriod = routeParams().get('periodo');
+  if (PRESETS.some((p) => p.value === linkedPeriod && !['all', 'custom'].includes(p.value))) {
+    form.elements.period.value = linkedPeriod;
+    form.elements.period.dispatchEvent(new Event('change'));
+  }
 
-    const pending = (dashboard.totalIncidents ?? 0) - (dashboard.resolvedIncidents ?? 0);
-    const kpis = container.querySelector('#dash-kpis');
-    kpis.innerHTML = `
+  ['startDate', 'endDate'].forEach((name) => form.elements[name].addEventListener('input', () => {
+    form.elements.period.value = form.elements.startDate.value || form.elements.endDate.value ? 'custom' : 'all';
+  }));
+
+  function kpisHtml(d, dist, prev) {
+    const pending = (d.totalIncidents ?? 0) - (d.resolvedIncidents ?? 0);
+    const period = prev ? `${prev.days} días anteriores` : null;
+    const trend = (current, previous, goodWhen) => {
+      const delta = prev ? pctChange(current, previous) : null;
+      return delta == null ? undefined : { delta, goodWhen, period };
+    };
+    const p = prev?.data;
+    return `
       <div class="kpi-grid">
-        ${kpiCard({ label: 'Total de incidentes', value: dashboard.totalIncidents, icon: 'i-inbox' })}
-        ${kpiCard({ label: 'Pendientes', value: pending, icon: 'i-hourglass', tone: 'warning', hint: 'Sin resolver ni cerrar' })}
-        ${kpiCard({ label: 'Resueltos o cerrados', value: dashboard.resolvedIncidents, icon: 'i-check-circle', tone: 'success' })}
-        ${kpiCard({ label: 'Porcentaje de resolución', value: dashboard.resolutionRatePercentage, format: 'percent', icon: 'i-percent', tone: 'accent', progress: dashboard.resolutionRatePercentage })}
-        ${kpiCard({ label: 'Tiempo promedio de atención', value: dashboard.averageResolutionTimeHours, format: 'duration', icon: 'i-clock', hint: 'Desde el registro hasta la resolución' })}
-        ${kpiCard({ label: 'Calificación de la IA', value: dashboard.averageAiRatingScore, icon: 'i-star', tone: 'accent', hint: 'Promedio sobre 5 estrellas' })}
+        ${kpiCard({ label: 'Total de incidentes', value: d.totalIncidents, icon: 'i-inbox', trend: trend(d.totalIncidents, p?.totalIncidents, 'down') })}
+        ${kpiCard({ label: 'Pendientes', value: pending, icon: 'i-hourglass', tone: 'warning', hint: `${dist.critical} críticos`,
+          trend: trend(pending, p ? p.totalIncidents - p.resolvedIncidents : null, 'down') })}
+        ${kpiCard({ label: 'Resueltos o cerrados', value: d.resolvedIncidents, icon: 'i-check-circle', tone: 'success', trend: trend(d.resolvedIncidents, p?.resolvedIncidents, 'up') })}
+        ${kpiCard({ label: 'Porcentaje de resolución', value: d.resolutionRatePercentage, format: 'percent', icon: 'i-percent', tone: 'accent',
+          progress: d.resolutionRatePercentage, trend: trend(d.resolutionRatePercentage, p?.resolutionRatePercentage, 'up') })}
+        ${kpiCard({ label: 'Tiempo promedio de atención', value: d.averageResolutionTimeHours, format: 'duration', icon: 'i-clock',
+          trend: trend(d.averageResolutionTimeHours, p?.averageResolutionTimeHours, 'down'), hint: prev ? '' : 'Desde el registro hasta la resolución' })}
+        ${kpiCard({ label: 'Calificación de la IA', value: d.averageAiRatingScore || null, icon: 'i-star', tone: 'accent', hint: 'Promedio sobre 5 estrellas' })}
       </div>`;
+  }
+
+  function draw(d, incidents, prev) {
+    const dist = distributions(incidents);
+    kpis.innerHTML = kpisHtml(d, dist, prev);
     animateCounters(kpis);
 
-    const weeks = dashboard.weeklyTrends ?? [];
-    lineChart(container.querySelector('#dash-weekly'), {
-      title: 'Evolución semanal de incidentes',
-      labelHeader: 'Semana',
-      integer: true,
-      data: {
-        labels: weeks.map((w) => formatYearWeek(w.yearWeek)),
-        series: [
-          { name: 'Registrados', values: weeks.map((w) => w.totalReported) },
-          { name: 'Resueltos', values: weeks.map((w) => w.totalResolved) },
-        ],
-      },
-      signal,
-    });
+    const weekly = trendSeries(d.weeklyTrends ?? [], (w) => formatYearWeek(w.yearWeek));
+    const monthly = trendSeries(d.monthlyTrends ?? [], (m) => formatYearMonth(m.yearMonth));
+    const byCategory = (d.topCategories ?? []).map((c) => ({ label: c.categoryName, value: c.incidentCount }));
 
-    barChart(container.querySelector('#dash-categories'), {
-      title: 'Incidentes por categoría',
-      data: (dashboard.topCategories ?? []).map((c) => ({ label: c.categoryName, value: c.incidentCount })),
-      signal,
-    });
-
-    donutChart(container.querySelector('#dash-status'), {
-      title: 'Incidentes por estado',
-      centerLabel: 'incidentes',
-      data: distribution(incidents, ESTADO_INCIDENTE, 'status'),
-      signal,
-    });
-
-    donutChart(container.querySelector('#dash-priority'), {
-      title: 'Incidentes por prioridad',
-      centerLabel: 'incidentes',
-      data: distribution(incidents, PRIORIDAD, 'priority'),
-      signal,
-    });
+    if (charts) {
+      charts.weekly.update(weekly);
+      charts.monthly.update(monthly);
+      charts.times.update(dist.times);
+      charts.category.update(byCategory);
+      charts.status.update(dist.byStatus);
+      charts.priority.update(dist.byPriority);
+    } else {
+      charts = {
+        weekly: lineChart($('#dc-weekly'), { title: 'Evolución semanal de incidentes', labelHeader: 'Semana', integer: true, data: weekly, signal }),
+        monthly: lineChart($('#dc-monthly'), { title: 'Evolución mensual de incidentes', labelHeader: 'Mes', integer: true, data: monthly, signal }),
+        times: columnChart($('#dc-times'), { title: 'Distribución de tiempos de resolución', labelHeader: 'Rango', integer: true, data: dist.times, signal }),
+        category: barChart($('#dc-category'), { title: 'Incidentes por categoría', data: byCategory, signal }),
+        status: donutChart($('#dc-status'), { title: 'Incidentes por estado', centerLabel: 'incidentes', data: dist.byStatus, signal }),
+        priority: donutChart($('#dc-priority'), { title: 'Incidentes por prioridad', centerLabel: 'incidentes', data: dist.byPriority, signal }),
+      };
+    }
 
     const recent = [...incidents]
       .sort((a, b) => (parseDate(b.createdAt) ?? 0) - (parseDate(a.createdAt) ?? 0))
       .slice(0, 6);
-    container.querySelector('#dash-recent').innerHTML = recent.length ? `
+    $('#dc-recent').innerHTML = recent.length ? `
       <ul class="recent-list">
         ${recent.map((i) => `
           <li>
@@ -130,8 +181,53 @@ export async function render(container, { route, signal }) {
               <span class="recent-item__badges">${badge(PRIORIDAD, i.priority)}${badge(ESTADO_INCIDENTE, i.status)}</span>
             </a>
           </li>`).join('')}
-      </ul>` : '<p class="cell-muted">Aún no hay incidentes registrados.</p>';
-  };
+      </ul>` : '<p class="cell-muted">No hay incidentes en este periodo.</p>';
+  }
+
+  async function load() {
+    const filters = Object.fromEntries(new FormData(form));
+    delete filters.period;
+    if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+      errorEl.textContent = 'La fecha inicial no puede ser posterior a la final.';
+      return;
+    }
+    errorEl.textContent = '';
+    scope.textContent = 'Cargando…';
+
+    // Comparación temporal solo con un rango cerrado: el periodo anterior tiene la misma duración.
+    const prevRange = previousPeriod(filters.startDate, filters.endDate);
+    let dashboard;
+    let incidents;
+    let previous = null;
+    try {
+      [dashboard, incidents, previous] = await Promise.all([
+        getDashboard(filters, { signal }),
+        listIncidents(filters, { signal }),
+        prevRange ? getDashboard({ ...filters, ...prevRange }, { signal }) : null,
+      ]);
+    } catch (error) {
+      if (signal.aborted) return;
+      scope.textContent = '';
+      errorState(kpis, error, load);
+      return;
+    }
+    if (signal.aborted) return;
+
+    const active = Object.values(filters).filter(Boolean).length;
+    scope.textContent = `${dashboard.totalIncidents} incidentes${active ? ` · ${active} ${active === 1 ? 'filtro' : 'filtros'}` : ''}`
+      + (prevRange ? ' · comparado con el periodo anterior' : '');
+    draw(dashboard, incidents, previous ? { data: previous, days: prevRange.days } : null);
+  }
+
+  form.addEventListener('submit', (event) => { event.preventDefault(); load(); });
+  form.addEventListener('reset', () => setTimeout(load));
+
+  listCategories({}, { signal })
+    .then((categories) => {
+      form.elements.categoryId.insertAdjacentHTML('beforeend', categories
+        .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''));
+    })
+    .catch(() => {}); // Si falla, el filtro queda en "Todas"; el error principal lo muestra load().
 
   await load();
 }

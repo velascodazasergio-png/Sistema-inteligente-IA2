@@ -13,18 +13,9 @@ import { errorState } from '../components/states.js';
 import { getDashboard } from '../services/analytics.service.js';
 import { listIncidents } from '../services/incidents.service.js';
 import { listCategories } from '../services/catalogs.service.js';
-import { ESTADO_INCIDENTE, PRIORIDAD, ESTADOS_FINALES, optionsHtml } from '../catalogs.js';
-import { parseDate, formatYearWeek } from '../format.js';
-
-const HOUR = 3600 * 1000;
-const TIME_BUCKETS = [
-  { label: '< 1 h', max: 1 },
-  { label: '1–4 h', max: 4 },
-  { label: '4–8 h', max: 8 },
-  { label: '8–24 h', max: 24 },
-  { label: '1–3 d', max: 72 },
-  { label: '> 3 d', max: Infinity },
-];
+import { PRIORIDAD, optionsHtml } from '../catalogs.js';
+import { formatYearWeek } from '../format.js';
+import { distributions } from '../analytics-utils.js';
 
 const chartCard = (id, title, subtitle, wide = false) => `
   <section class="card chart-card${wide ? ' chart-card--wide' : ''}" aria-labelledby="${id}-title">
@@ -34,27 +25,6 @@ const chartCard = (id, title, subtitle, wide = false) => `
     </div></div>
     <div id="${id}">${skeletonChart(220)}</div>
   </section>`;
-
-// Misma regla que el backend: tiempo de atención = updatedAt − createdAt.
-const resolutionHours = (i) => {
-  const start = parseDate(i.createdAt);
-  const end = parseDate(i.updatedAt);
-  return start && end && end >= start ? (end - start) / HOUR : null;
-};
-
-function distributions(incidents) {
-  const hours = incidents.filter((i) => ESTADOS_FINALES.includes(i.status)).map(resolutionHours).filter((h) => h != null);
-  return {
-    pending: incidents.filter((i) => !ESTADOS_FINALES.includes(i.status)).length,
-    critical: incidents.filter((i) => i.priority === 'CRITICAL' && !ESTADOS_FINALES.includes(i.status)).length,
-    byStatus: Object.entries(ESTADO_INCIDENTE).map(([k, e]) => ({ label: e.label, color: e.color, value: incidents.filter((i) => i.status === k).length })),
-    byPriority: Object.entries(PRIORIDAD).map(([k, e]) => ({ label: e.label, color: e.color, value: incidents.filter((i) => i.priority === k).length })),
-    times: TIME_BUCKETS.map((b, idx) => ({
-      label: b.label,
-      value: hours.filter((h) => h < b.max && h >= (TIME_BUCKETS[idx - 1]?.max ?? 0)).length,
-    })),
-  };
-}
 
 export async function render(container, { route, signal }) {
   container.innerHTML = `
