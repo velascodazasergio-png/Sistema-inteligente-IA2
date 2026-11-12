@@ -2,9 +2,11 @@ package com.mafe.incidentai.exception;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -43,9 +45,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
-        // Extraemos cada campo que fallo la validacion junto con su mensaje configurado en el DTO
+        // Extraemos cada campo que fallo la validacion junto con su mensaje configurado en el DTO.
+        // Si el valor no pudo convertirse (p. ej. un enum inexistente en un query param), se usa un mensaje legible.
         ex.getBindingResult().getFieldErrors().forEach(error ->
-                fieldErrors.put(error.getField(), error.getDefaultMessage())
+                fieldErrors.put(error.getField(), error.isBindingFailure()
+                        ? "Invalid value '" + error.getRejectedValue() + "'"
+                        : error.getDefaultMessage())
         );
 
         Map<String, Object> body = new LinkedHashMap<>();
@@ -57,7 +62,28 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // 4. Respaldo general para cualquier error inesperado (HTTP 500) sin exponer trazas sensibles al cliente
+    // 4. Parametro de URL o Query Param con formato invalido (p. ej. un enum o una fecha mal formada) -> HTTP 400
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return badRequest("Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'");
+    }
+
+    // 5. Cuerpo JSON mal formado (sintaxis rota) o con un valor de enum desconocido enviado desde n8n -> HTTP 400
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> handleUnreadableBody(HttpMessageNotReadableException ex) {
+        return badRequest("Malformed request body or invalid field value");
+    }
+
+    private ResponseEntity<Map<String, Object>> badRequest(String message) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", HttpStatus.BAD_REQUEST.value());
+        body.put("error", "Bad Request");
+        body.put("message", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+    }
+
+    // 6. Respaldo general para cualquier error inesperado (HTTP 500) sin exponer trazas sensibles al cliente
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -69,4 +95,3 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }
-

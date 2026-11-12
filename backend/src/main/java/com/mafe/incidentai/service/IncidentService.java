@@ -72,11 +72,12 @@ public class IncidentService {
         return mapToResponseDTO(updatedIncident);
     }
 
-    // Filtra incidentes de forma dinamica combinando categoria, prioridad, usuario y rango de fechas
+    // Filtra incidentes de forma dinamica combinando categoria, prioridad, estado, usuario y rango de fechas
     @Transactional(readOnly = true)
     public List<IncidentResponseDTO> filterIncidents(
             Long categoryId,
             Priority priority,
+            IncidentStatus status,
             Long userId,
             LocalDateTime startDate,
             LocalDateTime endDate) {
@@ -87,13 +88,21 @@ public class IncidentService {
         }
 
         Specification<Incident> spec = IncidentSpecification.withDynamicFilters(
-                categoryId, priority, userId, startDate, endDate
+                categoryId, priority, status, userId, startDate, endDate
         );
 
         return incidentRepository.findAll(spec)
                 .stream()
                 .map(this::mapToResponseDTO)
                 .toList();
+    }
+
+    // Devuelve el detalle de un incidente por su ID
+    @Transactional(readOnly = true)
+    public IncidentResponseDTO getIncident(Long incidentId) {
+        return incidentRepository.findById(incidentId)
+                .map(this::mapToResponseDTO)
+                .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + incidentId));
     }
 
     // Convierte la entidad JPA Incident al contrato de salida IncidentResponseDTO
@@ -113,4 +122,3 @@ public class IncidentService {
         );
     }
 }
-
