@@ -1,12 +1,21 @@
 // Tarjeta de una consulta a la IA (AiQueryHistoryResponseDTO): estado,
-// diagnóstico, pasos, fuentes con similitud y calificación (RF05 / RF08).
-// La usan el Asistente y el Historial.
+// diagnóstico, solución, pasos, fuentes con similitud y calificación (RF05 / RF08).
+// La usan el Asistente y el Historial. Solo muestra lo que devolvió el backend:
+// si no hay respuesta, no se simula ninguna.
 
 import { icon, escapeHtml, toast, setBusy } from '../ui.js';
 import { createStarRating, starsHtml } from './rating.js';
 import { ESTADO_CONSULTA, badge, estadoConsulta } from '../catalogs.js';
 import { formatDateTime, formatRatio } from '../format.js';
 import { rateResponse } from '../services/ai-assistance.service.js';
+
+// Mensajes del backend por código de fallo, en el idioma de la interfaz.
+const FAILURE_MESSAGES = {
+  N8N_UNREACHABLE: 'El servicio de IA (n8n) no aceptó la solicitud o no respondió a tiempo.',
+};
+const failureText = (query) => FAILURE_MESSAGES[query.failureCode] ?? query.failureMessage;
+
+const decimal = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
 // Solo enlaces http(s): una URL "javascript:" de una fuente no debe ejecutarse.
 const safeUrl = (value) => {
@@ -18,15 +27,25 @@ const safeUrl = (value) => {
   }
 };
 
-// "1. Hacer A. 2. Hacer B." o texto con saltos de línea → lista de pasos.
-function stepsHtml(text) {
-  if (!text?.trim()) return '<p class="cell-muted">La respuesta no incluye pasos.</p>';
-  const steps = text.split(/\n+|\s+(?=\d+[.)]\s)/)
-    .map((s) => s.replace(/^\s*\d+[.)]\s*/, '').trim())
-    .filter(Boolean);
-  return steps.length > 1
-    ? `<ol class="ai-steps">${steps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`
-    : `<p class="detail-text">${escapeHtml(text)}</p>`;
+/**
+ * Separa el texto del flujo RAG en secciones. n8n envía:
+ *   suggestedDiagnosis: "Solución sugerida: …\n\nExplicación del problema: …"
+ *   solutionSteps:      "1. …\n2. …\n\nAdvertencias:\n- …"
+ * Si el texto no sigue ese formato se muestra completo como diagnóstico.
+ */
+export function parseResponse(response) {
+  const diagnosis = response?.suggestedDiagnosis?.trim() ?? '';
+  const match = /^Soluci[oó]n sugerida:\s*([\s\S]*?)(?:\n\s*\nExplicaci[oó]n del problema:\s*([\s\S]*))?$/i.exec(diagnosis);
+  const stepsText = response?.solutionSteps?.trim() ?? '';
+  const [stepsPart, warningsPart = ''] = /^Advertencias:/i.test(stepsText)
+    ? ['', stepsText.replace(/^Advertencias:\s*/i, '')]
+    : stepsText.split(/\n\s*\nAdvertencias:\s*\n?/i);
+  return {
+    explanation: match ? (match[2]?.trim() ?? '') : diagnosis,
+    solution: match ? match[1].trim() : '',
+    steps: stepsPart.split(/\n+|\s+(?=\d+[.)]\s)/).map((s) => s.replace(/^\s*\d+[.)]\s*/, '').trim()).filter(Boolean),
+    warnings: warningsPart.split('\n').map((w) => w.replace(/^\s*-\s*/, '').trim()).filter(Boolean),
+  };
 }
 
 const meter = (value, label) => `
@@ -36,18 +55,26 @@ const meter = (value, label) => `
   </span>`;
 
 function sourcesHtml(sources) {
+  const sorted = [...sources].sort((a, b) => (b.similarityScore ?? 0) - (a.similarityScore ?? 0));
   return `
     <ul class="ai-sources">
-      ${sources.map((s) => {
+      ${sorted.map((s, i) => {
         const url = safeUrl(s.referenceUrl);
         return `
-          <li class="ai-source">
-            <div class="ai-source__head">
-              <span class="ai-source__title">${icon('i-book')}${escapeHtml(s.sourceTitle ?? 'Fuente sin título')}</span>
-              ${meter(s.similarityScore, 'Similitud')}
-            </div>
-            ${s.citedSnippet ? `<blockquote class="ai-source__snippet">${escapeHtml(s.citedSnippet)}</blockquote>` : ''}
-            ${url ? `<a class="ai-source__link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}${icon('i-external')}</a>` : ''}
+          <li>
+            <details class="ai-source" ${i === 0 ? 'open' : ''}>
+              <summary class="ai-source__head">
+                <span class="ai-source__title">${icon('i-book')}${escapeHtml(s.sourceTitle ?? 'Fuente sin título')}</span>
+                ${meter(s.similarityScore, 'Similitud')}
+                ${icon('i-chevron-down', 'ai-source__chevron')}
+              </summary>
+              <div class="ai-source__body">
+                <p class="ai-source__score">Similitud: <strong>${s.similarityScore != null ? decimal.format(s.similarityScore) : '—'}</strong>
+                  ${s.knowledgeArticleId ? ` · artículo #${s.knowledgeArticleId}` : ''}</p>
+                ${s.citedSnippet ? `<blockquote class="ai-source__snippet">${escapeHtml(s.citedSnippet)}</blockquote>` : ''}
+                ${url ? `<a class="ai-source__link" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(url)}${icon('i-external')}</a>` : ''}
+              </div>
+            </details>
           </li>`;
       }).join('')}
     </ul>`;
@@ -64,6 +91,21 @@ function ratingSummaryHtml(rating) {
       ${rating.feedbackComment ? `<p class="detail-text">“${escapeHtml(rating.feedbackComment)}”</p>` : ''}
     </div>`;
 }
+
+// Animación mientras n8n busca en la base de conocimiento y genera la respuesta.
+// Describe el proceso; no inventa progreso: termina cuando llega la respuesta real.
+export const searchingHtml = () => `
+  <div class="ai-search" role="status">
+    <div class="ai-search__orb" aria-hidden="true"><span></span><span></span><span></span>${icon('i-sparkles')}</div>
+    <div>
+      <p class="ai-search__title">Analizando el incidente…</p>
+      <ol class="ai-search__steps">
+        <li>Buscando documentos relevantes en la base de conocimiento</li>
+        <li>Validando que las fuentes estén activas y verificadas</li>
+        <li>Redactando la orientación con las fuentes encontradas</li>
+      </ol>
+    </div>
+  </div>`;
 
 let uid = 0;
 
@@ -135,6 +177,54 @@ function mountRatingForm(slot, aiResponseId, users, onRated) {
   });
 }
 
+const section = (n, title, body) => `
+  <section class="ai-section">
+    <h4 class="ai-section__title"><span class="ai-section__n" aria-hidden="true">${n}</span>${title}</h4>
+    ${body}
+  </section>`;
+
+const warningsHtml = (warnings) => (warnings.length ? `
+  <div class="note note--warning ai-warnings">${icon('i-alert')}
+    <div><strong>Advertencias del asistente</strong><ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>
+  </div>` : '');
+
+function contentHtml(query, status) {
+  const response = query.aiResponse;
+  if (status === 'PENDING') return searchingHtml();
+
+  if (status === 'COMMUNICATION_ERROR' || status === 'FAILED') {
+    const reason = failureText(query)
+      ?? (status === 'FAILED' ? 'El servicio de IA no pudo procesar la consulta.' : 'No hubo comunicación con el servicio de IA (n8n).');
+    return `<div class="note note--danger">${icon('i-alert')}<span><strong>${status === 'FAILED' ? 'El asistente no pudo completar el análisis.' : 'No se pudo contactar al asistente.'}</strong>
+      ${escapeHtml(reason)}${query.failureCode ? ` <code>${escapeHtml(query.failureCode)}</code>` : ''}
+      <br>La consulta quedó registrada; puedes intentarlo de nuevo.</span></div>`;
+  }
+
+  const parts = parseResponse(response);
+
+  if (status === 'NO_RESULTS') {
+    return `
+      <div class="note note--warning">${icon('i-info')}<span><strong>Información insuficiente.</strong>
+        No se encontraron documentos verificados suficientemente relevantes, así que el asistente no propone una solución.
+        Conviene escalar el incidente a un técnico o documentar el caso en la base de conocimiento.</span></div>
+      ${warningsHtml(parts.warnings)}`;
+  }
+
+  return `
+    <div class="ai-metrics">
+      <div><span class="detail-label">Confianza</span>${meter(response.confidenceScore, 'Confianza')}</div>
+      <div><span class="detail-label">Fuentes</span><span>${response.sources.length}</span></div>
+      <div><span class="detail-label">Tiempo de respuesta</span><span>${response.processingTimeMs != null ? `${(response.processingTimeMs / 1000).toLocaleString('es-CO', { maximumFractionDigits: 1 })} s` : '—'}</span></div>
+    </div>
+    ${parts.explanation ? section(1, 'Diagnóstico orientativo', `<p class="detail-text">${escapeHtml(parts.explanation)}</p>`) : ''}
+    ${parts.solution ? section(2, 'Solución sugerida', `<p class="detail-text ai-solution">${escapeHtml(parts.solution)}</p>`) : ''}
+    ${section(3, 'Pasos recomendados', parts.steps.length
+      ? `<ol class="ai-steps">${parts.steps.map((s) => `<li>${escapeHtml(s)}</li>`).join('')}</ol>`
+      : '<p class="cell-muted">La respuesta no incluye pasos.</p>')}
+    ${section(4, `Fuentes documentales y similitud (${response.sources.length})`, sourcesHtml(response.sources))}
+    ${warningsHtml(parts.warnings)}`;
+}
+
 /**
  * Pinta una consulta en `container`.
  * @param {object} query AiQueryHistoryResponseDTO
@@ -144,39 +234,19 @@ export function renderAiQuery(container, query, { users = [], onRated, heading }
   const status = estadoConsulta(query);
   const response = query.aiResponse;
 
-  let content;
-  if (status === 'PENDING') {
-    content = `<p class="ai-wait"><span class="spinner" aria-hidden="true"></span>El asistente está analizando el incidente…</p>`;
-  } else if (status === 'COMMUNICATION_ERROR') {
-    content = `<p class="note note--danger">${icon('i-alert')}<span>No hubo comunicación con el servicio de IA (n8n). La consulta quedó registrada con estado de error; puedes intentarlo de nuevo.</span></p>`;
-  } else if (status === 'NO_RESULTS') {
-    content = `
-      <p class="note note--warning">${icon('i-info')}<span><strong>Información insuficiente.</strong> No se encontraron documentos relevantes en la base de conocimiento, así que el asistente no puede respaldar una solución. Conviene escalar el incidente a un técnico.</span></p>
-      ${response?.suggestedDiagnosis ? `<h4 class="detail-label">Observación del asistente</h4><p class="detail-text">${escapeHtml(response.suggestedDiagnosis)}</p>` : ''}`;
-  } else {
-    content = `
-      <div class="ai-metrics">
-        <div><span class="detail-label">Confianza</span>${meter(response.confidenceScore, 'Confianza')}</div>
-        <div><span class="detail-label">Tiempo de respuesta</span><span>${response.processingTimeMs != null ? `${(response.processingTimeMs / 1000).toLocaleString('es-CO', { maximumFractionDigits: 1 })} s` : '—'}</span></div>
-      </div>
-      <h4 class="detail-label">Diagnóstico sugerido</h4>
-      <p class="detail-text">${escapeHtml(response.suggestedDiagnosis)}</p>
-      <h4 class="detail-label">Pasos recomendados</h4>
-      ${stepsHtml(response.solutionSteps)}
-      <h4 class="detail-label">Fuentes consultadas (${response.sources.length})</h4>
-      ${sourcesHtml(response.sources)}`;
-  }
-
   container.innerHTML = `
     <article class="card ai-card ai-card--${status.toLowerCase()}">
       <header class="ai-card__head">
-        <div>
-          ${heading ? `<h3 class="card__title">${escapeHtml(heading)}</h3>` : ''}
-          <p class="cell-muted">Consulta #${query.aiQueryId} · ${formatDateTime(query.queriedAt)}</p>
+        <div class="ai-card__identity">
+          <span class="ai-avatar" aria-hidden="true">${icon('i-sparkles')}</span>
+          <div>
+            <h3 class="card__title">${escapeHtml(heading ?? 'Asistente IA')}</h3>
+            <p class="cell-muted">Consulta #${query.aiQueryId} · ${formatDateTime(query.queriedAt)}</p>
+          </div>
         </div>
         ${badge(ESTADO_CONSULTA, status)}
       </header>
-      ${content}
+      ${contentHtml(query, status)}
       <div data-rating-slot></div>
       ${query.sentPrompt ? `
         <details class="ai-prompt">
@@ -188,4 +258,14 @@ export function renderAiQuery(container, query, { users = [], onRated, heading }
   const slot = container.querySelector('[data-rating-slot]');
   if (response?.rating) slot.innerHTML = ratingSummaryHtml(response.rating);
   else if (response?.aiResponseId) mountRatingForm(slot, response.aiResponseId, users, onRated);
+}
+
+// Texto corto de la respuesta para listados.
+export function responseSummary(query) {
+  const status = estadoConsulta(query);
+  if (status === 'PENDING') return 'Esperando respuesta…';
+  if (status === 'COMMUNICATION_ERROR' || status === 'FAILED') return failureText(query) ?? 'Error al procesar la consulta';
+  if (status === 'NO_RESULTS') return 'Sin información suficiente en la base de conocimiento';
+  const parts = parseResponse(query.aiResponse);
+  return parts.solution || parts.explanation || '—';
 }

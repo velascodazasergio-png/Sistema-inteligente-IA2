@@ -111,13 +111,14 @@ Los gráficos incluyen una tabla oculta con los mismos datos para lectores de pa
 | Dashboard (RF07) | Filtros (periodo rápido, fechas, categoría, prioridad); 6 KPI con comparación frente al periodo anterior de igual duración; evolución semanal y mensual, tiempos de resolución, categorías, estado y prioridad; incidentes recientes. Enlace directo `#/dashboard?periodo=30` | ✅ |
 | Incidentes (RF01) | Filtros en el servidor, tabla con búsqueda, orden, paginación y columna de acciones (detalle, consultar IA, historial); registro con validación en tiempo real; detalle y cambio de estado; confirmación al cerrar un incidente y al descartar un formulario | ✅ |
 | Base de conocimiento (RF02) | Vista de tarjetas o tabla; secciones Problema, Síntomas, Causa y Solución; colores para activo y verificado, pendiente de verificación e inactivo; búsqueda y filtros; crear, editar, activar o desactivar y verificar | ✅ |
-| Asistente IA (RF05) | Elige un incidente, añade contexto y consulta; espera la respuesta de n8n consultando el historial; muestra diagnóstico, pasos, fuentes con similitud y confianza | ✅ |
-| Historial (RF08) | Todas las consultas con filtros por estado e incidente, resumen y detalle; calificar de 1 a 5 con comentario | ✅ |
+| Asistente IA (RF05) | Conversación por incidente; animación de búsqueda mientras n8n procesa; respuesta por secciones (diagnóstico, solución sugerida, pasos, fuentes desplegables con similitud real, advertencias); avisos de sin resultados y de error | ✅ |
+| Historial (RF08) | Todas las consultas con filtros por estado e incidente, resumen de la respuesta, estadísticas y detalle; calificar de 1 a 5 con comentario | ✅ |
 | Analítica (RF06) | KPI, ranking y tendencia calculados en la base de datos con filtros de fecha, categoría y prioridad; distribución de estados, prioridades y tiempos | ✅ |
 
 Notas:
 
-- **"Sin resultados"**: el backend marca `NO_RESULTS` cuando n8n responde sin fuentes. Las consultas antiguas `COMPLETED` sin fuentes también se muestran así.
+- **Estados de consulta**: `PENDING` Pendiente, `COMPLETED` Respondida, `NO_RESULTS` Sin resultados, `COMMUNICATION_ERROR` Error de conexión (n8n no respondió) y `FAILED` Error en la IA (n8n falló al procesar, con el motivo).
+- **Formato de la respuesta**: el flujo RAG envía `Solución sugerida: …` / `Explicación del problema: …` y los pasos con `Advertencias:`; `ai-response.js` los separa en secciones. Si el texto no sigue ese formato se muestra completo.
 - **Distribuciones de Analítica** (estado, prioridad, tiempos) se cuentan en el cliente sobre `GET /api/v1/incidents` con los mismos filtros; los demás indicadores salen del SQL.
 - **Artículos**: el backend arma `content` (lo que indexa n8n) a partir de Problema, Síntomas, Causa y Solución. Los artículos antiguos solo tienen `content`; al editarlos se cargan en Problema para reorganizarlos.
 - **Editar un artículo verificado** cambiando su título o contenido lo deja sin verificar (regla del backend).
@@ -141,10 +142,10 @@ Notas:
 | GET | `/api/v1/ai-assistance/incidents/{id}/history` | Espera de la respuesta en el asistente |
 | POST | `/api/v1/ai-assistance/responses/{id}/ratings` | Calificar una respuesta |
 
-`POST /api/v1/ai-assistance/responses` lo usa n8n; el frontend no lo llama.
+`POST /api/v1/ai-assistance/responses` y `POST /api/v1/ai-assistance/queries/{id}/failure` los usa n8n; el frontend no los llama.
 
 ## Pendientes
 
-1. **Flujo n8n**: sin n8n en ejecución, toda consulta nueva queda en estado *Error*. El webhook esperado es `n8n.webhook.assistance-url`.
+1. **n8n**: sin n8n en ejecución, toda consulta nueva queda en *Error de conexión*. La configuración completa está en el [README del proyecto](../README.md).
 2. **Paginación en el servidor** cuando crezca el volumen de incidentes.
 3. **Autenticación**: no hay mecanismo definido. Cuando exista, se añade en `api.js`.

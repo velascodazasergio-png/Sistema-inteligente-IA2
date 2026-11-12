@@ -20,12 +20,16 @@ export const PRIORIDAD = {
   CRITICAL: { label: 'Crítica', tone: 'danger', color: 'var(--danger)' },
 };
 
-// QueryStatus. NO_RESULTS: n8n respondió sin documentos relevantes.
+// QueryStatus.
+// NO_RESULTS: n8n respondió sin documentos relevantes.
+// COMMUNICATION_ERROR: el backend no pudo entregar la consulta a n8n.
+// FAILED: n8n recibió la consulta pero falló al procesarla.
 export const ESTADO_CONSULTA = {
   PENDING: { label: 'Pendiente', tone: 'warning' },
   COMPLETED: { label: 'Respondida', tone: 'success' },
   NO_RESULTS: { label: 'Sin resultados', tone: 'neutral' },
-  COMMUNICATION_ERROR: { label: 'Error', tone: 'danger' },
+  COMMUNICATION_ERROR: { label: 'Error de conexión', tone: 'danger' },
+  FAILED: { label: 'Error en la IA', tone: 'danger' },
 };
 
 // Estados en los que ya no se trabaja el incidente.

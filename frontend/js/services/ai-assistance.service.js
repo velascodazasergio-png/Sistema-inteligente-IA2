@@ -8,6 +8,9 @@ import { api, ApiError } from '../api.js';
 
 const BASE = '/api/v1/ai-assistance';
 
+// Mismo mínimo que el backend y el flujo RAG de n8n.
+export const MIN_DESCRIPTION = 20;
+
 /**
  * POST /request — AiAssistanceRequestDTO, armado a partir del incidente.
  * Respuesta 202: { message, aiQueryId, incidentId, queryStatus, timestamp }
@@ -16,6 +19,9 @@ export function requestAssistance(incident, additionalContext = '', options) {
   // Regla de negocio: una descripción vacía no debe disparar el flujo inteligente.
   if (!incident?.description?.trim()) {
     return Promise.reject(new ApiError('El incidente no tiene descripción: no se puede consultar a la IA.', { code: 'VALIDATION' }));
+  }
+  if (incident.description.trim().length < MIN_DESCRIPTION) {
+    return Promise.reject(new ApiError(`La descripción debe tener al menos ${MIN_DESCRIPTION} caracteres para buscar en la base de conocimiento.`, { code: 'VALIDATION' }));
   }
   return api.post(`${BASE}/request`, {
     incidentId: incident.id,

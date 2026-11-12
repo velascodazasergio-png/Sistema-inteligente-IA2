@@ -9,11 +9,11 @@ import { skeletonLines } from '../components/skeleton.js';
 import { starsHtml } from '../components/rating.js';
 import { createDataTable } from '../components/data-table.js';
 import { openModal } from '../components/modal.js';
-import { renderAiQuery } from '../components/ai-response.js';
+import { renderAiQuery, responseSummary } from '../components/ai-response.js';
 import { getAiHistory } from '../services/ai-assistance.service.js';
 import { listUsers, toOptions } from '../services/catalogs.service.js';
 import { ESTADO_CONSULTA, badge, estadoConsulta, labelOf, optionsHtml } from '../catalogs.js';
-import { formatDateTime, formatRatio, parseDate } from '../format.js';
+import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
 
 function statsHtml(entries) {
@@ -78,12 +78,12 @@ export async function render(container, { route, signal }) {
     columns: [
       { key: 'aiQueryId', label: 'ID', align: 'right', render: (q) => `<span class="cell-id">#${q.aiQueryId}</span>`, text: (q) => String(q.aiQueryId) },
       {
-        key: 'queriedAt', label: 'Fecha', render: (q) => `<span class="cell-muted">${formatDateTime(q.queriedAt)}</span>`,
+        key: 'queriedAt', label: 'Fecha', render: (q) => `<span class="cell-muted" title="${formatDateTime(q.queriedAt)}">${formatDate(q.queriedAt)}</span>`,
         text: (q) => formatDateTime(q.queriedAt), sortValue: (q) => parseDate(q.queriedAt),
       },
       {
         key: 'incidentTitle', label: 'Incidente',
-        render: (q) => `<span class="cell-title" title="${escapeHtml(q.incidentTitle)}">#${q.incidentId} · ${escapeHtml(q.incidentTitle)}</span>`,
+        render: (q) => `<span class="cell-title cell-title--narrow" title="${escapeHtml(q.incidentTitle)}">#${q.incidentId} · ${escapeHtml(q.incidentTitle)}</span>`,
         text: (q) => `${q.incidentId} ${q.incidentTitle} ${q.aiResponse?.suggestedDiagnosis ?? ''} ${(q.aiResponse?.sources ?? []).map((s) => s.sourceTitle).join(' ')}`,
       },
       {
@@ -91,9 +91,9 @@ export async function render(container, { route, signal }) {
         text: (q) => labelOf(ESTADO_CONSULTA, estadoConsulta(q)), sortValue: (q) => Object.keys(ESTADO_CONSULTA).indexOf(estadoConsulta(q)),
       },
       {
-        key: 'confidence', label: 'Confianza', align: 'right',
-        render: (q) => `<span class="cell-muted">${formatRatio(q.aiResponse?.confidenceScore)}</span>`,
-        text: () => '', sortValue: (q) => q.aiResponse?.confidenceScore ?? -1,
+        key: 'summary', label: 'Resumen de la respuesta', sortable: false,
+        render: (q) => `<span class="cell-muted cell-clip" title="${escapeHtml(responseSummary(q))}">${escapeHtml(responseSummary(q))}</span>`,
+        text: (q) => responseSummary(q),
       },
       {
         key: 'sources', label: 'Fuentes', align: 'right',

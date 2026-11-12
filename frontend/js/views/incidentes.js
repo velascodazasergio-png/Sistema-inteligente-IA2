@@ -17,7 +17,7 @@ const selectOptions = (items, placeholder) =>
 // Reglas del CreateIncidentRequestDTO, validadas también aquí para avisar antes de enviar.
 const RULES = {
   title: (v) => (!v ? 'El título es obligatorio.' : v.length < 5 || v.length > 150 ? 'Debe tener entre 5 y 150 caracteres.' : ''),
-  description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 15 ? 'Describe el problema con al menos 15 caracteres.' : ''),
+  description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 20 ? 'Describe el problema con al menos 20 caracteres.' : ''),
   categoryId: (v) => (v ? '' : 'Elige una categoría.'),
   priority: (v) => (v ? '' : 'Elige una prioridad.'),
   userId: (v) => (v ? '' : 'Elige el usuario responsable.'),
