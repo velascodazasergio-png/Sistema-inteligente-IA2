@@ -6,7 +6,9 @@ import com.mafe.incidentai.domain.enums.Priority;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 // Repositorio de incidentes con soporte para especificaciones dinamicas y consultas analiticas (RF06)
@@ -16,49 +18,73 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
     List<Incident> findByCategoryIdAndPriority(Long categoryId, Priority priority);
     List<Incident> findByUserIdOrderByCreatedAtDesc(Long userId);
 
-    // 1. Cuenta el total de incidentes resueltos o cerrados mediante JPQL para calcular la tasa de resolucion
+    // Filtros opcionales compartidos por las consultas analiticas: un parametro nulo no filtra
+    String ANALYTICS_FILTERS = """
+             (:categoryId IS NULL OR i.category.id = :categoryId)
+             AND (:priority IS NULL OR i.priority = :priority)
+             AND (CAST(:startDate AS LocalDateTime) IS NULL OR i.createdAt >= :startDate)
+             AND (CAST(:endDate AS LocalDateTime) IS NULL OR i.createdAt <= :endDate)
+            """;
+
+    String RESOLVED_STATUSES = """
+            (com.mafe.incidentai.domain.enums.IncidentStatus.RESOLVED,
+             com.mafe.incidentai.domain.enums.IncidentStatus.CLOSED)
+            """;
+
+    // 1. Total de incidentes que cumplen los filtros
+    @Query("SELECT COUNT(i) FROM Incident i WHERE " + ANALYTICS_FILTERS)
+    long countFiltered(@Param("categoryId") Long categoryId,
+                       @Param("priority") Priority priority,
+                       @Param("startDate") LocalDateTime startDate,
+                       @Param("endDate") LocalDateTime endDate);
+
+    // 2. Incidentes resueltos o cerrados, base de la tasa de resolucion
+    @Query("SELECT COUNT(i) FROM Incident i WHERE i.status IN " + RESOLVED_STATUSES + " AND " + ANALYTICS_FILTERS)
+    long countResolvedOrClosedFiltered(@Param("categoryId") Long categoryId,
+                                       @Param("priority") Priority priority,
+                                       @Param("startDate") LocalDateTime startDate,
+                                       @Param("endDate") LocalDateTime endDate);
+
+    // 3. Tiempo promedio de atencion en segundos (updatedAt - createdAt) de los incidentes resueltos o cerrados
     @Query("""
-            SELECT COUNT(i)
+            SELECT AVG((i.updatedAt - i.createdAt) BY SECOND)
             FROM Incident i
-            WHERE i.status IN (com.mafe.incidentai.domain.enums.IncidentStatus.RESOLVED,
-                               com.mafe.incidentai.domain.enums.IncidentStatus.CLOSED)
+            WHERE i.updatedAt IS NOT NULL
+              AND i.status IN
+            """ + RESOLVED_STATUSES + " AND " + ANALYTICS_FILTERS)
+    Double averageResolutionSecondsFiltered(@Param("categoryId") Long categoryId,
+                                            @Param("priority") Priority priority,
+                                            @Param("startDate") LocalDateTime startDate,
+                                            @Param("endDate") LocalDateTime endDate);
+
+    // 4. Categorias ordenadas de mayor a menor numero de incidentes
+    @Query("""
+            SELECT i.category.id, i.category.name, COUNT(i)
+            FROM Incident i
+            WHERE
+            """ + ANALYTICS_FILTERS + """
+            GROUP BY i.category.id, i.category.name
+            ORDER BY COUNT(i) DESC, i.category.name ASC
             """)
-    long countResolvedOrClosedIncidents();
+    List<Object[]> findTopCategoriesFiltered(@Param("categoryId") Long categoryId,
+                                             @Param("priority") Priority priority,
+                                             @Param("startDate") LocalDateTime startDate,
+                                             @Param("endDate") LocalDateTime endDate);
 
-    // 2. Calcula el tiempo promedio de atencion en horas (diferencia entre updated_at y created_at) en PostgreSQL
-    @Query(value = """
-            SELECT COALESCE(AVG(EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0), 0.0)
-            FROM incidents i
-            WHERE i.status IN ('RESOLVED', 'CLOSED')
-              AND i.updated_at IS NOT NULL
-            """, nativeQuery = true)
-    Double calculateAverageResolutionTimeHours();
-
-    // 3. Agrupa los incidentes por categoria y los ordena de mayor a menor frecuencia (Top Categorias)
-    @Query(value = """
-            SELECT c.id AS categoryId,
-                   c.name AS categoryName,
-                   COUNT(i.id) AS incidentCount
-            FROM categories c
-            LEFT JOIN incidents i ON i.category_id = c.id
-            GROUP BY c.id, c.name
-            ORDER BY incidentCount DESC, c.name ASC
-            """, nativeQuery = true)
-    List<Object[]> findTopCategoriesRaw();
-
-    // 4. Obtiene la tendencia semanal agrupando por Ano-Semana ISO en PostgreSQL
-    @Query(value = """
-            SELECT w.yearWeek,
-                   COUNT(*) AS totalReported,
-                   SUM(CASE WHEN w.status IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) AS totalResolved
-            FROM (
-                SELECT TO_CHAR(DATE_TRUNC('week', i.created_at), 'YYYY-"W"IW') AS yearWeek,
-                       DATE_TRUNC('week', i.created_at) AS weekStart,
-                       i.status AS status
-                FROM incidents i
-            ) w
-            GROUP BY w.yearWeek, w.weekStart
-            ORDER BY w.weekStart ASC
-            """, nativeQuery = true)
-    List<Object[]> findWeeklyTrendsRaw();
+    // 5. Tendencia semanal: incidentes reportados y resueltos por anio y semana ISO
+    @Query("""
+            SELECT EXTRACT(YEAR FROM i.createdAt), EXTRACT(WEEK FROM i.createdAt), COUNT(i),
+                   SUM(CASE WHEN i.status IN
+            """ + RESOLVED_STATUSES + """
+                   THEN 1 ELSE 0 END)
+            FROM Incident i
+            WHERE
+            """ + ANALYTICS_FILTERS + """
+            GROUP BY EXTRACT(YEAR FROM i.createdAt), EXTRACT(WEEK FROM i.createdAt)
+            ORDER BY EXTRACT(YEAR FROM i.createdAt), EXTRACT(WEEK FROM i.createdAt)
+            """)
+    List<Object[]> findWeeklyTrendsFiltered(@Param("categoryId") Long categoryId,
+                                            @Param("priority") Priority priority,
+                                            @Param("startDate") LocalDateTime startDate,
+                                            @Param("endDate") LocalDateTime endDate);
 }
