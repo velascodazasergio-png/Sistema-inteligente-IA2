@@ -10,7 +10,13 @@ import java.time.LocalDateTime;
 
 // Entidad que registra cada solicitud de analisis (prompt) enviada hacia n8n para un incidente
 @Entity
-@Table(name = "ai_queries")
+@Table(
+    name = "ai_queries",
+    indexes = {
+        @Index(name = "idx_ai_queries_incident_id", columnList = "incident_id"),
+        @Index(name = "idx_ai_queries_status", columnList = "query_status")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -47,4 +53,3 @@ public class AiQuery {
         }
     }
 }
-

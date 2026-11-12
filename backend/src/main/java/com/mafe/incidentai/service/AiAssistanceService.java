@@ -110,10 +110,17 @@ public class AiAssistanceService {
                 source.setCitedSnippet(sourceDto.citedSnippet());
                 source.setSimilarityScore(sourceDto.similarityScore());
 
-                // Si n8n envio el ID de un KnowledgeArticle interno, lo vinculamos con la entidad
+                // Si n8n envio el ID de un KnowledgeArticle interno, validamos que exista y este ACTIVO y VERIFICADO (Restriccion RF02)
                 if (sourceDto.knowledgeArticleId() != null) {
-                    knowledgeArticleRepository.findById(sourceDto.knowledgeArticleId())
-                            .ifPresent(source::setKnowledgeArticle);
+                    KnowledgeArticle article = knowledgeArticleRepository.findById(sourceDto.knowledgeArticleId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Knowledge article not found with ID: " + sourceDto.knowledgeArticleId()));
+
+                    if (!Boolean.TRUE.equals(article.getActive()) || !Boolean.TRUE.equals(article.getVerified())) {
+                        throw new BusinessRuleException(
+                                "Cannot use an inactive or unverified knowledge article as a RAG source (ID: " + article.getId() + ")");
+                    }
+                    source.setKnowledgeArticle(article);
                 }
 
                 // Sincroniza ambos lados de la relacion bidireccional 1:N

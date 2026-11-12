@@ -9,7 +9,13 @@ import java.time.LocalDateTime;
 
 // Entidad que almacena articulos de la base de conocimiento (manuales, guias o soluciones documentadas para el RAG)
 @Entity
-@Table(name = "knowledge_articles")
+@Table(
+    name = "knowledge_articles",
+    indexes = {
+        @Index(name = "idx_kb_category_id", columnList = "category_id"),
+        @Index(name = "idx_kb_active_verified", columnList = "is_active, is_verified")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -22,8 +28,22 @@ public class KnowledgeArticle {
     @Column(name = "title", nullable = false, length = 180)
     private String title;
 
+    // Contenido tecnico consolidado del articulo (incluye problema, sintomas, causa y procedimiento)
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    // Campos estructurados especificos de RF02 (opcionales para desglosar el articulo tecnico)
+    @Column(name = "problem_description", columnDefinition = "TEXT")
+    private String problemDescription;
+
+    @Column(name = "symptoms", columnDefinition = "TEXT")
+    private String symptoms;
+
+    @Column(name = "root_cause", columnDefinition = "TEXT")
+    private String rootCause;
+
+    @Column(name = "solution_procedure", columnDefinition = "TEXT")
+    private String solutionProcedure;
 
     @Column(name = "reference_url", length = 500)
     private String referenceUrl;

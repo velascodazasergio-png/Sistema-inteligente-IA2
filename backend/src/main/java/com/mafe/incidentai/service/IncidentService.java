@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Servicio de negocio para registrar, actualizar estados y filtrar incidentes tecnologicos
+// Servicio de negocio para registrar, actualizar informacion, cambiar estados y filtrar incidentes tecnologicos (RF01)
 @Service
 @RequiredArgsConstructor
 public class IncidentService {
@@ -30,7 +30,7 @@ public class IncidentService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
 
-    // Registra un nuevo incidente verificando primero que el usuario y la categoria existan y esten activos
+    // 1. Registra un nuevo incidente verificando primero que el usuario y la categoria existan y esten activos
     @Transactional
     public IncidentResponseDTO createIncident(CreateIncidentRequestDTO request) {
         User user = userRepository.findById(request.userId())
@@ -45,8 +45,8 @@ public class IncidentService {
         }
 
         Incident incident = new Incident();
-        incident.setTitle(request.title());
-        incident.setDescription(request.description());
+        incident.setTitle(request.title().trim());
+        incident.setDescription(request.description().trim());
         incident.setPriority(request.priority());
         incident.setStatus(IncidentStatus.OPEN);
         incident.setUser(user);
@@ -56,7 +56,36 @@ public class IncidentService {
         return mapToResponseDTO(savedIncident);
     }
 
-    // Actualiza el estado de un incidente aplicando validaciones de transicion de estados
+    // 2. Actualiza la informacion general de un incidente existente (RF01)
+    @Transactional
+    public IncidentResponseDTO updateIncident(Long incidentId, CreateIncidentRequestDTO request) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + incidentId));
+
+        if (incident.getStatus() == IncidentStatus.CLOSED) {
+            throw new BusinessRuleException("Cannot modify an already CLOSED incident");
+        }
+
+        User user = userRepository.findById(request.userId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + request.userId()));
+
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.categoryId()));
+
+        if (Boolean.FALSE.equals(category.getActive())) {
+            throw new BusinessRuleException("Cannot assign an incident to an inactive category: " + category.getName());
+        }
+
+        incident.setTitle(request.title().trim());
+        incident.setDescription(request.description().trim());
+        incident.setPriority(request.priority());
+        incident.setUser(user);
+        incident.setCategory(category);
+
+        return mapToResponseDTO(incidentRepository.save(incident));
+    }
+
+    // 3. Actualiza el estado de un incidente aplicando validaciones de transicion y registrando fecha de resolucion
     @Transactional
     public IncidentResponseDTO updateIncidentStatus(Long incidentId, IncidentStatus newStatus) {
         Incident incident = incidentRepository.findById(incidentId)
@@ -68,11 +97,19 @@ public class IncidentService {
         }
 
         incident.setStatus(newStatus);
+        if (newStatus == IncidentStatus.RESOLVED || newStatus == IncidentStatus.CLOSED) {
+            if (incident.getResolvedAt() == null) {
+                incident.setResolvedAt(LocalDateTime.now());
+            }
+        } else {
+            incident.setResolvedAt(null);
+        }
+
         Incident updatedIncident = incidentRepository.save(incident);
         return mapToResponseDTO(updatedIncident);
     }
 
-    // Filtra incidentes de forma dinamica combinando categoria, prioridad, estado, usuario y rango de fechas
+    // 4. Filtra incidentes de forma dinamica combinando categoria, prioridad, estado, usuario y rango de fechas
     @Transactional(readOnly = true)
     public List<IncidentResponseDTO> filterIncidents(
             Long categoryId,
@@ -97,7 +134,7 @@ public class IncidentService {
                 .toList();
     }
 
-    // Devuelve el detalle de un incidente por su ID
+    // 5. Devuelve el detalle de un incidente por su ID
     @Transactional(readOnly = true)
     public IncidentResponseDTO getIncident(Long incidentId) {
         return incidentRepository.findById(incidentId)
@@ -107,6 +144,12 @@ public class IncidentService {
 
     // Convierte la entidad JPA Incident al contrato de salida IncidentResponseDTO
     private IncidentResponseDTO mapToResponseDTO(Incident incident) {
+        LocalDateTime effectiveResolvedAt = incident.getResolvedAt();
+        if (effectiveResolvedAt == null
+                && (incident.getStatus() == IncidentStatus.RESOLVED || incident.getStatus() == IncidentStatus.CLOSED)) {
+            effectiveResolvedAt = incident.getUpdatedAt();
+        }
+
         return new IncidentResponseDTO(
                 incident.getId(),
                 incident.getTitle(),
@@ -118,7 +161,8 @@ public class IncidentService {
                 incident.getCategory().getId(),
                 incident.getCategory().getName(),
                 incident.getCreatedAt(),
-                incident.getUpdatedAt()
+                incident.getUpdatedAt(),
+                effectiveResolvedAt
         );
     }
 }
