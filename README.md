@@ -98,18 +98,20 @@ Pasos después del primer arranque:
    - Webhook del flujo 02: nombre `N8N_WEBHOOK_AUTH_HEADER` y valor `N8N_WEBHOOK_AUTH_VALUE` del `.env`.
    - OpenRouter: `Authorization: Bearer <clave>`.
    - Qdrant, si tiene clave.
+
+   En los JSON todas las credenciales tienen el id `REEMPLAZAR`: después de importar, abre cada nodo con credencial (Webhook, embeddings, Qdrant y LLM) y elige la que corresponde.
 4. **Activar los flujos** y ejecutar el flujo 01 para indexar los artículos verificados.
 
-> **Probado** con Docker 29 y Compose v5:
-> - los 5 servicios arrancan;
-> - el backend carga `data.sql` en PostgreSQL y el dashboard devuelve los mismos valores que con H2 (86,67 % y 4,74 h);
-> - el registro de incidentes y artículos funciona;
-> - un reinicio conserva los datos;
-> - los dos flujos se importan en n8n.
+> **Probado** con Docker 29 y Compose v5 ([detalle](docs/pruebas/README.md#3b-auditoría-con-los-servicios-reales)):
+> - los 5 servicios arrancan, y el backend, Qdrant y n8n pasan sus healthchecks;
+> - el backend carga `data.sql` en PostgreSQL y el dashboard coincide con las consultas SQL;
+> - tras dos reinicios del backend los datos se conservan y se pueden seguir creando registros;
+> - el backend entrega las consultas al n8n real, que llama a OpenRouter y devuelve el resultado o el fallo al backend;
+> - el flujo 01 borra de Qdrant los vectores de artículos desactivados.
 >
-> No se probó una consulta real a OpenRouter: requiere una clave propia.
+> No se probó una respuesta real del modelo: requiere la clave de OpenRouter del equipo.
 >
-> Si los puertos 5432, 5500, 5678, 6333 u 8080 ya están ocupados en tu equipo, cámbialos en `docker-compose.yml`.
+> Los puertos se publican solo en `127.0.0.1`. Si 5432, 5500, 5678, 6333 u 8080 ya están ocupados en tu equipo, cámbialos en `docker-compose.yml`.
 
 ## Variables de entorno
 
