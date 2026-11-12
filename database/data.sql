@@ -1,4 +1,4 @@
-﻿-- ============================================================================
+-- ============================================================================
 -- SCRIPT DE DATOS SEMILLA (DATA.SQL) PARA ANALITICA E HISTORIAL DE IA (RF06)
 -- Incluye: 10 Usuarios, 6 Categorias, 10 Articulos Verificados, 150 Incidentes
 -- Sinteticos en Ingles distribuidos en 8 semanas, y flujo completo de IA.
