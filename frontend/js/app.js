@@ -12,16 +12,29 @@ const app = document.getElementById('app');
 const SIDEBAR_KEY = 'incidentes-ia:sidebar';
 const STATUS_INTERVAL_MS = 30000;
 
-/* ---------- Navegación lateral ---------- */
+/* ---------- Navegación lateral (agrupada por sección) ---------- */
 function renderNav() {
-  document.getElementById('nav-list').innerHTML = routes.filter((route) => route.nav !== false).map((route) => `
-    <li>
-      <a class="nav-link" href="#/${route.path}" data-route="${route.path}"
-         data-label="${escapeHtml(route.title)}" aria-label="${escapeHtml(route.title)}">
-        ${icon(route.icon)}
-        <span class="label">${escapeHtml(route.title)}</span>
-        ${route.rf ? `<span class="nav-link__rf label" aria-hidden="true">${route.rf}</span>` : ''}
-      </a>
+  const groups = new Map();
+  routes.filter((route) => route.nav !== false).forEach((route) => {
+    const name = route.group ?? 'General';
+    if (!groups.has(name)) groups.set(name, []);
+    groups.get(name).push(route);
+  });
+
+  document.getElementById('nav-list').innerHTML = [...groups].map(([name, items]) => `
+    <li class="nav-group">
+      <span class="nav-group__title label" aria-hidden="true">${escapeHtml(name)}</span>
+      <ul class="nav-group__list" role="list">
+        ${items.map((route) => `
+          <li>
+            <a class="nav-link" href="#/${route.path}" data-route="${route.path}"
+               data-label="${escapeHtml(route.title)}" aria-label="${escapeHtml(route.title)}">
+              <span class="nav-link__icon">${icon(route.icon)}</span>
+              <span class="label">${escapeHtml(route.navLabel ?? route.title)}</span>
+              ${route.rf ? `<span class="nav-link__rf label" aria-hidden="true">${route.rf}</span>` : ''}
+            </a>
+          </li>`).join('')}
+      </ul>
     </li>`).join('');
 }
 
@@ -102,10 +115,20 @@ function initStatusMonitor() {
   const statusEl = document.getElementById('api-status');
   const textEl = statusEl.querySelector('.status__text');
 
+  // Tarjeta de estado en el pie de la sidebar (misma información, más detalle)
+  const cardEl = document.getElementById('sidebar-status');
+  const cardText = cardEl?.querySelector('[data-status-text]');
+  const cardHost = cardEl?.querySelector('[data-status-host]');
+
   const setState = (state) => {
     statusEl.dataset.state = state;
     textEl.textContent = STATUS_TEXT[state];
     statusEl.title = `${STATUS_TEXT[state]} · ${getApiBaseUrl()}`;
+    if (cardEl) {
+      cardEl.dataset.state = state;
+      cardText.textContent = STATUS_TEXT[state];
+      cardHost.textContent = getApiBaseUrl().replace(/^https?:\/\//, '');
+    }
   };
 
   const refresh = async ({ showChecking = false } = {}) => {

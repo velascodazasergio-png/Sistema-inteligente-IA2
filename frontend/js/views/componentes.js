@@ -58,6 +58,7 @@ export function render(container, { signal }) {
     ${pageHeader({
       eyebrow: 'Etapa 2',
       title: 'Catálogo de componentes',
+      icon: 'i-layers',
       description: 'Piezas reutilizables para construir los módulos. Aquí se muestran con datos de demostración para revisar diseño e interacción.',
     })}
 

@@ -123,6 +123,20 @@ Notas:
 - **Artículos**: el backend arma `content` (lo que indexa n8n) a partir de Problema, Síntomas, Causa y Solución. Los artículos antiguos solo tienen `content`; al editarlos se cargan en Problema para reorganizarlos.
 - **Editar un artículo verificado** cambiando su título o contenido lo deja sin verificar (regla del backend).
 
+## Diseño visual
+
+- **Tipografía:** Inter para la interfaz y JetBrains Mono para cifras y códigos (Google Fonts). Sin internet se usan las fuentes del sistema.
+- **Sidebar** agrupada en General, Operación, Inteligencia, Análisis y Sistema, con el estado de la API al pie.
+- **Encabezado de cada sección** con icono, requisito (RF) y ruta.
+- **Dashboard:**
+  - un bloque de resumen con frases calculadas de los datos reales: pendientes, críticos, categoría más frecuente y comparación con el periodo anterior;
+  - un indicador circular del porcentaje de resolución y accesos rápidos;
+  - minigráficos semanales en las tarjetas de indicadores.
+- **Tablas** con avatares de iniciales y una barra de acento en la fila bajo el cursor. En Incidentes, título y categoría comparten celda para que todas las columnas entren en pantalla.
+- **Botón principal** con degradado y brillo al pasar el cursor; tarjetas con filo de luz; fondo con una retícula tenue.
+
+Los degradados de los botones usan tonos oscuros para que el texto blanco cumpla el contraste AA. Las animaciones se desactivan con `prefers-reduced-motion`.
+
 ## Pruebas
 
 ```bash

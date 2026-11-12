@@ -12,7 +12,7 @@ const list = (items, className, iconName) => `
 
 export function render(container, { route }) {
   container.innerHTML = `
-    ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+    ${pageHeader(route)}
 
     <section class="card empty-state" aria-labelledby="pending-title">
       <span class="empty-state__icon">${icon('i-plug')}</span>

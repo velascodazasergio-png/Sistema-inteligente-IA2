@@ -7,12 +7,14 @@
   color-scheme: dark;
 
   /* Fondo y superficies (de más oscuro a más claro) */
-  --bg: #070b14;
-  --surface: #0e1524;
-  --surface-2: #141d30;
-  --surface-3: #1b2640;
-  --border: rgba(148, 163, 184, 0.12);
+  --bg: #060a13;
+  --surface: #0d1422;
+  --surface-2: #131c2e;
+  --surface-3: #1a253c;
+  --border: rgba(148, 163, 184, 0.11);
   --border-strong: rgba(148, 163, 184, 0.22);
+  --card-bg: linear-gradient(180deg, rgba(21, 30, 49, 0.82) 0%, rgba(13, 20, 34, 0.86) 100%);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
   /* Iluminación sutil del fondo */
   --glow-primary: rgba(59, 130, 246, 0.10);
@@ -31,6 +33,9 @@
   --accent: #8b5cf6;           /* violeta tecnológico */
   --accent-soft: rgba(139, 92, 246, 0.14);
   --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  /* Botón principal: tonos más oscuros para que el texto blanco cumpla AA */
+  --gradient-button: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);
+  --gradient-text: linear-gradient(120deg, #e6ebf5 20%, #a5b4fc 60%, #7cb3ff 100%);
 
   /* Estados semánticos */
   --success: #10b981;
@@ -53,15 +58,16 @@
   --star: #fbbf24;
   --star-off: #34405c;
 
-  /* Tipografía (fuentes del sistema: sin dependencias externas) */
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  /* Tipografía: Inter y JetBrains Mono (Google Fonts) con respaldo del sistema */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   --fs-xs: 0.75rem;
   --fs-sm: 0.875rem;
   --fs-md: 1rem;
   --fs-lg: 1.125rem;
   --fs-xl: 1.5rem;
   --fs-2xl: 2rem;
+  --fs-3xl: 2.375rem;
 
   /* Espaciado (escala de 4px) */
   --space-1: 0.25rem;
@@ -79,10 +85,11 @@
   --radius-full: 999px;
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-2: 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  --shadow-3: 0 24px 48px -20px rgba(0, 0, 0, 0.85);
   --focus-color: #60a5fa;
 
   /* Layout */
-  --sidebar-w: 248px;
+  --sidebar-w: 268px;
   --sidebar-w-collapsed: 72px;
   --topbar-h: 64px;
 

@@ -2,7 +2,7 @@
 // Solo los artículos activos y verificados se usan como fuentes del RAG.
 // Endpoints: GET/POST /api/v1/knowledge-articles, GET/PUT /{id}, PATCH /{id}/status
 
-import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
+import { pageHeader, icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
 import { openModal, confirmDialog } from '../components/modal.js';
 import { errorState, emptyHtml } from '../components/states.js';
@@ -78,7 +78,7 @@ function cardHtml(a) {
         <p class="kb-card__text">${escapeHtml(summary)}</p>
         ${a.symptoms ? `<p class="kb-card__meta"><strong>Síntomas:</strong> ${escapeHtml(a.symptoms)}</p>` : ''}
         <footer class="kb-card__foot">
-          <span class="cell-muted">#${a.id} · ${formatDate(a.updatedAt)}${a.authorFullName ? ` · ${escapeHtml(a.authorFullName)}` : ''}</span>
+          <span class="person cell-muted">${a.authorFullName ? avatar(a.authorFullName) : ''}#${a.id} · ${formatDate(a.updatedAt)}${a.authorFullName ? ` · ${escapeHtml(a.authorFullName)}` : ''}</span>
           <span class="row-actions">
             <button class="icon-btn icon-btn--sm" type="button" data-kb-action="view" data-id="${a.id}" aria-label="Ver artículo #${a.id}" title="Ver">${icon('i-eye')}</button>
             <button class="icon-btn icon-btn--sm" type="button" data-kb-action="edit" data-id="${a.id}" aria-label="Editar artículo #${a.id}" title="Editar">${icon('i-settings')}</button>
@@ -91,7 +91,7 @@ function cardHtml(a) {
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     <div class="page-header-row">
-      ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+      ${pageHeader(route)}
       <button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}Nuevo artículo</button>
     </div>
 

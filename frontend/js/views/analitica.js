@@ -28,7 +28,7 @@ const chartCard = (id, title, subtitle, wide = false) => `
 
 export async function render(container, { route, signal }) {
   container.innerHTML = `
-    ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+    ${pageHeader(route)}
     <div class="stack" id="analytics">
       <form class="card filters" id="a-filters" aria-label="Filtros de analítica">
         <div class="filters__grid">

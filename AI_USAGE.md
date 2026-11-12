@@ -35,6 +35,7 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 | Integración con los flujos n8n: autenticación del webhook, endpoint de fallos, token de callback | Análisis de los flujos y código | `a4a2a8a` |
 | Pruebas de integración del backend (24 casos) | Código generado | `91f530f` |
 | Pruebas unitarias del frontend (23 casos) | Código generado | — |
+| Rediseño visual: tipografía, sidebar agrupada, encabezados, resumen del Dashboard, minigráficos, avatares | Código generado y revisado con capturas | — |
 | README, Docker Compose, `.env.example` y este documento | Redacción y prueba del Compose | — |
 | Diagramas, informe de análisis, documento de pruebas, evidencias y presentación (`docs/`) | Generados a partir del código y de consultas reales a la base | — |
 
