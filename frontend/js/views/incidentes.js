@@ -1,0 +1,296 @@
+// Incidentes (RF01): registro, consulta, filtrado y cambio de estado.
+// Endpoints: GET/POST /api/v1/incidents, PATCH /api/v1/incidents/{id}/status
+
+import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
+import { createDataTable } from '../components/data-table.js';
+import { openModal } from '../components/modal.js';
+import { errorState } from '../components/states.js';
+import { listIncidents, createIncident, updateIncidentStatus, catalogsFromIncidents } from '../services/incidents.service.js';
+import { ESTADO_INCIDENTE, PRIORIDAD, badge, optionsHtml, labelOf } from '../catalogs.js';
+import { formatDateTime, parseDate } from '../format.js';
+import { routeParams } from '../router.js';
+
+const selectOptions = (items, placeholder) =>
+  `<option value="">${escapeHtml(placeholder)}</option>${items.map((i) => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('')}`;
+
+// Reglas del CreateIncidentRequestDTO, validadas también aquí para avisar antes de enviar.
+const RULES = {
+  title: (v) => (!v ? 'El título es obligatorio.' : v.length < 5 || v.length > 150 ? 'Debe tener entre 5 y 150 caracteres.' : ''),
+  description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 15 ? 'Describe el problema con al menos 15 caracteres.' : ''),
+  categoryId: (v) => (v ? '' : 'Elige una categoría.'),
+  priority: (v) => (v ? '' : 'Elige una prioridad.'),
+  userId: (v) => (v ? '' : 'Elige quién reporta el incidente.'),
+};
+
+export async function render(container, { route, signal }) {
+  container.innerHTML = `
+    <div class="page-header-row">
+      ${pageHeader({ eyebrow: route.rf, title: route.title, description: route.description })}
+      <button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}Nuevo incidente</button>
+    </div>
+
+    <div class="stack stack--tight">
+      <form class="card filters" id="inc-filters" aria-label="Filtros de incidentes">
+        <div class="filters__grid">
+          <div class="field"><label for="f-category">Categoría</label><select class="input" id="f-category" name="categoryId"></select></div>
+          <div class="field"><label for="f-priority">Prioridad</label>
+            <select class="input" id="f-priority" name="priority"><option value="">Todas</option>${optionsHtml(PRIORIDAD)}</select></div>
+          <div class="field"><label for="f-status">Estado</label>
+            <select class="input" id="f-status" name="status"><option value="">Todos</option>${optionsHtml(ESTADO_INCIDENTE)}</select></div>
+          <div class="field"><label for="f-user">Reportado por</label><select class="input" id="f-user" name="userId"></select></div>
+          <div class="field"><label for="f-start">Desde</label><input class="input" id="f-start" name="startDate" type="date"></div>
+          <div class="field"><label for="f-end">Hasta</label><input class="input" id="f-end" name="endDate" type="date"></div>
+        </div>
+        <p class="field__error" id="f-error" aria-live="polite"></p>
+        <div class="form__actions">
+          <button class="btn btn--primary" type="submit">${icon('i-filter')}Aplicar filtros</button>
+          <button class="btn btn--ghost" type="reset">Limpiar</button>
+        </div>
+      </form>
+
+      <section class="card" id="inc-table-card" aria-label="Listado de incidentes"><div id="inc-table"></div></section>
+    </div>`;
+
+  const form = container.querySelector('#inc-filters');
+  const filterError = container.querySelector('#f-error');
+  const createButton = container.querySelector('[data-action="create"]');
+  let catalogs = { categories: [], users: [] };
+  let incidents = [];
+
+  const table = createDataTable(container.querySelector('#inc-table'), {
+    caption: 'Incidentes registrados',
+    searchPlaceholder: 'Buscar por título, categoría, usuario…',
+    emptyMessage: 'No hay incidentes con estos filtros.',
+    pageSize: 10,
+    initialSort: { key: 'createdAt', dir: 'desc' },
+    columns: [
+      { key: 'id', label: 'ID', align: 'right', render: (r) => `<span class="cell-id">#${r.id}</span>`, text: (r) => String(r.id) },
+      { key: 'title', label: 'Título', render: (r) => `<span class="cell-title" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</span>` },
+      { key: 'categoryName', label: 'Categoría', render: (r) => `<span class="cell-muted">${escapeHtml(r.categoryName)}</span>` },
+      {
+        key: 'priority', label: 'Prioridad', render: (r) => badge(PRIORIDAD, r.priority),
+        text: (r) => labelOf(PRIORIDAD, r.priority), sortValue: (r) => Object.keys(PRIORIDAD).indexOf(r.priority),
+      },
+      {
+        key: 'status', label: 'Estado', render: (r) => badge(ESTADO_INCIDENTE, r.status),
+        text: (r) => labelOf(ESTADO_INCIDENTE, r.status), sortValue: (r) => Object.keys(ESTADO_INCIDENTE).indexOf(r.status),
+      },
+      { key: 'userFullName', label: 'Reportado por', render: (r) => `<span class="cell-muted">${escapeHtml(r.userFullName)}</span>` },
+      {
+        key: 'createdAt', label: 'Registro', render: (r) => `<span class="cell-muted">${formatDateTime(r.createdAt)}</span>`,
+        text: (r) => formatDateTime(r.createdAt), sortValue: (r) => parseDate(r.createdAt),
+      },
+    ],
+    onRowClick: (row) => openDetail(row),
+  });
+
+  const readFilters = () => Object.fromEntries(new FormData(form));
+
+  // El estado se filtra en el cliente: el endpoint no recibe ese parámetro.
+  const showRows = () => {
+    const { status } = readFilters();
+    table.setRows(status ? incidents.filter((i) => i.status === status) : incidents);
+  };
+
+  const fill = () => {
+    const keep = readFilters();
+    form.elements.categoryId.innerHTML = selectOptions(catalogs.categories, 'Todas');
+    form.elements.userId.innerHTML = selectOptions(catalogs.users, 'Todos');
+    form.elements.categoryId.value = keep.categoryId ?? '';
+    form.elements.userId.value = keep.userId ?? '';
+  };
+
+  async function load() {
+    const filters = readFilters();
+    if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
+      filterError.textContent = 'La fecha inicial no puede ser posterior a la final.';
+      return;
+    }
+    filterError.textContent = '';
+    table.setLoading(true);
+    try {
+      incidents = await listIncidents(filters, { signal });
+    } catch (error) {
+      if (signal.aborted) return;
+      errorState(container.querySelector('#inc-table-card'), error, () => render(container, { route, signal }));
+      return;
+    }
+    if (signal.aborted) return;
+    table.setLoading(false);
+    showRows();
+  }
+
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    load();
+  });
+  form.addEventListener('reset', () => setTimeout(load));
+  form.elements.status.addEventListener('change', showRows);
+  createButton.addEventListener('click', () => openCreate());
+
+  // Primera carga sin filtros: también sirve para armar los catálogos.
+  table.setLoading(true);
+  try {
+    incidents = await listIncidents({}, { signal });
+  } catch (error) {
+    if (signal.aborted) return;
+    errorState(container.querySelector('#inc-table-card'), error, () => render(container, { route, signal }));
+    return;
+  }
+  if (signal.aborted) return;
+  catalogs = catalogsFromIncidents(incidents);
+  fill();
+  createButton.disabled = false;
+  table.setLoading(false);
+  showRows();
+
+  // #/incidentes?id=12 abre directamente el detalle (enlaces del dashboard).
+  const linked = incidents.find((i) => String(i.id) === routeParams().get('id'));
+  if (linked) openDetail(linked);
+
+  /* ---------- Detalle y cambio de estado ---------- */
+  function openDetail(incident) {
+    const closed = incident.status === 'CLOSED';
+    const modal = openModal({
+      title: `Incidente #${incident.id}`,
+      size: 'lg',
+      body: `
+        <h3 class="detail-title">${escapeHtml(incident.title)}</h3>
+        <div class="cluster">${badge(PRIORIDAD, incident.priority)}${badge(ESTADO_INCIDENTE, incident.status)}</div>
+        <dl class="kv kv--detail">
+          <dt>Categoría</dt><dd>${escapeHtml(incident.categoryName)}</dd>
+          <dt>Reportado por</dt><dd>${escapeHtml(incident.userFullName)}</dd>
+          <dt>Registro</dt><dd>${formatDateTime(incident.createdAt)}</dd>
+          <dt>Última actualización</dt><dd>${formatDateTime(incident.updatedAt)}</dd>
+        </dl>
+        <h4 class="detail-label">Descripción</h4>
+        <p class="detail-text">${escapeHtml(incident.description)}</p>
+
+        <form class="status-form" data-status-form>
+          <div class="field">
+            <label for="detail-status">Cambiar estado</label>
+            <select class="input" id="detail-status" name="status" ${closed ? 'disabled' : ''}>${optionsHtml(ESTADO_INCIDENTE, incident.status)}</select>
+            <p class="field__hint">${closed ? 'Un incidente cerrado ya no puede cambiar de estado.' : 'El cambio queda registrado en el backend.'}</p>
+          </div>
+          <button class="btn btn--primary" type="submit" ${closed ? 'disabled' : ''}>${icon('i-check')}Guardar estado</button>
+        </form>
+
+        <div class="detail-links">
+          ${closed ? '' : `<a class="btn btn--ghost" href="#/asistente?incidente=${incident.id}">${icon('i-sparkles')}Consultar a la IA</a>`}
+          <a class="btn btn--ghost" href="#/historial?incidente=${incident.id}">${icon('i-history')}Ver historial de IA</a>
+        </div>`,
+    });
+
+    // Al seguir un enlace se cierra el modal (el router cambia de vista).
+    modal.body.querySelectorAll('.detail-links a').forEach((a) => a.addEventListener('click', () => modal.close()));
+
+    const statusForm = modal.body.querySelector('[data-status-form]');
+    statusForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const next = statusForm.elements.status.value;
+      if (next === incident.status) {
+        toast('El incidente ya tiene ese estado.', { type: 'info' });
+        return;
+      }
+      const button = statusForm.querySelector('button');
+      setBusy(button, true, 'Guardando…');
+      try {
+        const updated = await updateIncidentStatus(incident.id, next);
+        incidents = incidents.map((i) => (i.id === updated.id ? updated : i));
+        showRows();
+        toast(`Incidente #${updated.id}: ${labelOf(ESTADO_INCIDENTE, updated.status)}.`, { type: 'success' });
+        modal.close();
+      } catch (error) {
+        setBusy(button, false);
+        toast(error.message, { type: 'error' });
+      }
+    });
+  }
+
+  /* ---------- Registro ---------- */
+  function openCreate() {
+    const modal = openModal({
+      title: 'Nuevo incidente',
+      size: 'lg',
+      body: `
+        <form class="form" id="create-form" novalidate>
+          <div class="field">
+            <label for="c-title">Título</label>
+            <input class="input" id="c-title" name="title" maxlength="150" autocomplete="off" aria-describedby="c-title-error" placeholder="Ej.: La VPN se desconecta cada 10 minutos">
+            <p class="field__error" id="c-title-error" aria-live="polite"></p>
+          </div>
+          <div class="field">
+            <label for="c-description">Descripción</label>
+            <textarea class="input input--area" id="c-description" name="description" rows="5" aria-describedby="c-description-hint c-description-error"
+              placeholder="Síntomas, mensajes de error, equipos afectados y desde cuándo ocurre"></textarea>
+            <p class="field__hint" id="c-description-hint">Mientras más detalle, mejor será la orientación del asistente IA.</p>
+            <p class="field__error" id="c-description-error" aria-live="polite"></p>
+          </div>
+          <div class="form-row">
+            <div class="field">
+              <label for="c-category">Categoría</label>
+              <select class="input" id="c-category" name="categoryId" aria-describedby="c-categoryId-error">${selectOptions(catalogs.categories, 'Selecciona…')}</select>
+              <p class="field__error" id="c-categoryId-error" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="c-priority">Prioridad</label>
+              <select class="input" id="c-priority" name="priority" aria-describedby="c-priority-error"><option value="">Selecciona…</option>${optionsHtml(PRIORIDAD)}</select>
+              <p class="field__error" id="c-priority-error" aria-live="polite"></p>
+            </div>
+            <div class="field">
+              <label for="c-user">Reportado por</label>
+              <select class="input" id="c-user" name="userId" aria-describedby="c-userId-error">${selectOptions(catalogs.users, 'Selecciona…')}</select>
+              <p class="field__error" id="c-userId-error" aria-live="polite"></p>
+            </div>
+          </div>
+          <p class="field__hint">Las listas de categorías y usuarios salen de los incidentes ya registrados, porque el backend todavía no expone esos catálogos.</p>
+          <div class="form__actions">
+            <button class="btn btn--primary" type="submit">${icon('i-check')}Registrar incidente</button>
+            <button class="btn btn--ghost" type="button" data-cancel>Cancelar</button>
+          </div>
+        </form>`,
+    });
+
+    const createForm = modal.body.querySelector('#create-form');
+    const touched = new Set();
+
+    const validateField = (name) => {
+      const field = createForm.elements[name];
+      const message = RULES[name](field.value.trim());
+      createForm.querySelector(`#c-${name}-error`).textContent = message;
+      field.setAttribute('aria-invalid', String(Boolean(message)));
+      return !message;
+    };
+
+    Object.keys(RULES).forEach((name) => {
+      const field = createForm.elements[name];
+      field.addEventListener('blur', () => { touched.add(name); validateField(name); });
+      field.addEventListener('input', () => { if (touched.has(name)) validateField(name); });
+      field.addEventListener('change', () => { if (touched.has(name)) validateField(name); });
+    });
+
+    modal.body.querySelector('[data-cancel]').addEventListener('click', () => modal.close());
+
+    createForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const results = Object.keys(RULES).map((name) => { touched.add(name); return validateField(name); });
+      if (results.includes(false)) {
+        createForm.querySelector('[aria-invalid="true"]')?.focus();
+        return;
+      }
+      const button = createForm.querySelector('[type="submit"]');
+      setBusy(button, true, 'Registrando…');
+      try {
+        const created = await createIncident(Object.fromEntries(new FormData(createForm)));
+        incidents = [created, ...incidents];
+        showRows();
+        modal.close();
+        toast(`Incidente #${created.id} registrado.`, { type: 'success' });
+        openDetail(created);
+      } catch (error) {
+        setBusy(button, false);
+        toast(error.message, { type: 'error' });
+      }
+    });
+  }
+}

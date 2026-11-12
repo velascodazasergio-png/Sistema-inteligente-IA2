@@ -58,6 +58,10 @@ function messageFrom(status, body) {
     if (Array.isArray(body.errors) && body.errors.length) {
       return body.errors.map((e) => e.defaultMessage || e.message || String(e)).join(' · ');
     }
+    // GlobalExceptionHandler: errores de validación como { details: { campo: mensaje } }
+    if (body.details && typeof body.details === 'object' && Object.keys(body.details).length) {
+      return Object.values(body.details).join(' · ');
+    }
     if (body.message) return body.message;
     if (body.detail) return body.detail;
   }

@@ -17,6 +17,11 @@ export function navigate(path) {
   else location.hash = hash;
 }
 
+// Parámetros de la ruta actual: #/asistente?incidente=12 → URLSearchParams
+export function routeParams() {
+  return new URLSearchParams(location.hash.split('?')[1] ?? '');
+}
+
 function currentPath() {
   return location.hash.replace(/^#\/?/, '').split(/[?/]/)[0] || DEFAULT_ROUTE;
 }
