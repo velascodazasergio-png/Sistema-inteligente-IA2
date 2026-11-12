@@ -45,9 +45,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
-        // Extraemos cada campo que fallo la validacion junto con su mensaje configurado en el DTO
+        // Extraemos cada campo que fallo la validacion junto con su mensaje configurado en el DTO.
+        // Si el valor no pudo convertirse (p. ej. un enum inexistente en un query param), se usa un mensaje legible.
         ex.getBindingResult().getFieldErrors().forEach(error ->
-                fieldErrors.put(error.getField(), error.getDefaultMessage())
+                fieldErrors.put(error.getField(), error.isBindingFailure()
+                        ? "Invalid value '" + error.getRejectedValue() + "'"
+                        : error.getDefaultMessage())
         );
 
         Map<String, Object> body = new LinkedHashMap<>();

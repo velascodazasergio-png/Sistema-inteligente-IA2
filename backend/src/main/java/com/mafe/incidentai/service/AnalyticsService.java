@@ -1,7 +1,7 @@
 package com.mafe.incidentai.service;
 
-import com.mafe.incidentai.domain.enums.Priority;
 import com.mafe.incidentai.dto.AnalyticsDashboardDTO;
+import com.mafe.incidentai.dto.AnalyticsFilterRequest;
 import com.mafe.incidentai.dto.CategoryMetricDTO;
 import com.mafe.incidentai.dto.WeeklyTrendDTO;
 import com.mafe.incidentai.exception.BusinessRuleException;
@@ -11,7 +11,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 
 // Servicio analitico (RF06) que extrae KPIs reales desde la base de datos mediante consultas JPQL.
@@ -23,22 +22,17 @@ public class AnalyticsService {
     private final IncidentRepository incidentRepository;
     private final RatingRepository ratingRepository;
 
-    // Filtros opcionales del dashboard; un campo nulo no filtra
-    public record Filter(Long categoryId, Priority priority, LocalDateTime startDate, LocalDateTime endDate) {
-        public Filter {
-            if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
-                throw new BusinessRuleException("Start date cannot be after end date");
-            }
-        }
-
-        public static Filter none() {
-            return new Filter(null, null, null, null);
+    // Regla de negocio: el rango de fechas debe ser coherente
+    private void validate(AnalyticsFilterRequest f) {
+        if (f.startDate() != null && f.endDate() != null && f.startDate().isAfter(f.endDate())) {
+            throw new BusinessRuleException("Start date cannot be after end date");
         }
     }
 
     // Consolida todos los indicadores analiticos del dashboard ejecutando las consultas agregadas en BD
     @Transactional(readOnly = true)
-    public AnalyticsDashboardDTO getDashboardMetrics(Filter f) {
+    public AnalyticsDashboardDTO getDashboardMetrics(AnalyticsFilterRequest f) {
+        validate(f);
         long totalIncidents = incidentRepository.countFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate());
         long resolvedIncidents = incidentRepository.countResolvedOrClosedFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate());
 
@@ -66,11 +60,12 @@ public class AnalyticsService {
 
     // Ranking de categorias con mayor volumen de incidentes y su peso porcentual sobre el total filtrado
     @Transactional(readOnly = true)
-    public List<CategoryMetricDTO> getTopCategories(Filter f) {
+    public List<CategoryMetricDTO> getTopCategories(AnalyticsFilterRequest f) {
+        validate(f);
         return getTopCategories(f, incidentRepository.countFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate()));
     }
 
-    private List<CategoryMetricDTO> getTopCategories(Filter f, long totalIncidents) {
+    private List<CategoryMetricDTO> getTopCategories(AnalyticsFilterRequest f, long totalIncidents) {
         return incidentRepository.findTopCategoriesFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate())
                 .stream()
                 .map(row -> {
@@ -87,7 +82,8 @@ public class AnalyticsService {
 
     // Serie de incidentes reportados vs resueltos agrupados por semana ISO, con etiqueta "AAAA-WNN"
     @Transactional(readOnly = true)
-    public List<WeeklyTrendDTO> getWeeklyTrends(Filter f) {
+    public List<WeeklyTrendDTO> getWeeklyTrends(AnalyticsFilterRequest f) {
+        validate(f);
         return incidentRepository.findWeeklyTrendsFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate())
                 .stream()
                 .map(row -> new WeeklyTrendDTO(

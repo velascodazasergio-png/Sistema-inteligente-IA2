@@ -31,11 +31,13 @@ public class AiAssistanceController {
     // 1. Dispara el analisis de un incidente hacia el webhook de n8n y registra AiQuery (PENDING o COMMUNICATION_ERROR)
     @Operation(
         summary = "Request AI incident analysis (Trigger to n8n)",
-        description = "Registra la consulta AiQuery, dispara el cliente HTTP hacia n8n y actualiza el estado si ocurre timeout o error."
+        description = "Registra la consulta AiQuery, pasa el incidente a IN_AI_ANALYSIS, dispara el cliente HTTP hacia n8n y marca COMMUNICATION_ERROR si ocurre timeout o error."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "202", description = "Solicitud procesada y registrada en base de datos"),
-        @ApiResponse(responseCode = "404", description = "Incidente no encontrado")
+        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos (por ejemplo, descripcion vacia)"),
+        @ApiResponse(responseCode = "404", description = "Incidente no encontrado"),
+        @ApiResponse(responseCode = "409", description = "El incidente esta cerrado (CLOSED)")
     })
     @PostMapping("/request")
     public ResponseEntity<Map<String, Object>> requestAiAssistance(
@@ -47,11 +49,14 @@ public class AiAssistanceController {
     // 2. Recibe el callback desde n8n y guarda en cascada AiResponse y sus ResponseSource con similarityScore
     @Operation(
         summary = "Register AI response and sources (Callback webhook from n8n)",
-        description = "Guarda en cadena la respuesta de n8n (AiResponse), las fuentes (ResponseSource) con su similitud y marca AiQuery como COMPLETED."
+        description = "Guarda en cadena la respuesta de n8n (AiResponse) y sus fuentes (ResponseSource) con su similitud. "
+                + "Marca AiQuery como COMPLETED si hay fuentes, o NO_RESULTS si n8n no encontro documentos relevantes."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "AiResponse y sus fuentes guardadas en cadena exitosamente"),
-        @ApiResponse(responseCode = "404", description = "AiQuery original no encontrada")
+        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
+        @ApiResponse(responseCode = "404", description = "AiQuery original no encontrada"),
+        @ApiResponse(responseCode = "409", description = "La consulta ya tiene una respuesta registrada")
     })
     @PostMapping("/responses")
     public ResponseEntity<Map<String, Object>> registerAiResponse(
@@ -67,6 +72,7 @@ public class AiAssistanceController {
     )
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Calificacion registrada exitosamente"),
+        @ApiResponse(responseCode = "400", description = "Puntuacion fuera de 1 a 5 o datos incompletos"),
         @ApiResponse(responseCode = "404", description = "Respuesta IA o Usuario evaluador no encontrado"),
         @ApiResponse(responseCode = "409", description = "La respuesta IA ya habia sido calificada previamente")
     })
@@ -78,26 +84,34 @@ public class AiAssistanceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // 5. Consulta el historial global de consultas a la IA
-    @Operation(
-        summary = "Get global AI query history",
-        description = "Devuelve todas las consultas a la IA, de la mas reciente a la mas antigua. Filtro opcional por estado."
-    )
-    @GetMapping("/history")
-    public ResponseEntity<List<AiQueryHistoryResponseDTO>> getAiHistory(
-            @RequestParam(required = false) QueryStatus status) {
-        return ResponseEntity.ok(aiAssistanceService.getAiHistory(status));
-    }
-
     // 4. Consulta el historial completo de consultas a la IA (AiQuery) para un incidente
     @Operation(
         summary = "Get AI query history for an incident",
         description = "Devuelve todas las consultas enviadas a n8n para un incidente, junto con sus respuestas, fuentes, similitudes y calificaciones."
     )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Historial del incidente"),
+        @ApiResponse(responseCode = "404", description = "Incidente no encontrado")
+    })
     @GetMapping("/incidents/{incidentId}/history")
     public ResponseEntity<List<AiQueryHistoryResponseDTO>> getIncidentAiHistory(
             @PathVariable Long incidentId) {
         List<AiQueryHistoryResponseDTO> history = aiAssistanceService.getIncidentAiHistory(incidentId);
         return ResponseEntity.ok(history);
+    }
+
+    // 5. Consulta el historial global de consultas a la IA
+    @Operation(
+        summary = "Get global AI query history",
+        description = "Devuelve todas las consultas a la IA, de la mas reciente a la mas antigua. Filtro opcional por estado."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Historial global"),
+        @ApiResponse(responseCode = "400", description = "Estado de consulta invalido")
+    })
+    @GetMapping("/history")
+    public ResponseEntity<List<AiQueryHistoryResponseDTO>> getAiHistory(
+            @RequestParam(required = false) QueryStatus status) {
+        return ResponseEntity.ok(aiAssistanceService.getAiHistory(status));
     }
 }
