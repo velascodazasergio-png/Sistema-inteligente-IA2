@@ -4,11 +4,12 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
-| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 24 | ✅ 24 / 24 |
+| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 27 | ✅ 27 / 27 |
 | Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 23 | ✅ 23 / 23 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
 | Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
+| RAG e indexación de punta a punta | Docker real + OpenRouter simulado (embeddings y LLM) | 7 | ✅ 7 / 7 |
 | Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 8 | ✅ 8 / 8 |
 | Interfaz | Navegador sin interfaz (Edge), escritorio y móvil | 8 vistas | ✅ revisadas |
 
@@ -24,7 +25,7 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 ```bash
 cd backend
 mvn test
-# Tests run: 24, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
+# Tests run: 27, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
 ```
 
 | # | Grupo | Caso | Qué valida | Resultado |
@@ -53,6 +54,9 @@ mvn test
 | 22 | Seguridad | `rejectsCallbackWithWrongToken` | Con un token incorrecto dan 401 | ✅ |
 | 23 | Seguridad | `acceptsCallbackWithToken` | Con el token correcto pasan el filtro | ✅ |
 | 24 | Seguridad | `doesNotProtectOtherEndpoints` | El resto de la API no exige el token | ✅ |
+| 25 | Indexación (RF03) | `statusChangeTriggersReindexWithAuthHeader` | Activar o desactivar un artículo avisa al flujo 01 de n8n tras el commit, con el encabezado de autenticación | ✅ |
+| 26 | Indexación (RF03) | `creatingAnUnverifiedArticleDoesNotTriggerIndexing` | Crear un artículo (nace sin verificar) no llama a n8n | ✅ |
+| 27 | Indexación (RF03) | `failedChangeDoesNotTriggerIndexing` | Un cambio que falla (404) no llama a n8n | ✅ |
 
 ## 1b. Pruebas unitarias del frontend
 
@@ -116,6 +120,26 @@ Otras comprobaciones:
 
 **Pendiente:** repetir los escenarios 1, 2 y 3 con la clave de OpenRouter del equipo.
 
+## 3c. RAG e indexación de punta a punta (OpenRouter simulado)
+
+Para ejecutar los caminos que la clave inválida no alcanza, se reemplazó **solo OpenRouter** por un servidor simulado dentro de la red de Docker. Backend, PostgreSQL, n8n con los flujos del repositorio y Qdrant fueron los reales.
+
+El simulador:
+- calcula embeddings de 1536 dimensiones por bolsa de palabras, así que textos que comparten términos quedan cerca;
+- como LLM, responde con el contenido de la primera `<fuente>` que recibe, en el JSON que espera el flujo 02.
+
+La prueba demuestra el funcionamiento del flujo, **no la calidad de las respuestas del modelo**. El umbral se bajó a 0,25 porque los vectores por bolsa de palabras dan similitudes menores que un modelo real.
+
+| # | Comprobación | Resultado obtenido | Estado |
+|---|---|---|---|
+| 1 | Indexación completa sin crear la colección a mano | El flujo 01 crea `knowledge_articles` (1536, coseno) y guarda 10 vectores = 10 artículos utilizables | ✅ |
+| 2 | Reindexar todo otra vez | Siguen 10 vectores: no hay duplicados (id del punto = id del artículo) | ✅ |
+| 3 | Desactivar y reactivar un artículo desde la API | El backend avisa al flujo 01: el vector se borra y se recrea en unos 0,5 s | ✅ |
+| 4 | Editar un artículo y volver a verificarlo | Al editar queda sin verificar y su vector se borra; al verificarlo se reindexa con el texto nuevo (cambia `contentHash`) | ✅ |
+| 5 | Incidente de VPN con error 809 | `COMPLETED`; fuente: artículo #1 "IPSec VPN Error 809 Troubleshooting Runbook" (similitud 0,56); la solución sale de ese artículo | ✅ |
+| 6 | Incidente sin relación (cafetera) | `NO_RESULTS`: "Sin información suficiente…", sin fuentes ni solución | ✅ |
+| 7 | Mismo incidente de VPN con el artículo #1 desactivado | `NO_RESULTS`: el artículo ya no se usa como fuente | ✅ |
+
 ## 4. Despliegue con Docker Compose
 
 Probado con Docker 29.4 y Compose v5.1. Los puertos del host se reasignaron solo para la prueba, porque el equipo tenía otros proyectos ocupándolos.
@@ -170,11 +194,11 @@ Accesibilidad revisada en el código:
 | 10 | **Crítico.** Con el n8n real, toda consulta terminaba en `COMMUNICATION_ERROR` a los 15 s | El `HttpClient` del JDK usa HTTP/2 y pide `Upgrade: h2c`; n8n lo trata como un websocket y no responde | `8c054dd` |
 | 11 | **Crítico.** Tras reiniciar el backend con PostgreSQL, toda alta daba 500 | `data.sql` reinicia los contadores de id en cada arranque | `11b3192` |
 | 12 | PostgreSQL y Qdrant se publicaban en todas las interfaces de red; faltaban healthchecks | Configuración del Compose | `0d56832` |
+| 13 | El flujo 02 tenía 2 nodos duplicados (mismo nombre e `id`) | Copia de nodos al armar el flujo | `b101c15` |
+| 14 | Un artículo nuevo, editado o desactivado no se reflejaba en Qdrant hasta reindexar a mano | Nadie llamaba al flujo 01 | `8e0eefb` |
+| 15 | La colección de Qdrant había que crearla a mano | El flujo 01 suponía que existía | `a036f64` |
 
 ## 7. Pendientes
 
 - Probar una consulta real con OpenRouter y Qdrant, con las claves del equipo (escenarios 1, 2 y 3).
-- Flujo 02: quitar los dos nodos duplicados, que tienen el mismo nombre y el mismo `id`.
-- Indexación automática: hoy el flujo 01 se dispara a mano, así que un artículo nuevo o editado no se encuentra hasta reindexar.
-- Integrar en `main` los dos últimos commits de la rama `mafe` (6 archivos en conflicto).
 - Pruebas de extremo a extremo del frontend en navegador (hoy son capturas revisadas manualmente).

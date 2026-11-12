@@ -87,20 +87,20 @@ docker compose up -d --build
 
 Pasos después del primer arranque:
 
-1. **Crear la colección en Qdrant** con la dimensión del modelo de embeddings:
-   ```bash
-   curl -X PUT http://localhost:6333/collections/knowledge_articles \
-     -H "Content-Type: application/json" \
-     -d '{"vectors": {"size": 1536, "distance": "Cosine"}}'
-   ```
-2. **Importar los flujos** de `n8n/workflows/` desde la interfaz de n8n (*Workflows → Import from File*). La CLI (`n8n import:workflow`) espera una lista de flujos, así que con ella hay que envolver cada archivo en `[ … ]`.
-3. **Crear las credenciales en n8n** (tipo *Header Auth*):
-   - Webhook del flujo 02: nombre `N8N_WEBHOOK_AUTH_HEADER` y valor `N8N_WEBHOOK_AUTH_VALUE` del `.env`.
+1. **Importar los flujos** de `n8n/workflows/` desde la interfaz de n8n (*Workflows → Import from File*). La CLI (`n8n import:workflow`) espera una lista de flujos, así que con ella hay que envolver cada archivo en `[ … ]`.
+2. **Crear las credenciales en n8n** (tipo *Header Auth*):
+   - Webhooks de los flujos 01 y 02: nombre `N8N_WEBHOOK_AUTH_HEADER` y valor `N8N_WEBHOOK_AUTH_VALUE` del `.env`.
    - OpenRouter: `Authorization: Bearer <clave>`.
    - Qdrant, si tiene clave.
 
    En los JSON todas las credenciales tienen el id `REEMPLAZAR`: después de importar, abre cada nodo con credencial (Webhook, embeddings, Qdrant y LLM) y elige la que corresponde.
-4. **Activar los flujos** y ejecutar el flujo 01 para indexar los artículos verificados.
+3. **Activar los flujos** e indexar una vez todos los artículos verificados. La colección de Qdrant se crea sola con la dimensión de `EMBEDDING_DIM`:
+   ```bash
+   curl -X POST http://localhost:5678/webhook/index-knowledge-base \
+     -H "X-N8N-Token: <N8N_WEBHOOK_AUTH_VALUE>" -H "Content-Type: application/json" \
+     -d '{"all": true}'
+   ```
+   Desde ahí el backend mantiene el índice al día: al editar, verificar, activar o desactivar un artículo llama al flujo 01, que indexa ese artículo o borra su vector.
 
 > **Probado** con Docker 29 y Compose v5 ([detalle](docs/pruebas/README.md#3b-auditoría-con-los-servicios-reales)):
 > - los 5 servicios arrancan, y el backend, Qdrant y n8n pasan sus healthchecks;
@@ -119,6 +119,7 @@ Pasos después del primer arranque:
 |---|---|---|
 | `DB_URL`, `DB_DRIVER`, `DB_USERNAME`, `DB_PASSWORD` | backend | Base de datos. Por defecto H2 en memoria |
 | `N8N_WEBHOOK_URL` | backend | Webhook del flujo 02 |
+| `N8N_INDEX_WEBHOOK_URL` | backend | Webhook del flujo 01 para reindexar un artículo cuando cambia. Vacío = desactivado |
 | `N8N_WEBHOOK_AUTH_HEADER`, `N8N_WEBHOOK_AUTH_VALUE` | backend | Encabezado de autenticación hacia n8n. Vacío = no se envía |
 | `CALLBACK_TOKEN` | backend y n8n | Token `X-Callback-Token` de los callbacks. Vacío = no se exige |
 | `CORS_ALLOWED_ORIGINS` | backend | Orígenes permitidos para el frontend |
@@ -131,18 +132,19 @@ Las claves nunca se escriben en el código ni en el repositorio: van en `.env` o
 ## Pruebas
 
 ```bash
-cd backend && mvn test                      # backend: 24 pruebas de integración
+cd backend && mvn test                      # backend: 27 pruebas de integración
 node --test "frontend/tests/*.test.mjs"     # frontend: 23 pruebas unitarias (Node 18+)
 ```
 
-Las 24 pruebas de integración del backend con MockMvc sobre H2 y los datos iniciales. Cubren:
+Las 27 pruebas de integración del backend con MockMvc sobre H2 y los datos iniciales. Cubren:
 
 - validaciones y la regla de incidentes cerrados;
 - filtros de analítica;
 - verificación de artículos;
 - estados `NO_RESULTS` y `FAILED`;
 - una sola calificación por respuesta;
-- el filtro del token de callback.
+- el filtro del token de callback;
+- el aviso de reindexación a n8n solo después del commit.
 
 ## Equipo y ramas
 

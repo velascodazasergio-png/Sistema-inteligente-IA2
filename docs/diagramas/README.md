@@ -180,12 +180,15 @@ sequenceDiagram
 
 ```mermaid
 flowchart TD
+    S["Spring Boot, tras editar, verificar o activar/desactivar un artículo (asíncrono, después del commit)"] --> A
+    M["Carga inicial manual: all = true"] --> A
     A[Webhook index-knowledge-base] --> B[Validar solicitud]
     B --> C["GET /api/v1/knowledge-articles (uno o todos)"]
     C --> D{¿Activo y verificado?}
     D -- No --> E[Eliminar su vector en Qdrant]
     D -- Sí --> F["Embeddings en lote (OpenRouter)"]
-    F --> G[Upsert de puntos en Qdrant con metadatos]
+    F --> Q[Crear la colección si no existe]
+    Q --> G[Upsert de puntos en Qdrant con metadatos]
     E --> H[Resumen de la indexación]
     G --> H
 ```

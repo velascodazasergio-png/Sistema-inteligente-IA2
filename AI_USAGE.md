@@ -59,7 +59,7 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 
 ### Verificación
 
-- `mvn test`: 24 pruebas de integración en verde. `node --test`: 23 pruebas unitarias del frontend en verde.
+- `mvn test`: 27 pruebas de integración en verde. `node --test`: 23 pruebas unitarias del frontend en verde.
 - Flujo de IA de punta a punta probado con un n8n simulado que respeta el contrato del flujo 02: respondida, sin resultados, fallo y error de conexión.
 - Capturas en navegador sin interfaz, en escritorio y en móvil, de cada módulo con datos reales del backend.
 - Los cálculos del cliente se contrastaron con los del SQL: por ejemplo, 86,67 % de resolución y 4,74 h de tiempo promedio.
