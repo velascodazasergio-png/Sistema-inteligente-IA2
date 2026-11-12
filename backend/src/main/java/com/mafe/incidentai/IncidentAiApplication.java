@@ -1,13 +1,14 @@
-package com.mafe.incidentesia;
+package com.mafe.incidentai;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+// Clase principal que inicia el contexto de Spring Boot
 @SpringBootApplication
-public class IncidentesIaApplication {
+public class IncidentAiApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(IncidentesIaApplication.class, args);
+        SpringApplication.run(IncidentAiApplication.class, args);
     }
 }
 
