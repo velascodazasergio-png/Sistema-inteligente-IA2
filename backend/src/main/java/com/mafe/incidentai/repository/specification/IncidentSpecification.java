@@ -1,6 +1,7 @@
 package com.mafe.incidentai.repository.specification;
 
 import com.mafe.incidentai.domain.entity.Incident;
+import com.mafe.incidentai.domain.enums.IncidentStatus;
 import com.mafe.incidentai.domain.enums.Priority;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,6 +20,7 @@ public final class IncidentSpecification {
     public static Specification<Incident> withDynamicFilters(
             Long categoryId,
             Priority priority,
+            IncidentStatus status,
             Long userId,
             LocalDateTime startDate,
             LocalDateTime endDate) {
@@ -34,6 +36,11 @@ public final class IncidentSpecification {
             // 2. Si se envio priority, filtramos por el nivel de prioridad del incidente
             if (priority != null) {
                 predicates.add(criteriaBuilder.equal(root.get("priority"), priority));
+            }
+
+            // Si se envio status, filtramos por el estado actual del incidente
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
             }
 
             // 3. Si se envio userId, filtramos por el usuario que reporto el incidente

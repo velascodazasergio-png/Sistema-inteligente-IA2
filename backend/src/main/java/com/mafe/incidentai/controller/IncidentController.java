@@ -1,5 +1,6 @@
 package com.mafe.incidentai.controller;
 
+import com.mafe.incidentai.domain.enums.IncidentStatus;
 import com.mafe.incidentai.domain.enums.Priority;
 import com.mafe.incidentai.dto.CreateIncidentRequestDTO;
 import com.mafe.incidentai.dto.IncidentResponseDTO;
@@ -45,18 +46,26 @@ public class IncidentController {
         return ResponseEntity.ok(response);
     }
 
+    // Devuelve el detalle de un incidente
+    @Operation(summary = "Get an incident by ID")
+    @GetMapping("/{incidentId}")
+    public ResponseEntity<IncidentResponseDTO> getIncident(@PathVariable Long incidentId) {
+        return ResponseEntity.ok(incidentService.getIncident(incidentId));
+    }
+
     // Consulta incidentes aplicando filtros opcionales por categoria, prioridad, usuario y fechas
-    @Operation(summary = "Filter incidents dynamically by category, priority, user, and date range")
+    @Operation(summary = "Filter incidents dynamically by category, priority, status, user, and date range")
     @GetMapping
     public ResponseEntity<List<IncidentResponseDTO>> filterIncidents(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Priority priority,
+            @RequestParam(required = false) IncidentStatus status,
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
         List<IncidentResponseDTO> results = incidentService.filterIncidents(
-                categoryId, priority, userId, startDate, endDate
+                categoryId, priority, status, userId, startDate, endDate
         );
         return ResponseEntity.ok(results);
     }
