@@ -20,16 +20,16 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Controlador REST para registrar, consultar, actualizar estados y filtrar incidentes
+// Controlador REST para registrar, consultar, actualizar informacion, cambiar estados y filtrar incidentes (RF01)
 @RestController
 @RequestMapping("/api/v1/incidents")
 @RequiredArgsConstructor
-@Tag(name = "Incidents Management", description = "Endpoints para crear, consultar, actualizar estado y filtrar incidentes tecnologicos")
+@Tag(name = "Incidents Management (RF01)", description = "Endpoints para crear, consultar, actualizar informacion, cambiar estado y filtrar incidentes tecnologicos")
 public class IncidentController {
 
     private final IncidentService incidentService;
 
-    // Registra un nuevo incidente validando el DTO de entrada con @Valid
+    // 1. Registra un nuevo incidente validando el DTO de entrada con @Valid
     @Operation(summary = "Register a new technological incident", description = "El incidente nace en estado OPEN.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Incidente registrado"),
@@ -44,7 +44,7 @@ public class IncidentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // Devuelve el detalle de un incidente
+    // 2. Devuelve el detalle de un incidente por su identificador
     @Operation(summary = "Get an incident by ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Detalle del incidente"),
@@ -55,7 +55,22 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.getIncident(incidentId));
     }
 
-    // Actualiza el estado de un incidente existente
+    // 3. Actualiza la informacion general de un incidente existente (titulo, descripcion, prioridad, categoria, usuario)
+    @Operation(summary = "Update an existing incident's information")
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Informacion del incidente actualizada"),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
+        @ApiResponse(responseCode = "404", description = "Incidente, usuario o categoria no encontrados"),
+        @ApiResponse(responseCode = "409", description = "El incidente ya esta cerrado (CLOSED) o la categoria esta inactiva")
+    })
+    @PutMapping("/{incidentId}")
+    public ResponseEntity<IncidentResponseDTO> updateIncident(
+            @PathVariable Long incidentId,
+            @Valid @RequestBody CreateIncidentRequestDTO request) {
+        return ResponseEntity.ok(incidentService.updateIncident(incidentId, request));
+    }
+
+    // 4. Actualiza el estado de un incidente existente
     @Operation(summary = "Update the status of an existing incident")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Estado actualizado"),
@@ -71,7 +86,7 @@ public class IncidentController {
         return ResponseEntity.ok(response);
     }
 
-    // Consulta incidentes aplicando filtros opcionales por categoria, prioridad, estado, usuario y fechas
+    // 5. Consulta incidentes aplicando filtros opcionales por categoria, prioridad, estado, usuario y fechas
     @Operation(summary = "Filter incidents dynamically by category, priority, status, user, and date range")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Incidentes que cumplen los filtros, del mas reciente al mas antiguo"),

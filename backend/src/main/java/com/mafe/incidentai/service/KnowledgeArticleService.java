@@ -13,6 +13,7 @@ import com.mafe.incidentai.repository.KnowledgeArticleRepository;
 import com.mafe.incidentai.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,6 +30,7 @@ public class KnowledgeArticleService {
     private final KnowledgeArticleRepository knowledgeArticleRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     // Lista articulos con filtros opcionales: texto en titulo o contenido, categoria, activo y verificado
     @Transactional(readOnly = true)
@@ -84,7 +86,10 @@ public class KnowledgeArticleService {
         if (contentChanged) {
             article.setVerified(false);
         }
-        return toDTO(knowledgeArticleRepository.save(article));
+        KnowledgeArticle saved = knowledgeArticleRepository.save(article);
+        // Reindexa (o borra el vector si quedo sin verificar) cuando la transaccion se confirme
+        eventPublisher.publishEvent(new KnowledgeArticleChangedEvent(saved.getId()));
+        return toDTO(saved);
     }
 
     // Activa/desactiva o verifica un articulo
@@ -100,7 +105,10 @@ public class KnowledgeArticleService {
         if (request.verified() != null) {
             article.setVerified(request.verified());
         }
-        return toDTO(knowledgeArticleRepository.save(article));
+        KnowledgeArticle saved = knowledgeArticleRepository.save(article);
+        // Indexa al verificar/activar y borra el vector al desactivar
+        eventPublisher.publishEvent(new KnowledgeArticleChangedEvent(saved.getId()));
+        return toDTO(saved);
     }
 
     private void apply(KnowledgeArticle article, KnowledgeArticleRequestDTO request) {

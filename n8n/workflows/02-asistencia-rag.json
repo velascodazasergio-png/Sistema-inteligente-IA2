@@ -563,32 +563,6 @@
         800
       ],
       "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "const c = $('Procesar candidatos').first().json;\nconst thr = Number($env.RAG_SCORE_THRESHOLD);\nreturn [{ json: {\n  aiQueryId: c.aiQueryId,\n  suggestedDiagnosis: 'Sin información suficiente en la base de conocimiento verificada para resolver este incidente. No se generó ninguna solución.',\n  solutionSteps: 'Advertencias:\\n- No se encontraron artículos verificados con similitud igual o superior al umbral configurado (' + thr + ').',\n  confidenceScore: 0,\n  processingTimeMs: Date.now() - c.t0,\n  sources: []\n} }];"
-      },
-      "id": "33237147-0a21-4b41-b0be-8f673fa0fa26",
-      "name": "Armar respuesta: sin resultados",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2070,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const c = $('Filtrar fuentes y construir contexto').first().json;\nconst thr = Number($env.RAG_SCORE_THRESHOLD);\nreturn [{ json: {\n  aiQueryId: c.aiQueryId,\n  suggestedDiagnosis: 'Sin información suficiente en la base de conocimiento verificada para resolver este incidente. No se generó ninguna solución.',\n  solutionSteps: 'Advertencias:\\n- Los artículos recuperados ya no existen, están desactivados o no están verificados.',\n  confidenceScore: 0,\n  processingTimeMs: Date.now() - c.t0,\n  sources: []\n} }];"
-      },
-      "id": "4f3d6da7-9e4b-4dc7-9abf-c3636f17c1f1",
-      "name": "Armar respuesta: sin fuentes válidas",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3210,
-        520
-      ]
     }
   ],
   "connections": {
