@@ -35,6 +35,7 @@ services:
       H2_CONSOLE_ENABLED: "false"
       SHOW_SQL: "false"
       N8N_WEBHOOK_URL: http://n8n:5678/webhook/analyze-incident
+      N8N_INDEX_WEBHOOK_URL: http://n8n:5678/webhook/index-knowledge-base
       N8N_WEBHOOK_AUTH_HEADER: ${N8N_WEBHOOK_AUTH_HEADER:-X-N8N-Token}
       N8N_WEBHOOK_AUTH_VALUE: ${N8N_WEBHOOK_AUTH_VALUE:-}
       CALLBACK_TOKEN: ${CALLBACK_TOKEN:-}
