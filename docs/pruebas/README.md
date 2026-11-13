@@ -60,7 +60,7 @@ mvn test
 
 ## 1b. Pruebas unitarias del frontend
 
-**Ubicación:** [`frontend/tests/logic.test.mjs`](../../frontend/tests/logic.test.mjs). Usan el ejecutor de pruebas que trae Node 18 o superior, sin dependencias ni navegador.
+**Ubicación:** [`frontend/tests/logic.test.mjs`](../../frontend/tests/logic.test.mjs). Usan el ejecutor de pruebas que trae Node (desde la versión 18), sin dependencias ni navegador. El comando con el patrón `*.test.mjs` requiere Node 22 o superior; con Node 18 a 20 se indica el archivo: `node --test frontend/tests/logic.test.mjs`.
 
 ```bash
 node --test "frontend/tests/*.test.mjs"

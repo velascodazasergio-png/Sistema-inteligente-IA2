@@ -140,7 +140,8 @@ Los degradados de los botones usan tonos oscuros para que el texto blanco cumpla
 ## Pruebas
 
 ```bash
-# Desde la raíz del repositorio (Node 18 o superior, sin dependencias)
+# Desde la raíz del repositorio, sin dependencias. El patrón con * requiere Node 22+;
+# con Node 18–20 usa: node --test frontend/tests/logic.test.mjs
 node --test "frontend/tests/*.test.mjs"
 ```
 
