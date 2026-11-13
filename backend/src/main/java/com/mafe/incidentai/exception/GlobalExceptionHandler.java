@@ -1,8 +1,11 @@
 package com.mafe.incidentai.exception;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -14,6 +17,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 // Manejador global de excepciones que intercepta errores en todos los controladores REST
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -83,9 +87,24 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // 4. Respaldo general para cualquier error inesperado (HTTP 500) sin exponer trazas sensibles al cliente
+    // 4. Respaldo general. Las excepciones propias de Spring MVC ya traen su codigo HTTP
+    //    (404 ruta inexistente, 405 metodo no permitido, 415 formato no soportado, 400 parametro faltante...):
+    //    se respeta ese codigo en lugar de convertirlas en 500.
+    //    Lo demas es un error inesperado (HTTP 500): se registra en el log y no se exponen trazas al cliente.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
+        if (ex instanceof ErrorResponse errorResponse && !errorResponse.getStatusCode().is5xxServerError()) {
+            HttpStatusCode status = errorResponse.getStatusCode();
+            HttpStatus known = HttpStatus.resolve(status.value());
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("timestamp", LocalDateTime.now().toString());
+            body.put("status", status.value());
+            body.put("error", known != null ? known.getReasonPhrase() : "Error");
+            body.put("message", errorResponse.getBody().getDetail());
+            return ResponseEntity.status(status).body(body);
+        }
+
+        log.error("Unexpected error while processing the request", ex);
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
         body.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());

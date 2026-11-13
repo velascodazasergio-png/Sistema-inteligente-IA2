@@ -59,9 +59,12 @@ public class AiAssistanceService {
         // Guardamos primero la consulta en estado PENDING para obtener su ID autogenerado
         AiQuery savedQuery = aiQueryRepository.save(aiQuery);
 
-        // Actualizamos el estado del incidente a IN_AI_ANALYSIS
-        incident.setStatus(IncidentStatus.IN_AI_ANALYSIS);
-        incidentRepository.save(incident);
+        // Solo un incidente abierto pasa a IN_AI_ANALYSIS. Consultar a la IA sobre uno ya asignado o resuelto
+        // no lo reabre: si no, cada consulta bajaria el porcentaje de resolucion del dashboard.
+        if (incident.getStatus() == IncidentStatus.OPEN) {
+            incident.setStatus(IncidentStatus.IN_AI_ANALYSIS);
+            incidentRepository.save(incident);
+        }
 
         // Disparamos la peticion HTTP hacia el webhook de n8n
         boolean deliveredToN8n = n8nWebhookClient.triggerIncidentAnalysis(savedQuery.getId(), request);
