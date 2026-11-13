@@ -90,10 +90,9 @@ Pasos después del primer arranque:
 1. **Importar los flujos** de `n8n/workflows/` desde la interfaz de n8n (*Workflows → Import from File*). La CLI (`n8n import:workflow`) espera una lista de flujos, así que con ella hay que envolver cada archivo en `[ … ]`.
 2. **Crear las credenciales en n8n** (tipo *Header Auth*):
    - Webhooks de los flujos 01 y 02: nombre `N8N_WEBHOOK_AUTH_HEADER` y valor `N8N_WEBHOOK_AUTH_VALUE` del `.env`.
-   - OpenRouter: `Authorization: Bearer <clave>`.
    - Qdrant, si tiene clave.
 
-   En los JSON todas las credenciales tienen el id `REEMPLAZAR`: después de importar, abre cada nodo con credencial (Webhook, embeddings, Qdrant y LLM) y elige la que corresponde.
+   En los JSON todas las credenciales tienen el id `REEMPLAZAR`: después de importar, abre cada nodo con credencial (Webhook y Qdrant) y elige la que corresponde. La clave de OpenRouter **no** va en n8n: se lee de `OPENROUTER_API_KEY` en el `.env`.
 3. **Activar los flujos** e indexar una vez todos los artículos verificados. La colección de Qdrant se crea sola con la dimensión de `EMBEDDING_DIM`:
    ```bash
    curl -X POST http://localhost:5678/webhook/index-knowledge-base \
@@ -124,6 +123,7 @@ Pasos después del primer arranque:
 | `CALLBACK_TOKEN` | backend y n8n | Token `X-Callback-Token` de los callbacks. Vacío = no se exige |
 | `CORS_ALLOWED_ORIGINS` | backend | Orígenes permitidos para el frontend |
 | `SPRING_BASE_URL`, `QDRANT_URL`, `QDRANT_COLLECTION` | n8n | Servicios que consultan los flujos |
+| `OPENROUTER_API_KEY` | n8n | Clave de OpenRouter (solo la clave, sin `Bearer`). Tras cambiarla: `docker compose up -d n8n` |
 | `OPENROUTER_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_DIM`, `LLM_MODEL` | n8n | Modelos de embeddings y de chat |
 | `RAG_SCORE_THRESHOLD`, `RAG_TOP_K`, `MIN_CHARS_DESCRIPCION` | n8n | Umbral de similitud, cantidad de fuentes y largo mínimo de la descripción |
 
@@ -255,9 +255,10 @@ sed -i "s/^N8N_WEBHOOK_AUTH_VALUE=.*/N8N_WEBHOOK_AUTH_VALUE=$(openssl rand -hex 
 sed -i "s/^CALLBACK_TOKEN=.*/CALLBACK_TOKEN=$(openssl rand -hex 24)/" .env
 ```
 
-Luego abre `.env` (por ejemplo, `nano .env`) y completa los modelos de OpenRouter:
+Luego abre `.env` (por ejemplo, `nano .env`) y completa la clave y los modelos de OpenRouter. La clave se crea en https://openrouter.ai/keys y va sin `Bearer`:
 
 ```
+OPENROUTER_API_KEY=sk-or-v1-...
 EMBEDDING_MODEL=openai/text-embedding-3-small
 EMBEDDING_DIM=1536
 LLM_MODEL=openai/gpt-4o-mini
@@ -296,17 +297,16 @@ Al arrancar, el backend crea las tablas y carga los datos iniciales en PostgreSQ
 ### 6. Configurar n8n (solo la primera vez)
 
 1. **Crear la cuenta de administrador.** Abre http://localhost:5678; n8n pide nombre, correo y contraseña. Es una cuenta local y no envía correos.
-2. **Crear las credenciales** en *Credentials → Add credential → Header Auth*:
+2. **Crear las credenciales** en *Credentials → Add credential → Header Auth*. La clave de OpenRouter no se configura aquí: los flujos la leen de `OPENROUTER_API_KEY` en el `.env` (paso 4).
 
    | Nombre de la credencial | Name | Value |
    |---|---|---|
    | `Webhook entrante (Spring Boot)` | `X-N8N-Token` | el valor de `N8N_WEBHOOK_AUTH_VALUE` del `.env` |
-   | `OpenRouter API Key` | `Authorization` | `Bearer <tu clave de OpenRouter>` |
    | `Qdrant API Key` | `api-key` | cualquier texto (Qdrant no tiene clave en esta configuración) |
 
    Para ver el valor del token: `grep N8N_WEBHOOK_AUTH_VALUE .env`.
 3. **Importar los dos flujos** desde *Workflows → Import from File*, con los archivos `n8n/workflows/01-indexacion-base-conocimiento.json` y `n8n/workflows/02-asistencia-rag.json`.
-4. **Asignar las credenciales.** En cada flujo, abre los nodos con credencial (Webhook, embeddings, Qdrant y LLM) y elige la que corresponde. En los JSON aparecen con el id `REEMPLAZAR`.
+4. **Asignar las credenciales.** En cada flujo, abre los nodos con credencial (Webhook y Qdrant) y elige la que corresponde. En los JSON aparecen con el id `REEMPLAZAR`.
 5. **Activar los flujos.** Guarda cada uno y enciende el interruptor **Active** (arriba a la derecha).
 6. **Indexar la base de conocimiento** una vez. La colección de Qdrant se crea sola:
 
@@ -385,5 +385,5 @@ Docker vuelve a encender los contenedores al reiniciar el equipo solo si el serv
 | `required variable POSTGRES_PASSWORD is missing` | Falta el `.env`: repite el paso 4 |
 | La página dice "API sin conexión" | El backend no está *healthy* (revisa `docker compose ps` y los logs), o la página se abrió como archivo (`file://`). En *Configuración*, la URL debe ser `http://localhost:8080` |
 | Las consultas a la IA quedan en "Error de conexión" | n8n está apagado o el flujo 02 no está activo, o la credencial del webhook no coincide con `N8N_WEBHOOK_AUTH_VALUE` |
-| Las consultas a la IA quedan en "Error en la IA" | Clave de OpenRouter ausente o inválida, o `EMBEDDING_DIM` no coincide con el modelo. El código exacto aparece en *Historial* |
+| Las consultas a la IA quedan en "Error en la IA" | Clave de OpenRouter ausente o inválida (revisa `OPENROUTER_API_KEY` y ejecuta `docker compose up -d n8n`), sin créditos, o `EMBEDDING_DIM` no coincide con el modelo. El mensaje del *Historial* indica la causa |
 | El asistente siempre responde "Sin resultados" | No se indexó la base (paso 6.6) o `RAG_SCORE_THRESHOLD` es demasiado alto para el modelo elegido |

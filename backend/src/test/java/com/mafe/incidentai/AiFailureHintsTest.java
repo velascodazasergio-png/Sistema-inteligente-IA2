@@ -11,7 +11,7 @@ class AiFailureHintsTest {
     @Test
     void invalidApiKeyPointsToTheN8nCredential() {
         assertThat(AiFailureHints.hint("EMBEDDING_FALLO", "401 - \"{\\\"error\\\":{\\\"message\\\":\\\"User not found.\\\"}}\""))
-                .contains("rechazó la clave").contains("OpenRouter API Key");
+                .contains("rechazó la clave").contains("OPENROUTER_API_KEY");
     }
 
     @Test
@@ -26,6 +26,7 @@ class AiFailureHintsTest {
         assertThat(AiFailureHints.hint("CONFIGURACION_INVALIDA", "CONFIG: dimensión 768 distinta de EMBEDDING_DIM=1536"))
                 .contains("EMBEDDING_DIM");
         assertThat(AiFailureHints.hint("TIMEOUT_QDRANT_NO_DISPONIBLE", "timeout of 15000ms exceeded")).contains("Qdrant");
+        assertThat(AiFailureHints.hint("QDRANT_NO_DISPONIBLE", "socket hang up")).contains("Se cortó la conexión");
     }
 
     @Test

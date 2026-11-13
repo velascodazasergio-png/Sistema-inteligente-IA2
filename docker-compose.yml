@@ -85,6 +85,7 @@ services:
       QDRANT_URL: http://qdrant:6333
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-knowledge_articles}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
       EMBEDDING_MODEL: ${EMBEDDING_MODEL}
       EMBEDDING_DIM: ${EMBEDDING_DIM}
       LLM_MODEL: ${LLM_MODEL}
