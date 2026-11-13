@@ -167,7 +167,10 @@ public class AiAssistanceService {
 
         aiQuery.setQueryStatus(QueryStatus.FAILED);
         aiQuery.setFailureCode(report.errorCode().trim());
-        aiQuery.setFailureMessage(report.message().trim());
+        // Mensaje de n8n + indicacion de que revisar, deducida del detalle tecnico (que no se guarda)
+        String hint = AiFailureHints.hint(report.errorCode(), report.technicalDetail());
+        String message = hint == null ? report.message().trim() : report.message().trim() + " " + hint;
+        aiQuery.setFailureMessage(message.length() > 500 ? message.substring(0, 500) : message);
         aiQueryRepository.save(aiQuery);
 
         Map<String, Object> result = new LinkedHashMap<>();

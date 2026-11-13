@@ -325,7 +325,10 @@ export function lineChart(container, options) {
       const guide = svgEl('line', { y1: m.top, y2: m.top + ih, class: 'line-guide' }, svg);
       const slot = n > 1 ? iw / (n - 1) : iw;
       labels.forEach((label, i) => {
-        const hit = svgEl('rect', { x: xAt(i) - slot / 2, y: m.top, width: slot, height: ih, class: 'hit' }, svg);
+        // Franja centrada en el punto, recortada al área del gráfico (el primero y el último quedaban medio afuera)
+        const x0 = Math.max(m.left, xAt(i) - slot / 2);
+        const x1 = Math.min(m.left + iw, xAt(i) + slot / 2);
+        const hit = svgEl('rect', { x: x0, y: m.top, width: Math.max(1, x1 - x0), height: ih, class: 'hit' }, svg);
         hit.addEventListener('pointerenter', () => {
           guide.setAttribute('x1', xAt(i));
           guide.setAttribute('x2', xAt(i));

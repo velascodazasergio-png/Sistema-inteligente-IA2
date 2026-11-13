@@ -69,9 +69,14 @@ function initSidebar() {
     toggleLabel.textContent = text;
   };
 
-  // Sin preferencia guardada: contraída en pantallas medianas.
+  // Sin preferencia guardada: contraída en pantallas medianas, y sigue el tamaño de la ventana
+  // (abrir la página en una ventana pequeña y maximizarla expande el menú).
+  const mediumScreen = window.matchMedia('(max-width: 1023px)');
   const saved = readSidebarPref();
-  setCollapsed(saved ? saved === 'collapsed' : window.matchMedia('(max-width: 1023px)').matches);
+  setCollapsed(saved ? saved === 'collapsed' : mediumScreen.matches);
+  mediumScreen.addEventListener('change', (event) => {
+    if (!readSidebarPref()) setCollapsed(event.matches);
+  });
 
   toggle.addEventListener('click', () => {
     const collapsed = app.dataset.sidebar !== 'collapsed';

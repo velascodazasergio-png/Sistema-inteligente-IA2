@@ -143,3 +143,104 @@
     width: auto;
   }
 }
+
+/* ---------- Ajustes de ancho en todas las pantallas ---------- */
+
+/* Un <select> mide lo que su opción más larga ("Cloud Infrastructure & DevOps"):
+   sin esto, en pantallas angostas ensancha la tarjeta de filtros. */
+.input,
+.field {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* Las pilas de secciones (.stack) son grids: con minmax(0, 1fr) sus tarjetas pueden encogerse
+   por debajo del ancho mínimo de su contenido (el origen de los desbordes en móvil). */
+.stack {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Mismo caso en la lista de recientes y en las tarjetas de la base de conocimiento:
+   los títulos con "…" medían todo su texto y ensanchaban la página en móvil. */
+.recent-list,
+.recent-item__main,
+.kb-grid > li {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.kb-grid > li,
+.kb-card {
+  min-width: 0;
+}
+
+/* Línea secundaria (#id · categoría · fecha): sin recorte su texto salía de la fila */
+.recent-item__main .cell-muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kb-card__foot {
+  flex-wrap: wrap;
+}
+
+.kb-card__foot .person {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
+/* Tabla de datos para lectores de pantalla: las tablas ignoran width: 1px y, con nowrap,
+   medían todo su texto en una línea. Ajustando el texto y anclada a la izquierda no ensancha la página. */
+table.sr-only {
+  left: 0;
+  top: 0;
+  white-space: normal;
+}
+
+@media (max-width: 767px) {
+  /* El título de la barra superior se recorta con "…" en vez de mandar los botones a otro renglón */
+  .topbar__heading {
+    flex: 1 1 0;
+  }
+
+  .topbar__actions {
+    flex-shrink: 0;
+  }
+
+  /* Resumen del dashboard: una columna que puede encogerse; chips y botones se acomodan */
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .hero__chip {
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .hero__actions .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* Las etiquetas de estado ("Error en la IA") no se parten en varios renglones */
+.badge {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* Portátil con el menú abierto (1024–1279 px): el contenido queda en ~750 px */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  /* Buscador más angosto para que el título de la barra superior se lea completo */
+  .search {
+    width: min(240px, 100%);
+  }
+
+  /* Asistente en una columna: formulario arriba y conversación debajo */
+  .app:not([data-sidebar="collapsed"]) .assistant {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .app:not([data-sidebar="collapsed"]) .assistant__form {
+    position: static;
+  }
+}
