@@ -25,11 +25,25 @@ public class N8nWebhookClient {
     @Value("${n8n.webhook.assistance-url}")
     private String n8nWebhookUrl;
 
+    // Autenticacion del webhook (credencial "Header Auth" en n8n). Si el valor esta vacio no se envia.
+    @Value("${n8n.webhook.auth-header-name:X-N8N-Token}")
+    private String authHeaderName;
+
+    @Value("${n8n.webhook.auth-header-value:}")
+    private String authHeaderValue;
+
+    // Webhook del flujo 01 (indexacion). Vacio = la reindexacion automatica esta desactivada.
+    @Value("${n8n.webhook.index-url:}")
+    private String indexWebhookUrl;
+
     // Dispara el webhook de n8n enviando el ID de la consulta IA y los datos del incidente; retorna true si n8n respondio 2xx
     public boolean triggerIncidentAnalysis(Long aiQueryId, AiAssistanceRequestDTO request) {
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (authHeaderValue != null && !authHeaderValue.isBlank()) {
+                headers.set(authHeaderName, authHeaderValue);
+            }
 
             // Construimos el payload JSON incluyendo el aiQueryId para que n8n sepa a que consulta asociar su respuesta
             Map<String, Object> payload = new HashMap<>();
@@ -53,5 +67,23 @@ public class N8nWebhookClient {
             return false;
         }
     }
-}
 
+    // Pide al flujo 01 que reindexe un articulo. Nunca lanza excepciones: si falla, el articulo se
+    // puede reindexar despues llamando al mismo webhook (o con {"all": true} para todos).
+    public void triggerKnowledgeIndexing(Long articleId) {
+        if (indexWebhookUrl == null || indexWebhookUrl.isBlank()) {
+            return;
+        }
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            if (authHeaderValue != null && !authHeaderValue.isBlank()) {
+                headers.set(authHeaderName, authHeaderValue);
+            }
+            restTemplate.postForEntity(indexWebhookUrl, new HttpEntity<>(Map.of("articleId", articleId), headers), String.class);
+            log.info("Knowledge article {} sent to the n8n indexing workflow", articleId);
+        } catch (RestClientException ex) {
+            log.warn("Could not reindex knowledge article {} in n8n: {}", articleId, ex.getMessage());
+        }
+    }
+}

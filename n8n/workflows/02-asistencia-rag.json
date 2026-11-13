@@ -458,7 +458,16 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Token",
+              "value": "={{ $env.CALLBACK_TOKEN }}"
+            }
+          ]
+        }
       },
       "id": "96f739de-dac1-4515-a728-d80ce1c309e2",
       "name": "Enviar respuesta a Spring Boot",
@@ -534,10 +543,19 @@
         },
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify($json) }}"
+        "jsonBody": "={{ JSON.stringify($json) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Token",
+              "value": "={{ $env.CALLBACK_TOKEN }}"
+            }
+          ]
+        }
       },
       "id": "a86826f2-6c01-463a-a397-3f39462bde19",
-      "name": "Reportar fallo a Spring Boot (endpoint pendiente)",
+      "name": "Reportar fallo a Spring Boot",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
@@ -545,32 +563,6 @@
         800
       ],
       "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "jsCode": "const c = $('Procesar candidatos').first().json;\nconst thr = Number($env.RAG_SCORE_THRESHOLD);\nreturn [{ json: {\n  aiQueryId: c.aiQueryId,\n  suggestedDiagnosis: 'Sin información suficiente en la base de conocimiento verificada para resolver este incidente. No se generó ninguna solución.',\n  solutionSteps: 'Advertencias:\\n- No se encontraron artículos verificados con similitud igual o superior al umbral configurado (' + thr + ').',\n  confidenceScore: 0,\n  processingTimeMs: Date.now() - c.t0,\n  sources: []\n} }];"
-      },
-      "id": "33237147-0a21-4b41-b0be-8f673fa0fa26",
-      "name": "Armar respuesta: sin resultados",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2070,
-        520
-      ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const c = $('Filtrar fuentes y construir contexto').first().json;\nconst thr = Number($env.RAG_SCORE_THRESHOLD);\nreturn [{ json: {\n  aiQueryId: c.aiQueryId,\n  suggestedDiagnosis: 'Sin información suficiente en la base de conocimiento verificada para resolver este incidente. No se generó ninguna solución.',\n  solutionSteps: 'Advertencias:\\n- Los artículos recuperados ya no existen, están desactivados o no están verificados.',\n  confidenceScore: 0,\n  processingTimeMs: Date.now() - c.t0,\n  sources: []\n} }];"
-      },
-      "id": "4f3d6da7-9e4b-4dc7-9abf-c3636f17c1f1",
-      "name": "Armar respuesta: sin fuentes válidas",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        3210,
-        520
-      ]
     }
   ],
   "connections": {
@@ -810,7 +802,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
@@ -821,7 +813,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
@@ -832,7 +824,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }
@@ -843,7 +835,7 @@
       "main": [
         [
           {
-            "node": "Reportar fallo a Spring Boot (endpoint pendiente)",
+            "node": "Reportar fallo a Spring Boot",
             "type": "main",
             "index": 0
           }

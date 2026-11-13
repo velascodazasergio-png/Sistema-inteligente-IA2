@@ -10,7 +10,13 @@ import java.time.LocalDateTime;
 
 // Entidad que registra cada solicitud de analisis (prompt) enviada hacia n8n para un incidente
 @Entity
-@Table(name = "ai_queries")
+@Table(
+    name = "ai_queries",
+    indexes = {
+        @Index(name = "idx_ai_queries_incident_id", columnList = "incident_id"),
+        @Index(name = "idx_ai_queries_status", columnList = "query_status")
+    }
+)
 @Getter
 @Setter
 @NoArgsConstructor
@@ -30,6 +36,13 @@ public class AiQuery {
     @Column(name = "queried_at", nullable = false, updatable = false)
     private LocalDateTime queriedAt;
 
+    // Codigo y mensaje del fallo cuando la consulta termina en COMMUNICATION_ERROR o FAILED
+    @Column(name = "failure_code", length = 60)
+    private String failureCode;
+
+    @Column(name = "failure_message", length = 500)
+    private String failureMessage;
+
     // Dueno de la relacion N:1 con Incident
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "incident_id", nullable = false)
@@ -47,4 +60,3 @@ public class AiQuery {
         }
     }
 }
-

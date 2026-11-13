@@ -17,7 +17,7 @@ public record CreateIncidentRequestDTO(
 
         @Schema(description = "Descripcion detallada del sintoma o error tecnico", example = "HikariPool-1 timeouts occurring every 10 minutes on production node 2")
         @NotBlank(message = "Description is required")
-        @Size(min = 15, message = "Description must contain at least 15 characters")
+        @Size(min = 20, message = "Description must contain at least 20 characters")
         String description,
 
         @Schema(description = "Nivel de prioridad del incidente", example = "CRITICAL")

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Incidentes IA · Presentación final</title>
+<style>
+  :root {
+    --bg: #070b14; --surface: #0f1626; --surface-2: #141d30; --border: rgba(148, 163, 184, 0.16);
+    --text: #e6edf7; --muted: #9aa8bd; --faint: #6b7a90;
+    --primary: #3b82f6; --accent: #8b5cf6; --success: #10b981; --warning: #f59e0b; --danger: #ef4444;
+    --grad: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  body { overflow: hidden; }
+  .deck { position: relative; height: 100%; }
+  .slide {
+    position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center;
+    gap: 2.4vh; padding: 7vh 8vw; opacity: 0; visibility: hidden; transform: translateX(3vw);
+    transition: opacity .45s ease, transform .45s ease, visibility .45s;
+    background: radial-gradient(1200px 600px at 85% -10%, rgba(139, 92, 246, .16), transparent 60%),
+                radial-gradient(900px 500px at -10% 110%, rgba(59, 130, 246, .14), transparent 60%);
+  }
+  .slide.is-active { opacity: 1; visibility: visible; transform: none; }
+  .eyebrow { color: #93c5fd; font: 600 1.6vh/1 ui-monospace, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase; }
+  h1 { font-size: 6.4vh; line-height: 1.1; letter-spacing: -.02em; }
+  h2 { font-size: 4.6vh; line-height: 1.15; letter-spacing: -.01em; }
+  h3 { font-size: 2.4vh; margin-bottom: .8vh; }
+  p, li { font-size: 2.3vh; line-height: 1.5; color: var(--muted); }
+  strong { color: var(--text); }
+  .grad { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .grid { display: grid; gap: 2vh 2vw; }
+  .g2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .g3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .g4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .card { padding: 2.4vh 1.6vw; border: 1px solid var(--border); border-radius: 16px; background: linear-gradient(180deg, rgba(20,29,48,.9), rgba(14,21,36,.9)); }
+  .kpi b { display: block; font-size: 5vh; line-height: 1.1; color: var(--text); }
+  .kpi span { font-size: 1.8vh; color: var(--muted); }
+  .tag { display: inline-block; padding: .4vh .8vw; border-radius: 999px; font-size: 1.6vh; font-weight: 600; background: rgba(59,130,246,.15); color: #93c5fd; }
+  ul { padding-left: 1.2em; display: grid; gap: .8vh; }
+  table { width: 100%; border-collapse: collapse; font-size: 2vh; }
+  th, td { padding: 1vh .8vw; border-bottom: 1px solid var(--border); text-align: left; }
+  th { color: var(--faint); font-size: 1.6vh; text-transform: uppercase; letter-spacing: .06em; }
+  td { color: var(--muted); }
+  .shot { width: 100%; max-height: 58vh; object-fit: cover; object-position: top; border-radius: 14px; border: 1px solid var(--border); }
+  .flow { display: flex; flex-wrap: wrap; align-items: center; gap: 1vh .8vw; }
+  .node { padding: 1.4vh 1.2vw; border-radius: 12px; border: 1px solid var(--border); background: var(--surface-2); font-size: 2vh; color: var(--text); }
+  .arrow { color: var(--accent); font-size: 2.6vh; }
+  .bar { height: 1.4vh; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+  .bar i { display: block; height: 100%; background: var(--grad); }
+  .row { display: grid; grid-template-columns: 9vw 1fr 6vw; align-items: center; gap: 1vw; font-size: 1.9vh; color: var(--muted); }
+  .ok { color: var(--success); } .warn { color: var(--warning); }
+  .progress { position: fixed; left: 0; bottom: 0; height: 4px; background: var(--grad); transition: width .3s; }
+  .counter { position: fixed; right: 2vw; bottom: 2vh; color: var(--faint); font: 1.6vh ui-monospace, Consolas, monospace; }
+  .nav { position: fixed; left: 2vw; bottom: 1.6vh; display: flex; gap: .6vw; }
+  .nav button { width: 4.4vh; height: 4.4vh; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 2vh; cursor: pointer; }
+  .nav button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { .slide, .progress { transition: none; } }
+  @media (max-width: 800px) { .g3, .g4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } .g2 { grid-template-columns: 1fr; } }
+  @media print {
+    body { overflow: visible; }
+    .slide { position: relative; opacity: 1; visibility: visible; transform: none; height: 100vh; page-break-after: always; }
+    .progress, .counter, .nav { display: none; }
+  }
+</style>
+</head>
+<body>
+<main class="deck" id="deck" aria-roledescription="presentación">
+
+  <section class="slide" aria-label="Portada">
+    <span class="eyebrow">Proyecto final · Inteligencia Artificial</span>
+    <h1>Sistema inteligente de análisis de<br><span class="grad">incidentes tecnológicos</span> y asistencia mediante IA</h1>
+    <p>Gestión de incidentes, base de conocimiento verificada, analítica con SQL y un asistente RAG que responde solo con fuentes documentadas.</p>
+    <div class="flow"><span class="tag">Spring Boot</span><span class="tag">HTML · CSS · JS</span><span class="tag">n8n</span><span class="tag">Qdrant</span><span class="tag">OpenRouter</span><span class="tag">PostgreSQL</span></div>
+  </section>
+
+  <section class="slide" aria-label="Problema">
+    <span class="eyebrow">El problema</span>
+    <h2>El soporte técnico resuelve los mismos problemas una y otra vez</h2>
+    <div class="grid g3">
+      <div class="card kpi"><b>85,3 %</b><span>de los incidentes corresponde a solo 10 problemas recurrentes</span></div>
+      <div class="card kpi"><b>4,74 h</b><span>tiempo promedio de atención</span></div>
+      <div class="card kpi"><b>10</b><span>artículos verificados para 150 incidentes</span></div>
+    </div>
+    <p>El conocimiento para resolverlos existe, pero está disperso. Un asistente que lo recupere y lo cite acelera la atención sin inventar soluciones.</p>
+  </section>
+
+  <section class="slide" aria-label="Requisitos">
+    <span class="eyebrow">Alcance</span>
+    <h2>Requisitos funcionales cubiertos</h2>
+    <table>
+      <thead><tr><th>RF</th><th>Funcionalidad</th><th>Componente</th></tr></thead>
+      <tbody>
+        <tr><td>RF01</td><td>Registro, consulta y estados de incidentes</td><td>API + módulo Incidentes</td></tr>
+        <tr><td>RF02</td><td>Base de conocimiento: problema, síntomas, causa, solución, verificación</td><td>API + módulo Conocimiento</td></tr>
+        <tr><td>RF03</td><td>Indexación de artículos verificados en Qdrant</td><td>n8n · flujo 01</td></tr>
+        <tr><td>RF04–05</td><td>Búsqueda semántica y asistente RAG con fuentes y similitud</td><td>n8n · flujo 02 + Asistente</td></tr>
+        <tr><td>RF06–07</td><td>Indicadores con SQL y dashboard con filtros</td><td>Analítica + Dashboard</td></tr>
+        <tr><td>RF08</td><td>Historial de consultas y calificación de 1 a 5</td><td>Historial</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="slide" aria-label="Arquitectura">
+    <span class="eyebrow">Arquitectura</span>
+    <h2>El frontend solo habla con Spring Boot</h2>
+    <div class="flow">
+      <span class="node">Frontend<br><small>HTML · CSS · JS</small></span><span class="arrow">⇄</span>
+      <span class="node">Backend Spring Boot<br><small>API REST · JPA</small></span><span class="arrow">⇄</span>
+      <span class="node">PostgreSQL</span>
+    </div>
+    <div class="flow">
+      <span class="node">Backend</span><span class="arrow">→ webhook + token →</span>
+      <span class="node">n8n</span><span class="arrow">→</span><span class="node">Qdrant</span><span class="arrow">+</span><span class="node">OpenRouter</span>
+      <span class="arrow">→ callback + token →</span><span class="node">Backend</span>
+    </div>
+    <ul>
+      <li>Cada consulta queda registrada: <strong>Pendiente, Respondida, Sin resultados o Error</strong>.</li>
+      <li>n8n vuelve a validar en el backend que cada fuente siga activa y verificada antes de usarla.</li>
+      <li>Claves y tokens solo en variables de entorno y credenciales de n8n.</li>
+    </ul>
+  </section>
+
+  <section class="slide" aria-label="Dashboard">
+    <span class="eyebrow">RF07 · Dashboard</span>
+    <h2>Indicadores reales, filtros y comparación temporal</h2>
+    <img class="shot" src="../evidencias/frontend/01-dashboard.png" alt="Dashboard con indicadores, comparación con el periodo anterior y gráficos">
+  </section>
+
+  <section class="slide" aria-label="Asistente">
+    <span class="eyebrow">RF05 · Asistente IA</span>
+    <h2>Respuestas estructuradas y respaldadas por fuentes</h2>
+    <div class="grid g2">
+      <img class="shot" src="../evidencias/frontend/04-asistente.png" alt="Asistente IA con diagnóstico, solución, pasos y fuentes con similitud">
+      <div class="card"><ul>
+        <li><strong>Diagnóstico, solución sugerida y pasos</strong> en secciones separadas.</li>
+        <li><strong>Fuentes desplegables</strong> con el valor real de similitud.</li>
+        <li>Si no hay fuentes relevantes: <strong>"Información insuficiente"</strong>, sin inventar una solución.</li>
+        <li>Errores de n8n con su motivo; nunca una respuesta simulada.</li>
+        <li>Calificación de 1 a 5 estrellas guardada en la base.</li>
+      </ul></div>
+    </div>
+  </section>
+
+  <section class="slide" aria-label="Base de conocimiento">
+    <span class="eyebrow">RF02 · Base de conocimiento</span>
+    <h2>Solo el contenido verificado llega a la IA</h2>
+    <img class="shot" src="../evidencias/frontend/03-conocimiento.png" alt="Base de conocimiento en tarjetas con estados activo, pendiente e inactivo">
+  </section>
+
+  <section class="slide" aria-label="Resultados del análisis">
+    <span class="eyebrow">Informe de análisis de datos</span>
+    <h2>Lo que muestran los datos</h2>
+    <div class="grid g4">
+      <div class="card kpi"><b>150</b><span>incidentes</span></div>
+      <div class="card kpi"><b>86,67 %</b><span>resueltos</span></div>
+      <div class="card kpi"><b>4,74 h</b><span>tiempo promedio</span></div>
+      <div class="card kpi"><b>4,75 / 5</b><span>calificación de la IA</span></div>
+    </div>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Pendientes por semana</h3>
+        <div class="row"><span>Sem 38–41</span><div class="bar"><i style="width:0%"></i></div><span>0</span></div>
+        <div class="row"><span>Sem 42</span><div class="bar"><i style="width:12.5%"></i></div><span>1</span></div>
+        <div class="row"><span>Sem 43</span><div class="bar"><i style="width:50%"></i></div><span>4</span></div>
+        <div class="row"><span>Sem 44</span><div class="bar"><i style="width:87.5%"></i></div><span>7</span></div>
+        <div class="row"><span>Sem 45</span><div class="bar"><i style="width:100%"></i></div><span>8</span></div>
+      </div>
+      <div class="card">
+        <h3>Horas promedio por prioridad</h3>
+        <div class="row"><span>Crítica</span><div class="bar"><i style="width:100%"></i></div><span>5,13</span></div>
+        <div class="row"><span>Alta</span><div class="bar"><i style="width:93%"></i></div><span>4,78</span></div>
+        <div class="row"><span>Media</span><div class="bar"><i style="width:90%"></i></div><span>4,61</span></div>
+        <div class="row"><span>Baja</span><div class="bar"><i style="width:84%"></i></div><span>4,30</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" aria-label="Conclusiones">
+    <span class="eyebrow">Conclusiones</span>
+    <h2>Cuatro hallazgos respaldados por las consultas SQL</h2>
+    <div class="grid g2">
+      <div class="card"><h3 class="warn">1. Retraso reciente oculto</h3><p>Los pendientes pasan de 0 a 8 por semana; noviembre va en 52 % resuelto. El 86,67 % global no lo muestra.</p></div>
+      <div class="card"><h3 class="warn">2. La prioridad no acelera</h3><p>Los críticos tardan 5,13 h frente a 4,30 h de los de prioridad baja. Hace falta un SLA por prioridad.</p></div>
+      <div class="card"><h3 class="ok">3. Documentar es lo más rentable</h3><p>10 problemas son el 85,3 % del volumen, con solo 10 artículos verificados. Un artículo por problema recurrente amplía el alcance del RAG.</p></div>
+      <div class="card"><h3 class="ok">4. La IA promete, la muestra es pequeña</h3><p>4,75 estrellas y 0,915 de similitud promedio, pero en 4 respuestas. Hay que seguir calificando.</p></div>
+    </div>
+  </section>
+
+  <section class="slide" aria-label="Calidad">
+    <span class="eyebrow">Calidad</span>
+    <h2>Probado de punta a punta</h2>
+    <div class="grid g4">
+      <div class="card kpi"><b>50/50</b><span>pruebas automáticas: 27 del backend y 23 del frontend</span></div>
+      <div class="card kpi"><b>25/25</b><span>peticiones de la colección Postman</span></div>
+      <div class="card kpi"><b>4/4</b><span>escenarios del flujo de IA</span></div>
+      <div class="card kpi"><b>5</b><span>servicios con Docker Compose</span></div>
+    </div>
+    <ul>
+      <li>Reglas de negocio: incidentes cerrados, una sola calificación por respuesta, verificación de artículos, rangos de fechas.</li>
+      <li>Seguridad de la integración: token del webhook y <code>X-Callback-Token</code> en los callbacks.</li>
+      <li>Accesibilidad: teclado, foco visible, lectores de pantalla y <code>prefers-reduced-motion</code>.</li>
+    </ul>
+  </section>
+
+  <section class="slide" aria-label="Equipo">
+    <span class="eyebrow">Equipo y trazabilidad</span>
+    <h2>Trabajo por ramas e integración</h2>
+    <table>
+      <thead><tr><th>Rama</th><th>Responsable</th><th>Alcance</th></tr></thead>
+      <tbody>
+        <tr><td><code>mafe</code></td><td>Mafeqm</td><td>Backend, modelo de datos, datos iniciales</td></tr>
+        <tr><td><code>dev-Lisseth</code></td><td>lissethkatherine</td><td>Flujos n8n de indexación y RAG</td></tr>
+        <tr><td><code>devsergy</code></td><td>velascodazasergio-png</td><td>Frontend e integración frontend ↔ backend ↔ n8n</td></tr>
+        <tr><td><code>main</code></td><td>Equipo</td><td>Integración final</td></tr>
+      </tbody>
+    </table>
+    <p>Commits con Conventional Commits. El uso de IA en el desarrollo está documentado en <strong>AI_USAGE.md</strong>.</p>
+  </section>
+
+  <section class="slide" aria-label="Cierre">
+    <span class="eyebrow">Próximos pasos</span>
+    <h2>Del prototipo a producción</h2>
+    <ul>
+      <li>Conectar OpenRouter con las claves del equipo e indexar la base de conocimiento.</li>
+      <li>Documentar y verificar un artículo por cada problema recurrente.</li>
+      <li>SLA por prioridad y alertas por antigüedad de los pendientes.</li>
+      <li>Autenticación de usuarios y paginación en el servidor.</li>
+    </ul>
+    <h1 class="grad">Gracias</h1>
+  </section>
+
+</main>
+<nav class="nav" aria-label="Navegación de diapositivas">
+  <button type="button" id="prev" aria-label="Diapositiva anterior">←</button>
+  <button type="button" id="next" aria-label="Diapositiva siguiente">→</button>
+</nav>
+<div class="progress" id="progress"></div>
+<div class="counter" id="counter" aria-live="polite"></div>
+<script>
+  const slides = [...document.querySelectorAll('.slide')];
+  const progress = document.getElementById('progress');
+  const counter = document.getElementById('counter');
+  let current = Math.min(Math.max(Number(location.hash.slice(1)) || 1, 1), slides.length) - 1;
+
+  function show(index) {
+    current = Math.min(Math.max(index, 0), slides.length - 1);
+    slides.forEach((s, i) => {
+      s.classList.toggle('is-active', i === current);
+      s.setAttribute('aria-hidden', String(i !== current));
+    });
+    progress.style.width = `${((current + 1) / slides.length) * 100}%`;
+    counter.textContent = `${current + 1} / ${slides.length}`;
+    history.replaceState(null, '', `#${current + 1}`);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); show(current + 1); }
+    if (['ArrowLeft', 'PageUp'].includes(e.key)) { e.preventDefault(); show(current - 1); }
+    if (e.key === 'Home') show(0);
+    if (e.key === 'End') show(slides.length - 1);
+  });
+  document.getElementById('prev').addEventListener('click', () => show(current - 1));
+  document.getElementById('next').addEventListener('click', () => show(current + 1));
+  show(current);
+</script>
+</body>
+</html>

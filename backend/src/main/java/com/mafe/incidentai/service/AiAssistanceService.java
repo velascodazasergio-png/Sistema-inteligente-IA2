@@ -69,6 +69,8 @@ public class AiAssistanceService {
         // Si hubo timeout o error de conexion con n8n, reflejamos el estado COMMUNICATION_ERROR en la base de datos
         if (!deliveredToN8n) {
             savedQuery.setQueryStatus(QueryStatus.COMMUNICATION_ERROR);
+            savedQuery.setFailureCode("N8N_UNREACHABLE");
+            savedQuery.setFailureMessage("The AI service (n8n) did not accept the request or timed out");
             aiQueryRepository.save(savedQuery);
         }
 
@@ -110,10 +112,17 @@ public class AiAssistanceService {
                 source.setCitedSnippet(sourceDto.citedSnippet());
                 source.setSimilarityScore(sourceDto.similarityScore());
 
-                // Si n8n envio el ID de un KnowledgeArticle interno, lo vinculamos con la entidad
+                // Si n8n envio el ID de un KnowledgeArticle interno, validamos que exista y este ACTIVO y VERIFICADO (Restriccion RF02)
                 if (sourceDto.knowledgeArticleId() != null) {
-                    knowledgeArticleRepository.findById(sourceDto.knowledgeArticleId())
-                            .ifPresent(source::setKnowledgeArticle);
+                    KnowledgeArticle article = knowledgeArticleRepository.findById(sourceDto.knowledgeArticleId())
+                            .orElseThrow(() -> new ResourceNotFoundException(
+                                    "Knowledge article not found with ID: " + sourceDto.knowledgeArticleId()));
+
+                    if (!Boolean.TRUE.equals(article.getActive()) || !Boolean.TRUE.equals(article.getVerified())) {
+                        throw new BusinessRuleException(
+                                "Cannot use an inactive or unverified knowledge article as a RAG source (ID: " + article.getId() + ")");
+                    }
+                    source.setKnowledgeArticle(article);
                 }
 
                 // Sincroniza ambos lados de la relacion bidireccional 1:N
@@ -124,8 +133,11 @@ public class AiAssistanceService {
         // Persistimos AiResponse y en cascada todas sus ResponseSource
         AiResponse savedResponse = aiResponseRepository.save(aiResponse);
 
-        // Marcamos la consulta original como COMPLETED
-        aiQuery.setQueryStatus(QueryStatus.COMPLETED);
+        // Una respuesta valida reemplaza un error previo (p. ej. timeout del webhook)
+        aiQuery.setFailureCode(null);
+        aiQuery.setFailureMessage(null);
+        // COMPLETED si hubo fuentes; NO_RESULTS si n8n no encontro documentos relevantes
+        aiQuery.setQueryStatus(savedResponse.getSources().isEmpty() ? QueryStatus.NO_RESULTS : QueryStatus.COMPLETED);
         aiQueryRepository.save(aiQuery);
 
         Map<String, Object> result = new LinkedHashMap<>();
@@ -133,6 +145,34 @@ public class AiAssistanceService {
         result.put("aiResponseId", savedResponse.getId());
         result.put("aiQueryId", aiQuery.getId());
         result.put("registeredSources", savedResponse.getSources().size());
+        result.put("queryStatus", aiQuery.getQueryStatus().name());
+        result.put("timestamp", LocalDateTime.now().toString());
+        return result;
+    }
+
+    // Registra el fallo que reporta n8n: la consulta pasa a FAILED con su codigo y mensaje.
+    // Solo aplica a consultas sin respuesta; asi un fallo tardio no pisa una respuesta valida.
+    @Transactional
+    public Map<String, Object> reportFailure(Long aiQueryId, AiFailureReportDTO report) {
+        if (report.aiQueryId() != null && !report.aiQueryId().equals(aiQueryId)) {
+            throw new BusinessRuleException("aiQueryId in the body does not match the URL");
+        }
+        AiQuery aiQuery = aiQueryRepository.findById(aiQueryId)
+                .orElseThrow(() -> new ResourceNotFoundException("AI Query not found with ID: " + aiQueryId));
+        if (aiQuery.getAiResponse() != null
+                || aiQuery.getQueryStatus() == QueryStatus.COMPLETED
+                || aiQuery.getQueryStatus() == QueryStatus.NO_RESULTS) {
+            throw new BusinessRuleException("AI Query " + aiQueryId + " already has a response");
+        }
+
+        aiQuery.setQueryStatus(QueryStatus.FAILED);
+        aiQuery.setFailureCode(report.errorCode().trim());
+        aiQuery.setFailureMessage(report.message().trim());
+        aiQueryRepository.save(aiQuery);
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("message", "AI failure registered");
+        result.put("aiQueryId", aiQuery.getId());
         result.put("queryStatus", aiQuery.getQueryStatus().name());
         result.put("timestamp", LocalDateTime.now().toString());
         return result;
@@ -185,6 +225,15 @@ public class AiAssistanceService {
                 .toList();
     }
 
+    // 5. Historial global de consultas a la IA, con filtro opcional por estado
+    @Transactional(readOnly = true)
+    public List<AiQueryHistoryResponseDTO> getAiHistory(QueryStatus status) {
+        List<AiQuery> queries = status != null
+                ? aiQueryRepository.findByQueryStatusOrderByQueriedAtDesc(status)
+                : aiQueryRepository.findAllByOrderByQueriedAtDesc();
+        return queries.stream().map(this::mapToHistoryDTO).toList();
+    }
+
     // Transforma una entidad AiQuery y su arbol de relaciones (AiResponse -> ResponseSource / Rating) a DTO
     private AiQueryHistoryResponseDTO mapToHistoryDTO(AiQuery query) {
         AiResponse response = query.getAiResponse();
@@ -230,11 +279,13 @@ public class AiAssistanceService {
         return new AiQueryHistoryResponseDTO(
                 query.getId(),
                 query.getIncident().getId(),
+                query.getIncident().getTitle(),
                 query.getSentPrompt(),
                 query.getQueryStatus(),
                 query.getQueriedAt(),
+                query.getFailureCode(),
+                query.getFailureMessage(),
                 responseSummary
         );
     }
 }
-

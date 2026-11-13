@@ -2,6 +2,7 @@ package com.mafe.incidentai.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.NotNull;
 
 // Contrato DTO inmutable (Java record) para solicitar el analisis de un incidente hacia el webhook de n8n
@@ -18,6 +19,7 @@ public record AiAssistanceRequestDTO(
 
         @Schema(description = "Descripcion tecnica detallada del problema reportado", example = "Remote users receive error 809 when connecting from Windows 11 clients")
         @NotBlank(message = "Detailed description is required")
+        @Size(min = 20, message = "Detailed description must contain at least 20 characters")
         String detailedDescription,
 
         @Schema(description = "Nombre de la categoria del incidente", example = "Networking & Connectivity")

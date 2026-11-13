@@ -1,6 +1,7 @@
 package com.mafe.incidentai.repository.specification;
 
 import com.mafe.incidentai.domain.entity.Incident;
+import com.mafe.incidentai.domain.enums.IncidentStatus;
 import com.mafe.incidentai.domain.enums.Priority;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -19,6 +20,7 @@ public final class IncidentSpecification {
     public static Specification<Incident> withDynamicFilters(
             Long categoryId,
             Priority priority,
+            IncidentStatus status,
             Long userId,
             LocalDateTime startDate,
             LocalDateTime endDate) {
@@ -36,17 +38,22 @@ public final class IncidentSpecification {
                 predicates.add(criteriaBuilder.equal(root.get("priority"), priority));
             }
 
+            // Si se envio status, filtramos por el estado actual del incidente
+            if (status != null) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), status));
+            }
+
             // 3. Si se envio userId, filtramos por el usuario que reporto el incidente
             if (userId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
             }
 
-            // 4. Si se envio startDate, filtramos incidentes creados desde esa fecha en adelante
+            // 5. Si se envio startDate, filtramos incidentes creados desde esa fecha en adelante
             if (startDate != null) {
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startDate));
             }
 
-            // 5. Si se envio endDate, filtramos incidentes creados hasta esa fecha limite
+            // 6. Si se envio endDate, filtramos incidentes creados hasta esa fecha limite
             if (endDate != null) {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endDate));
             }
@@ -61,4 +68,3 @@ public final class IncidentSpecification {
         };
     }
 }
-

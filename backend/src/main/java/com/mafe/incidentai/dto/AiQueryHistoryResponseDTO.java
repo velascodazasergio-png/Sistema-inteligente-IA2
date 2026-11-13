@@ -11,9 +11,12 @@ import java.util.List;
 public record AiQueryHistoryResponseDTO(
         Long aiQueryId,
         Long incidentId,
+        String incidentTitle,
         String sentPrompt,
         QueryStatus queryStatus,
         LocalDateTime queriedAt,
+        String failureCode,
+        String failureMessage,
         AiResponseSummaryDTO aiResponse
 ) {
     // Resumen de la respuesta generada por n8n asociada a la consulta
@@ -47,4 +50,3 @@ public record AiQueryHistoryResponseDTO(
             LocalDateTime ratedAt
     ) {}
 }
-

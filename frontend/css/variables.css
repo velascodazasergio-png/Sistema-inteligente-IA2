@@ -1,0 +1,108 @@
+/* ==========================================================
+   Design tokens — identidad visual "AI Operations"
+   Toda la interfaz consume estas variables: cambiar un valor
+   aquí actualiza la aplicación completa.
+   ========================================================== */
+:root {
+  color-scheme: dark;
+
+  /* Fondo y superficies (de más oscuro a más claro) */
+  --bg: #060a13;
+  --surface: #0d1422;
+  --surface-2: #131c2e;
+  --surface-3: #1a253c;
+  --border: rgba(148, 163, 184, 0.11);
+  --border-strong: rgba(148, 163, 184, 0.22);
+  --card-bg: linear-gradient(180deg, rgba(21, 30, 49, 0.82) 0%, rgba(13, 20, 34, 0.86) 100%);
+  --card-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* Iluminación sutil del fondo */
+  --glow-primary: rgba(59, 130, 246, 0.10);
+  --glow-accent: rgba(139, 92, 246, 0.08);
+
+  /* Texto (contraste AA sobre --surface) */
+  --text: #e6ebf5;
+  --text-muted: #94a3c0;
+  --text-faint: #7b8aa6;
+
+  /* Marca */
+  --primary: #3b82f6;          /* azul eléctrico: acentos y gráficos */
+  --primary-strong: #2563eb;   /* fondo de botones (texto blanco AA) */
+  --primary-text: #7cb3ff;     /* enlaces y texto de acento */
+  --primary-soft: rgba(59, 130, 246, 0.14);
+  --accent: #8b5cf6;           /* violeta tecnológico */
+  --accent-soft: rgba(139, 92, 246, 0.14);
+  --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  /* Botón principal: tonos más oscuros para que el texto blanco cumpla AA */
+  --gradient-button: linear-gradient(135deg, #2563eb 0%, #6d28d9 100%);
+  --gradient-text: linear-gradient(120deg, #e6ebf5 20%, #a5b4fc 60%, #7cb3ff 100%);
+
+  /* Estados semánticos */
+  --success: #10b981;
+  --success-text: #6ee7b7;
+  --success-soft: rgba(16, 185, 129, 0.14);
+  --warning: #f59e0b;
+  --warning-text: #fcd34d;
+  --warning-soft: rgba(245, 158, 11, 0.14);
+  --danger: #ef4444;
+  --danger-text: #fca5a5;
+  --danger-soft: rgba(239, 68, 68, 0.14);
+
+  /* Paleta categórica para gráficos */
+  --chart-1: #3b82f6;
+  --chart-2: #8b5cf6;
+  --chart-3: #10b981;
+  --chart-4: #f59e0b;
+  --chart-5: #06b6d4;
+  --chart-6: #ec4899;
+  --star: #fbbf24;
+  --star-off: #34405c;
+
+  /* Tipografía: Inter y JetBrains Mono (Google Fonts) con respaldo del sistema */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.875rem;
+  --fs-md: 1rem;
+  --fs-lg: 1.125rem;
+  --fs-xl: 1.5rem;
+  --fs-2xl: 2rem;
+  --fs-3xl: 2.375rem;
+
+  /* Espaciado (escala de 4px) */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2.5rem;
+
+  /* Formas y profundidad */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --radius-full: 999px;
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 12px 32px -12px rgba(0, 0, 0, 0.7);
+  --shadow-3: 0 24px 48px -20px rgba(0, 0, 0, 0.85);
+  --focus-color: #60a5fa;
+
+  /* Layout */
+  --sidebar-w: 268px;
+  --sidebar-w-collapsed: 72px;
+  --topbar-h: 64px;
+
+  /* Movimiento */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur: 220ms;
+  --dur-slow: 420ms;
+
+  /* Capas */
+  --z-topbar: 30;
+  --z-backdrop: 35;
+  --z-sidebar: 40;
+  --z-dropdown: 50;
+  --z-toast: 60;
+}
