@@ -192,11 +192,19 @@
         "options": {
           "timeout": 20000
         },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.EMBEDDING_MODEL, input: $json.queryText }) }}"
+        "jsonBody": "={{ JSON.stringify({ model: $env.EMBEDDING_MODEL, input: $json.queryText }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            }
+          ]
+        }
       },
       "id": "df3a5562-9c78-4e75-8f9b-777676738385",
       "name": "Generar embedding",
@@ -207,12 +215,9 @@
         300
       ],
       "onError": "continueErrorOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "REEMPLAZAR",
-          "name": "OpenRouter API Key"
-        }
-      }
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
@@ -255,7 +260,10 @@
           "id": "REEMPLAZAR",
           "name": "Qdrant API Key"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
@@ -413,11 +421,19 @@
         "options": {
           "timeout": 60000
         },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.LLM_MODEL, temperature: 0.1, max_tokens: 1200, messages: $json.messages }) }}"
+        "jsonBody": "={{ JSON.stringify({ model: $env.LLM_MODEL, temperature: 0.1, max_tokens: 1200, messages: $json.messages }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            }
+          ]
+        }
       },
       "id": "4a74a853-07a0-4afb-9f13-e2153880160a",
       "name": "Generar respuesta (LLM)",
@@ -427,13 +443,7 @@
         3540,
         300
       ],
-      "onError": "continueErrorOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "REEMPLAZAR",
-          "name": "OpenRouter API Key"
-        }
-      }
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {

@@ -31,8 +31,8 @@ public final class AiFailureHints {
             return null;
         }
         if (startsWithStatus(detail, "401") || startsWithStatus(detail, "403")) {
-            return service + " rechazó la clave de API: revisa la credencial \"OpenRouter API Key\" en n8n"
-                    + " (debe ser \"Bearer <tu clave>\").";
+            return service + " rechazó la clave de API: revisa OPENROUTER_API_KEY en el .env"
+                    + " y aplica el cambio con \"docker compose up -d n8n\".";
         }
         if (startsWithStatus(detail, "402")) {
             return "La cuenta de OpenRouter no tiene créditos suficientes.";
@@ -49,6 +49,9 @@ public final class AiFailureHints {
         }
         if (detail.contains("timeout") || detail.contains("timed out") || detail.contains("etimedout")) {
             return service + " tardó demasiado en responder: vuelve a intentarlo.";
+        }
+        if (detail.contains("socket hang up") || detail.contains("econnreset")) {
+            return "Se cortó la conexión entre n8n y " + service + ": vuelve a intentarlo.";
         }
         if (detail.contains("econnrefused") || detail.contains("enotfound") || detail.contains("eai_again")) {
             return "n8n no pudo conectarse con " + service + ": revisa la red o la URL configurada.";

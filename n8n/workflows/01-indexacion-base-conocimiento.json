@@ -207,11 +207,19 @@
         "options": {
           "timeout": 60000
         },
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
+        "authentication": "none",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ model: $env.EMBEDDING_MODEL, input: $json.indexar.map(x => x.texto) }) }}"
+        "jsonBody": "={{ JSON.stringify({ model: $env.EMBEDDING_MODEL, input: $json.indexar.map(x => x.texto) }) }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+            }
+          ]
+        }
       },
       "id": "828559a5-fe0b-4460-b83d-c544246e3459",
       "name": "Generar embeddings (lote)",
@@ -222,12 +230,9 @@
         300
       ],
       "onError": "continueErrorOutput",
-      "credentials": {
-        "httpHeaderAuth": {
-          "id": "REEMPLAZAR",
-          "name": "OpenRouter API Key"
-        }
-      }
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
@@ -301,7 +306,10 @@
           "id": "REEMPLAZAR",
           "name": "Qdrant API Key"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
@@ -363,7 +371,10 @@
           "id": "REEMPLAZAR",
           "name": "Qdrant API Key"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000
     },
     {
       "parameters": {
