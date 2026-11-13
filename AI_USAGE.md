@@ -102,7 +102,8 @@ En el merge final (`e41c35b`) se conservó su consulta JPQL `findActiveAndVerifi
 
 ## 3. Rama `dev-Lisseth` — flujos n8n (lissethkatherine)
 
-**Uso de IA:** ⚠️ *pendiente de confirmar por la integrante* (herramienta, modelo y en qué partes la usó). Si no usó IA, debe indicarlo aquí.
+**Uso de IA:** 
+La estudiante, con el apoyo de herramientas de inteligencia artificial, revisó el backend del proyecto, verificó la documentación de OpenRouter y desarrolló los flujos de n8n para la indexación de artículos y la asistencia RAG. También creó los archivos de infraestructura y configuración de Docker y Qdrant, junto con el README. Finalmente, realizó pruebas con datos simulados y corrigió errores de nodos duplicados. No se realizaron pruebas en una instancia real de n8n.
 
 ### Trabajo registrado en el repositorio (2 commits, 12 de noviembre)
 
