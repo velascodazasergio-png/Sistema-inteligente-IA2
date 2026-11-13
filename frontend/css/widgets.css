@@ -772,6 +772,11 @@ th[aria-sort] .sort-btn .icon {
   font-size: var(--fs-lg);
 }
 
+/* Dentro de las ventanas el texto va atenuado, pero los títulos se leen en blanco */
+.modal__body :is(h2, h3, .card__title, .detail-title) {
+  color: var(--text);
+}
+
 .modal__body {
   padding: var(--space-6);
   overflow-y: auto;

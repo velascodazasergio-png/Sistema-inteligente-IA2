@@ -348,6 +348,7 @@ input[type="date"].input {
 /* ---------- Detalle de incidente ---------- */
 .detail-title {
   margin-bottom: var(--space-3);
+  color: var(--text);
   font-size: var(--fs-lg);
   line-height: 1.35;
 }
@@ -389,8 +390,10 @@ input[type="date"].input {
   flex: 1 1 240px;
 }
 
+/* Alineado con el selector: misma altura (44 px) y desplazado lo que ocupa la etiqueta */
 .status-form .btn {
-  margin-top: 26px;
+  min-height: 44px;
+  margin-top: calc(var(--fs-sm) * 1.55 + var(--space-2));
 }
 
 .detail-links {

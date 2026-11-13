@@ -51,6 +51,9 @@ async function render() {
   const { signal } = controller;
 
   updateChrome(route);
+  // Una ventana abierta (detalle, formulario) pertenece a la sección anterior: se cierra al navegar.
+  // Se hace antes de dibujar la nueva, que puede abrir la suya (p. ej. #/incidentes?id=12).
+  document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close());
 
   try {
     const module = route.load ? await route.load() : await import('./views/pending.js');
