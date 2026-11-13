@@ -30,7 +30,7 @@ Plataforma para registrar incidentes de soporte, administrar una base de conocim
 |---|---|
 | [backend/](backend/) | API REST Spring Boot 3.4 (Java 21), JPA, Swagger, pruebas de integración |
 | [frontend/](frontend/) | Cliente web en HTML, CSS y JavaScript sin frameworks. Ver [frontend/README.md](frontend/README.md) |
-| [n8n/workflows/](n8n/workflows/) | Flujo 01: indexación en Qdrant (RF03). Flujo 02: asistencia RAG (RF04, RF05) |
+| [n8n/workflows/](n8n/workflows/) | Flujo 01: indexación en Qdrant (RF03). Flujo 02: asistencia RAG (RF04, RF05). Opcional: `03-flujos-combinados.json`, los dos en un solo workflow |
 | [database/data.sql](database/data.sql) | Datos iniciales: 150 incidentes, usuarios, categorías y artículos |
 | [docs/diagramas/](docs/diagramas/) | Modelo entidad-relación, arquitectura y secuencia del flujo RAG (Mermaid) |
 | [docs/informe-analisis/](docs/informe-analisis/) | Informe de análisis de datos con las consultas SQL, resultados y conclusiones |
@@ -209,6 +209,8 @@ Por seguridad, los puertos se publican **solo en `127.0.0.1`**. Desde otro equip
 │   ├── css/  js/  assets/
 │   └── tests/                  # 23 pruebas unitarias (node:test)
 ├── n8n/workflows/              # 01-indexacion-base-conocimiento.json · 02-asistencia-rag.json
+│                               # 03-flujos-combinados.json (opcional, ver paso 6.3)
+├── n8n/combinar_flujos.py      # Regenera el 03 a partir del 01 y el 02
 ├── database/data.sql           # Copia de los datos iniciales
 ├── docs/                       # Diagramas, informe de análisis, pruebas, evidencias y presentación
 └── AI_USAGE.md                 # Uso de IA durante el desarrollo
@@ -306,6 +308,8 @@ Al arrancar, el backend crea las tablas y carga los datos iniciales en PostgreSQ
 
    Para ver el valor del token: `grep N8N_WEBHOOK_AUTH_VALUE .env`.
 3. **Importar los dos flujos** desde *Workflows → Import from File*, con los archivos `n8n/workflows/01-indexacion-base-conocimiento.json` y `n8n/workflows/02-asistencia-rag.json`.
+
+   **Alternativa:** importar solo `n8n/workflows/03-flujos-combinados.json`, que contiene las dos cadenas en un único workflow. Cada webhook ejecuta solo su cadena, y entre ellas no hay conexiones. Usa el combinado **o** los dos separados, nunca ambos activos: n8n no admite dos webhooks activos con la misma ruta. El combinado se genera desde los flujos 01 y 02 con `python3 n8n/combinar_flujos.py`; si cambias alguno de ellos, vuelve a ejecutarlo.
 4. **Asignar las credenciales.** En cada flujo, abre los nodos con credencial (Webhook y Qdrant) y elige la que corresponde. En los JSON aparecen con el id `REEMPLAZAR`.
 5. **Activar los flujos.** Guarda cada uno y enciende el interruptor **Active** (arriba a la derecha).
 6. **Indexar la base de conocimiento** una vez. La colección de Qdrant se crea sola:
