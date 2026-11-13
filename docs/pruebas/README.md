@@ -164,6 +164,8 @@ Con el valor inicial de 0,75, 4 de los 8 incidentes con artículo quedaban como 
 | 3 | Sin información suficiente | #151 (texto sin relación con soporte técnico) | `NO_RESULTS`: ningún artículo supera 0,55; no se llamó al LLM ni se generó solución | ✅ |
 | 3b | Fuente recuperada pero insuficiente | #139 MFA hardware token out of sync | `NO_RESULTS`: se recuperó el artículo de Okta/MFA, pero el modelo indicó que falta cómo reinscribir tokens TOTP tras cambiar la batería y no inventó el procedimiento | ✅ |
 
+**Workflow combinado (`03-flujos-combinados.json`).** Con los flujos 01 y 02 desactivados y solo el combinado activo, se repitió la prueba con los modelos reales. La cadena de indexación indexó los 10 artículos (`OK`), y la cadena RAG respondió el incidente #138 "NGINX Ingress returning 502" (`COMPLETED`, fuente: artículo #8, similitud 0,799). Las dos cadenas no tienen conexiones entre sí; cada webhook ejecuta solo la suya.
+
 ## 4. Despliegue con Docker Compose
 
 Probado con Docker 29.4 y Compose v5.1. Los puertos del host se reasignaron solo para la prueba, porque el equipo tenía otros proyectos ocupándolos.
