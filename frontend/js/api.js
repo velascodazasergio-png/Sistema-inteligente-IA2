@@ -3,6 +3,7 @@
 // todas las peticiones pasan por aquí y van a la API REST del backend.
 
 import { getApiBaseUrl, normalizeBaseUrl } from './config.js';
+import { translateApiMessage } from './api-messages.js';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -11,6 +12,9 @@ const STATUS_MESSAGES = {
   401: 'Tu sesión no es válida. Inicia sesión de nuevo.',
   403: 'No tienes permisos para realizar esta acción.',
   404: 'El recurso solicitado no existe.',
+  405: 'La operación no está permitida.',
+  413: 'Los datos enviados son demasiado grandes.',
+  415: 'El formato de los datos enviados no es compatible.',
   409: 'La operación entra en conflicto con el estado actual.',
   422: 'Los datos enviados no son válidos.',
   500: 'Error interno del servidor.',
@@ -20,12 +24,14 @@ const STATUS_MESSAGES = {
 };
 
 export class ApiError extends Error {
-  constructor(message, { status = 0, code = 'HTTP_ERROR', details = null, cause } = {}) {
+  constructor(message, { status = 0, code = 'HTTP_ERROR', details = null, fieldErrors = {}, cause } = {}) {
     super(message, { cause });
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
+    // Errores de validación por campo, ya traducidos: { title: 'El título es obligatorio.' }
+    this.fieldErrors = fieldErrors;
   }
 }
 
@@ -52,18 +58,24 @@ async function parseBody(response) {
   return text || null;
 }
 
-// Extrae un mensaje legible de las respuestas de error de Spring Boot.
-function messageFrom(status, body) {
+// Errores de validación por campo ({ details: { campo: mensaje } } del GlobalExceptionHandler), traducidos.
+function fieldErrorsFrom(body) {
+  if (!body || typeof body !== 'object' || !body.details || typeof body.details !== 'object') return {};
+  return Object.fromEntries(Object.entries(body.details).map(([field, message]) => [field, translateApiMessage(message) ?? message]));
+}
+
+// Mensaje legible y en español para una respuesta de error de Spring Boot.
+// - 400 de validación: los mensajes de cada campo.
+// - 400/404/409 con mensaje propio del backend: su traducción (o el original si no se reconoce).
+// - 405, 415, 5xx y demás: un mensaje genérico según el código, sin detalles técnicos en inglés.
+function messageFrom(status, body, fieldErrors) {
+  const fields = Object.values(fieldErrors);
+  if (fields.length) return fields.join(' · ');
   if (body && typeof body === 'object') {
-    if (Array.isArray(body.errors) && body.errors.length) {
-      return body.errors.map((e) => e.defaultMessage || e.message || String(e)).join(' · ');
-    }
-    // GlobalExceptionHandler: errores de validación como { details: { campo: mensaje } }
-    if (body.details && typeof body.details === 'object' && Object.keys(body.details).length) {
-      return Object.values(body.details).join(' · ');
-    }
-    if (body.message) return body.message;
-    if (body.detail) return body.detail;
+    const raw = body.message || body.detail;
+    const translated = translateApiMessage(raw);
+    if (translated) return translated;
+    if (raw && [400, 404, 409].includes(status)) return raw;
   }
   return STATUS_MESSAGES[status] ?? `Error inesperado (HTTP ${status}).`;
 }
@@ -110,7 +122,8 @@ export async function request(path, {
 
   const data = await parseBody(response).catch(() => null);
   if (!response.ok) {
-    throw new ApiError(messageFrom(response.status, data), { status: response.status, details: data });
+    const fieldErrors = fieldErrorsFrom(data);
+    throw new ApiError(messageFrom(response.status, data, fieldErrors), { status: response.status, details: data, fieldErrors });
   }
   return data;
 }

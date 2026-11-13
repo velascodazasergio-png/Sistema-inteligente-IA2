@@ -10,6 +10,7 @@ import { skeletonLines } from '../components/skeleton.js';
 import { searchArticles, createArticle, updateArticle, updateArticleStatus } from '../services/knowledge.service.js';
 import { listCategories, listUsers } from '../services/catalogs.service.js';
 import { formatDate, formatDateTime, parseDate } from '../format.js';
+import { showServerFieldErrors } from '../components/form-errors.js';
 
 const VIEW_KEY = 'incidentes-ia:kb-view';
 
@@ -48,10 +49,10 @@ const RULES = {
 };
 
 const SECTIONS = [
-  { name: 'problem', label: 'Problema', rows: 3, required: true, placeholder: 'Qué ocurre y a quién afecta' },
-  { name: 'symptoms', label: 'Síntomas', rows: 3, placeholder: 'Mensajes de error, comportamiento observado (opcional)' },
-  { name: 'cause', label: 'Causa', rows: 2, placeholder: 'Causa raíz identificada (opcional)' },
-  { name: 'solution', label: 'Solución', rows: 5, required: true, placeholder: 'Pasos para resolverlo, uno por línea' },
+  { name: 'problem', label: 'Problema', rows: 3, required: true, max: 4000, placeholder: 'Qué ocurre y a quién afecta' },
+  { name: 'symptoms', label: 'Síntomas', rows: 3, max: 4000, placeholder: 'Mensajes de error, comportamiento observado (opcional)' },
+  { name: 'cause', label: 'Causa', rows: 2, max: 4000, placeholder: 'Causa raíz identificada (opcional)' },
+  { name: 'solution', label: 'Solución', rows: 5, required: true, max: 8000, placeholder: 'Pasos para resolverlo, uno por línea' },
 ];
 
 const options = (items, placeholder, selected) =>
@@ -343,7 +344,7 @@ export async function render(container, { route, signal }) {
           ${SECTIONS.map((sec) => `
             <div class="field">
               <label for="k-${sec.name}">${sec.label}${sec.required ? '' : ' <span class="cell-muted">(opcional)</span>'}</label>
-              <textarea class="input input--area" id="k-${sec.name}" name="${sec.name}" rows="${sec.rows}" aria-describedby="k-${sec.name}-error"
+              <textarea class="input input--area" id="k-${sec.name}" name="${sec.name}" rows="${sec.rows}" maxlength="${sec.max}" aria-describedby="k-${sec.name}-error"
                 placeholder="${escapeHtml(sec.placeholder)}">${escapeHtml(initial(sec.name))}</textarea>
               <p class="field__error" id="k-${sec.name}-error" aria-live="polite"></p>
             </div>`).join('')}
@@ -406,7 +407,8 @@ export async function render(container, { route, signal }) {
           : `Artículo #${saved.id} creado. Verifícalo para que lo use el asistente.`, { type: reverified ? 'warning' : 'success' });
       } catch (error) {
         setBusy(button, false);
-        toast(error.message, { type: 'error' });
+        const shown = showServerFieldErrors(editor, error, (name) => `k-${name}-error`);
+        toast(shown ? 'Revisa los campos marcados.' : error.message, { type: 'error' });
       }
     });
   }

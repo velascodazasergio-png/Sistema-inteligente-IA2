@@ -10,6 +10,7 @@ import { listCategories, listUsers, toOptions } from '../services/catalogs.servi
 import { ESTADO_INCIDENTE, PRIORIDAD, badge, optionsHtml, labelOf } from '../catalogs.js';
 import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
+import { showServerFieldErrors, attachCounter } from '../components/form-errors.js';
 
 const selectOptions = (items, placeholder) =>
   `<option value="">${escapeHtml(placeholder)}</option>${items.map((i) => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('')}`;
@@ -17,7 +18,7 @@ const selectOptions = (items, placeholder) =>
 // Reglas del CreateIncidentRequestDTO, validadas también aquí para avisar antes de enviar.
 const RULES = {
   title: (v) => (!v ? 'El título es obligatorio.' : v.length < 5 || v.length > 150 ? 'Debe tener entre 5 y 150 caracteres.' : ''),
-  description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 20 ? 'Describe el problema con al menos 20 caracteres.' : ''),
+  description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 20 ? 'Describe el problema con al menos 20 caracteres.' : v.length > 4000 ? 'Máximo 4000 caracteres.' : ''),
   categoryId: (v) => (v ? '' : 'Elige una categoría.'),
   priority: (v) => (v ? '' : 'Elige una prioridad.'),
   userId: (v) => (v ? '' : 'Elige el usuario responsable.'),
@@ -274,9 +275,9 @@ export async function render(container, { route, signal }) {
           </div>
           <div class="field">
             <label for="c-description">Descripción</label>
-            <textarea class="input input--area" id="c-description" name="description" rows="5" aria-describedby="c-description-hint c-description-error"
+            <textarea class="input input--area" id="c-description" name="description" rows="5" maxlength="4000" aria-describedby="c-description-hint c-description-error"
               placeholder="Síntomas, mensajes de error, equipos afectados y desde cuándo ocurre"></textarea>
-            <p class="field__hint" id="c-description-hint">Mientras más detalle, mejor será la orientación del asistente IA.</p>
+            <p class="field__hint" id="c-description-hint">Entre 20 y 4000 caracteres (<span data-counter>0/4000</span>). Mientras más detalle, mejor será la orientación del asistente IA.</p>
             <p class="field__error" id="c-description-error" aria-live="polite"></p>
           </div>
           <div class="form-row">
@@ -305,6 +306,7 @@ export async function render(container, { route, signal }) {
 
     const createForm = modal.body.querySelector('#create-form');
     const touched = new Set();
+    attachCounter(createForm.elements.description, createForm.querySelector('[data-counter]'));
 
     const validateField = (name) => {
       const field = createForm.elements[name];
@@ -338,7 +340,10 @@ export async function render(container, { route, signal }) {
       const button = createForm.querySelector('[type="submit"]');
       setBusy(button, true, 'Registrando…');
       try {
-        const created = await createIncident(Object.fromEntries(new FormData(createForm)));
+        const data = Object.fromEntries(new FormData(createForm));
+        data.title = data.title.trim();
+        data.description = data.description.trim();
+        const created = await createIncident(data);
         incidents = [created, ...incidents];
         showRows();
         modal.close();
@@ -346,7 +351,9 @@ export async function render(container, { route, signal }) {
         openDetail(created);
       } catch (error) {
         setBusy(button, false);
-        toast(error.message, { type: 'error' });
+        // 400 con errores por campo: se muestran junto a cada uno; el resto, en un aviso
+        const shown = showServerFieldErrors(createForm, error, (name) => `c-${name}-error`);
+        toast(shown ? 'Revisa los campos marcados.' : error.message, { type: 'error' });
       }
     });
   }
