@@ -10,6 +10,7 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 | Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
 | RAG e indexación de punta a punta | Docker real + OpenRouter simulado (embeddings y LLM) | 7 | ✅ 7 / 7 |
+| RAG con OpenRouter real (escenarios 1, 2 y 3) | `openai/text-embedding-3-small` + `openai/gpt-4o-mini` | 4 | ✅ 4 / 4 |
 | Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 8 | ✅ 8 / 8 |
 | Interfaz | Navegador sin interfaz (Edge), escritorio y móvil | 8 vistas | ✅ revisadas |
 
@@ -118,7 +119,7 @@ Otras comprobaciones:
 - **Filtros:** los de prioridad, categoría y fechas cambian los resultados y coinciden con SQL (`CRITICAL`: 38 incidentes y 84,21 %; octubre: 83).
 - **Datos iniciales:** sin fechas inválidas, sin resueltos sin fecha y sin descripciones repetidas.
 
-**Pendiente:** repetir los escenarios 1, 2 y 3 con la clave de OpenRouter del equipo.
+Los escenarios 1, 2 y 3 se repitieron con los modelos reales en la sección 3d.
 
 ## 3c. RAG e indexación de punta a punta (OpenRouter simulado)
 
@@ -139,6 +140,29 @@ La prueba demuestra el funcionamiento del flujo, **no la calidad de las respuest
 | 5 | Incidente de VPN con error 809 | `COMPLETED`; fuente: artículo #1 "IPSec VPN Error 809 Troubleshooting Runbook" (similitud 0,56); la solución sale de ese artículo | ✅ |
 | 6 | Incidente sin relación (cafetera) | `NO_RESULTS`: "Sin información suficiente…", sin fuentes ni solución | ✅ |
 | 7 | Mismo incidente de VPN con el artículo #1 desactivado | `NO_RESULTS`: el artículo ya no se usa como fuente | ✅ |
+
+## 3d. RAG con OpenRouter real y justificación del umbral
+
+Entorno: el stack de Docker Compose del repositorio, con `OPENROUTER_API_KEY` en el `.env`, `EMBEDDING_MODEL=openai/text-embedding-3-small` (1536 dimensiones) y `LLM_MODEL=openai/gpt-4o-mini`.
+
+**Indexación:** el flujo 01 indexó los 10 artículos verificados (`status: OK`) en 2,8 s.
+
+**Justificación del umbral (`RAG_SCORE_THRESHOLD`).** Se midió la similitud entre 13 incidentes y su artículo más cercano en Qdrant:
+
+| Grupo | Incidentes | Similitud con el mejor artículo |
+|---|---|---|
+| Con un artículo que trata su problema | VPN 809, NGINX 502, Kubernetes OOMKilled, BitLocker, HikariCP, Okta SAML, Active Directory, MFA | 0,675 – 0,809 (el artículo correcto siempre queda primero) |
+| Relacionado de forma parcial | Latencia de disco en réplica de base de datos | 0,500 |
+| Sin relación con la base | Cafetera, silla rota, vacaciones, texto sin sentido | 0,220 – 0,367 |
+
+Con el valor inicial de 0,75, 4 de los 8 incidentes con artículo quedaban como "Sin resultados". Se fijó **0,55**: deja pasar todos los que tienen artículo y deja fuera los que no tienen relación, con margen hacia ambos lados. El umbral es solo el primer filtro: el modelo también devuelve "sin información suficiente" si las fuentes recuperadas no resuelven el incidente.
+
+| # | Escenario | Incidente | Resultado obtenido | Estado |
+|---|---|---|---|---|
+| 1 | Conectividad | #123 Corporate VPN tunnel drops with error 809 | `COMPLETED`. Fuente: artículo #1 "IPSec VPN Error 809 Troubleshooting Runbook" (0,762). Solución en español: verificar UDP 500 y 4500 en el firewall y reiniciar IKEEXT y PolicyAgent, en 2 pasos | ✅ |
+| 2 | Error de ejecución en una aplicación | #143 Kubernetes payment-service pods OOMKilled | `COMPLETED`. Fuente: artículo #7 "Kubernetes Pod OOMKilled (Exit Code 137)" (0,809). 3 pasos: revisar memoria en Prometheus, subir `resources.limits.memory` o ajustar `MaxRAMPercentage` de la JVM | ✅ |
+| 3 | Sin información suficiente | #151 (texto sin relación con soporte técnico) | `NO_RESULTS`: ningún artículo supera 0,55; no se llamó al LLM ni se generó solución | ✅ |
+| 3b | Fuente recuperada pero insuficiente | #139 MFA hardware token out of sync | `NO_RESULTS`: se recuperó el artículo de Okta/MFA, pero el modelo indicó que falta cómo reinscribir tokens TOTP tras cambiar la batería y no inventó el procedimiento | ✅ |
 
 ## 4. Despliegue con Docker Compose
 

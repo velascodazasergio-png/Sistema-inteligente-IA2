@@ -201,7 +201,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+              "value": "=Bearer {{ String($env.OPENROUTER_API_KEY || '').trim().replace(/^Bearer\\s*/i, '').trim() }}"
             }
           ]
         }
@@ -430,7 +430,7 @@
           "parameters": [
             {
               "name": "Authorization",
-              "value": "=Bearer {{ $env.OPENROUTER_API_KEY }}"
+              "value": "=Bearer {{ String($env.OPENROUTER_API_KEY || '').trim().replace(/^Bearer\\s*/i, '').trim() }}"
             }
           ]
         }
