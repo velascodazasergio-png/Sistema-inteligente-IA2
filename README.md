@@ -111,7 +111,7 @@ Pasos después del primer arranque:
 >
 > No se probó una respuesta real del modelo: requiere la clave de OpenRouter del equipo.
 >
-> Los puertos se publican solo en `127.0.0.1`. Si 5432, 5500, 5678, 6333 u 8080 ya están ocupados en tu equipo, cámbialos en `docker-compose.yml`.
+> Los puertos se publican solo en `127.0.0.1`. Si 5432, 5500, 5678, 6333 u 8080 ya están ocupados en tu equipo, cámbialos en `.env` (`POSTGRES_PORT`, `FRONTEND_PORT`, `N8N_PORT`, `QDRANT_PORT`, `BACKEND_PORT`).
 
 ## Variables de entorno
 
