@@ -212,7 +212,7 @@ export async function render(container, { route, signal }) {
     const context = contextField.value.trim();
     try {
       const sent = await requestAssistance(incident, context, { signal });
-      incident.status = 'IN_AI_ANALYSIS';
+      if (incident.status === 'OPEN') incident.status = 'IN_AI_ANALYSIS'; // igual que el backend
       renderSummary(incident);
       contextField.value = '';
       form.querySelector('[data-count]').textContent = '0';

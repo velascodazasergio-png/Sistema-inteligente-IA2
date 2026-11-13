@@ -80,7 +80,7 @@ docker compose up -d --build
 
 | Servicio | URL |
 |---|---|
-| Frontend | http://localhost:5500 |
+| Frontend | http://localhost:5500 · **https://localhost:5443** |
 | Backend / Swagger | http://localhost:8080/swagger-ui.html |
 | n8n | http://localhost:5678 |
 | Qdrant | http://localhost:6333/dashboard |
@@ -179,7 +179,8 @@ Los cinco servicios que levanta `docker compose`:
 |---|---|---|---|
 | `postgres` | postgres:16.4-alpine | Base de datos relacional | 5432 |
 | `backend` | se construye desde `backend/` | API REST Spring Boot | 8080 |
-| `frontend` | nginx:1.27-alpine | Sirve la página web | 5500 |
+| `certs` | alpine:3.20 | Crea un certificado autofirmado la primera vez (y termina) | — |
+| `frontend` | nginx:1.27-alpine | Sirve la página por HTTP y HTTPS y reenvía `/api` al backend | 5500 y 5443 |
 | `qdrant` | qdrant/qdrant:v1.12.4 | Base de datos vectorial | 6333 |
 | `n8n` | n8nio/n8n:1.80.0 | Flujos de indexación y RAG | 5678 |
 
@@ -288,7 +289,7 @@ curl -s http://localhost:8080/api/v1/analytics/dashboard | head -c 200; echo
 
 | Qué | Dirección |
 |---|---|
-| Página web | http://localhost:5500 |
+| Página web | http://localhost:5500 · **https://localhost:5443** |
 | API REST | http://localhost:8080/api/v1 |
 | Swagger (documentación de la API) | http://localhost:8080/swagger-ui.html |
 | n8n | http://localhost:5678 |
@@ -355,13 +356,29 @@ curl -s -o /dev/null -w "Swagger: %{http_code}\n" http://localhost:8080/swagger-
 
 La colección de Postman con 25 peticiones está en [docs/evidencias/postman_collection.json](docs/evidencias/postman_collection.json), y el detalle de todas las pruebas, en [docs/pruebas/README.md](docs/pruebas/README.md).
 
+### HTTPS
+
+La página también se sirve por **https://localhost:5443**. Por HTTPS, nginx reenvía `/api`, `/api-docs` y `/swagger-ui` al backend, así que la página usa la API desde su mismo origen: no hay contenido mixto ni hace falta CORS.
+
+- **Certificado de desarrollo:** la primera vez, el servicio `certs` crea uno autofirmado para `localhost` en la carpeta `certs/`, que Git ignora. El navegador muestra un aviso porque no lo firmó una autoridad reconocida: acéptalo una vez (*Avanzado → Continuar*).
+- **Certificado real en un servidor Ubuntu con dominio:** obtén uno con Let's Encrypt y cópialo en `certs/` con esos nombres. El servicio `certs` detecta que ya existe y no lo reemplaza:
+  ```bash
+  sudo apt install -y certbot
+  sudo certbot certonly --standalone -d tu-dominio.com
+  sudo cp /etc/letsencrypt/live/tu-dominio.com/fullchain.pem certs/fullchain.pem
+  sudo cp /etc/letsencrypt/live/tu-dominio.com/privkey.pem  certs/privkey.pem
+  docker compose restart frontend
+  ```
+  Para publicarlo en internet, cambia en `docker-compose.yml` el puerto HTTPS del frontend de `127.0.0.1:${FRONTEND_HTTPS_PORT:-5443}:443` a `443:443` y abre ese puerto en el firewall (`sudo ufw allow 443`). El resto de servicios debe seguir en `127.0.0.1`.
+- **Encabezados de seguridad:** HSTS (solo por HTTPS), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` y `Permissions-Policy`. Además, nginx no expone su versión.
+
 ### 8. Usarlo desde otro dispositivo
 
 Los servicios solo escuchan en `127.0.0.1` del servidor Ubuntu, así que no quedan expuestos en la red. Para usarlo desde otro computador, abre un **túnel SSH**. El servidor necesita `openssh-server`, que se instala con `sudo apt install -y openssh-server`.
 
 ```bash
 # En el otro computador (Linux, macOS o Windows con PowerShell)
-ssh -L 5500:localhost:5500 -L 8080:localhost:8080 -L 5678:localhost:5678 usuario@IP_DEL_SERVIDOR
+ssh -L 5500:localhost:5500 -L 5443:localhost:5443 -L 8080:localhost:8080 -L 5678:localhost:5678 usuario@IP_DEL_SERVIDOR
 ```
 
 Mientras esa sesión esté abierta, en ese computador funcionan http://localhost:5500 (la página), http://localhost:8080 (la API) y http://localhost:5678 (n8n), igual que en el servidor. El túnel del puerto 8080 es necesario porque el navegador llama a la API en `localhost:8080`.

@@ -30,6 +30,7 @@ public record AiAssistanceRequestDTO(
         String priority,
 
         @Schema(description = "Contexto adicional para refinar el prompt enviado al agente en n8n", example = "Check if this matches yesterday's firewall certificate update")
+        @Size(max = 500, message = "Additional context cannot exceed 500 characters")
         String additionalPromptContext
 ) {}
 

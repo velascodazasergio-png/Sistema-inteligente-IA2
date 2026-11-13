@@ -4,12 +4,15 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
-| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 27 | ✅ 27 / 27 |
-| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 23 | ✅ 23 / 23 |
+| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 38 | ✅ 38 / 38 |
+| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 26 | ✅ 26 / 26 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
 | Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
 | RAG e indexación de punta a punta | Docker real + OpenRouter simulado (embeddings y LLM) | 7 | ✅ 7 / 7 |
+| Formularios en el navegador (válidos e inválidos) | Edge sin interfaz (CDP) | 11 | ✅ 11 / 11 |
+| Peticiones HTTP inválidas al backend | Script HTTP + pruebas de integración | 27 | ✅ 27 / 27 |
+| HTTPS (proxy nginx) | curl + Edge | 8 | ✅ 8 / 8 |
 | RAG con OpenRouter real (escenarios 1, 2 y 3) | `openai/text-embedding-3-small` + `openai/gpt-4o-mini` | 4 | ✅ 4 / 4 |
 | Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 8 | ✅ 8 / 8 |
 | Interfaz | Navegador sin interfaz (Edge), escritorio y móvil | 8 vistas | ✅ revisadas |
@@ -26,7 +29,7 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 ```bash
 cd backend
 mvn test
-# Tests run: 27, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
+# Tests run: 38, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
 ```
 
 | # | Grupo | Caso | Qué valida | Resultado |
@@ -58,6 +61,14 @@ mvn test
 | 25 | Indexación (RF03) | `statusChangeTriggersReindexWithAuthHeader` | Activar o desactivar un artículo avisa al flujo 01 de n8n tras el commit, con el encabezado de autenticación | ✅ |
 | 26 | Indexación (RF03) | `creatingAnUnverifiedArticleDoesNotTriggerIndexing` | Crear un artículo (nace sin verificar) no llama a n8n | ✅ |
 | 27 | Indexación (RF03) | `failedChangeDoesNotTriggerIndexing` | Un cambio que falla (404) no llama a n8n | ✅ |
+| 28–31 | Mensajes de fallo de IA | `AiFailureHintsTest` | Clave inválida, créditos, límite, modelo, dimensión, conexión cortada y tiempo agotado se traducen en una indicación clara | ✅ |
+| 32 | HTTP | `unknownRouteIs404` | Una ruta inexistente da 404 (antes 500) | ✅ |
+| 33 | HTTP | `unsupportedMethodIs405` | Un método no permitido da 405 (antes 500) | ✅ |
+| 34 | HTTP | `nonJsonBodyIs415` | Un cuerpo que no es JSON da 415 (antes 500) | ✅ |
+| 35 | HTTP | `incidentDescriptionLongerThan4000IsRejected` | Descripción de más de 4000 caracteres da 400 | ✅ |
+| 36 | HTTP | `aiContextLongerThan500IsRejected` | Contexto de IA de más de 500 caracteres da 400 | ✅ |
+| 37 | IA | `resolvedIncidentKeepsItsStatus` | Consultar a la IA sobre un incidente resuelto no lo reabre | ✅ |
+| 38 | IA | `openIncidentMovesToAiAnalysis` | Un incidente abierto pasa a "En análisis IA" | ✅ |
 
 ## 1b. Pruebas unitarias del frontend
 
@@ -166,6 +177,34 @@ Con el valor inicial de 0,75, 4 de los 8 incidentes con artículo quedaban como 
 
 **Workflow combinado (`03-flujos-combinados.json`).** Con los flujos 01 y 02 desactivados y solo el combinado activo, se repitió la prueba con los modelos reales. La cadena de indexación indexó los 10 artículos (`OK`), y la cadena RAG respondió el incidente #138 "NGINX Ingress returning 502" (`COMPLETED`, fuente: artículo #8, similitud 0,799). Las dos cadenas no tienen conexiones entre sí; cada webhook ejecuta solo la suya.
 
+## 3e. Datos válidos e inválidos y respuestas HTTP
+
+**Formularios en el navegador.** Se probaron en Edge, interactuando con la página real:
+
+| Formulario | Datos inválidos | Datos válidos |
+|---|---|---|
+| Nuevo incidente | Vacío: 5 mensajes (título, descripción, categoría, prioridad, responsable). Título de 3 caracteres y descripción corta: "entre 5 y 150" y "al menos 20". Contador `n/4000` y `maxlength` 4000 | Se registra (#152), quitando espacios sobrantes del título |
+| Nuevo artículo | Vacío: título, categoría, problema y solución. URL `ftp://`: "Debe empezar por http:// o https://". `maxlength` 4000/4000/4000/8000 en las secciones | Se crea sin verificar |
+| Asistente | Sin incidente: "Elige el incidente que quieres consultar". Contexto limitado a 500 | — |
+| Filtros (dashboard, analítica, incidentes) | Fecha inicial posterior a la final: mensaje y no se consulta | — |
+| Configuración | URL sin protocolo o `ftp://`: mensaje | — |
+
+Cuando el backend rechaza datos (400), el mensaje aparece **junto a cada campo**, como en la validación del navegador, y traducido al español. Lo mismo vale para la calificación de respuestas.
+
+**Peticiones inválidas al backend.** Se enviaron 27 peticiones mal formadas:
+- **Ya eran correctas:** JSON roto, tipos incorrectos, enums inexistentes, ids inexistentes, fechas mal formadas o invertidas, puntajes fuera de rango y textos largos.
+- **Se corrigieron (defecto 16):** una ruta inexistente, un método no permitido y un cuerpo que no es JSON respondían **500**; ahora responden **404, 405 y 415**.
+- **Se limitaron (defecto 17):** se aceptaba una descripción de 100 000 caracteres y un contexto de IA de 10 000; ahora el máximo es 4000 y 500.
+
+En el frontend, cada código tiene un mensaje en español (400, 404, 405, 409, 413, 415, 5xx, sin conexión y tiempo agotado), y los mensajes de negocio del backend se traducen ("El incidente #25 no existe.", "El incidente está cerrado…").
+
+**HTTPS.** Por `https://localhost:5443`:
+- la página, la API, `/api-docs` y Swagger responden 200 a través del proxy;
+- la página usa la API desde su mismo origen y el estado aparece "en línea";
+- el certificado es de `localhost` y `127.0.0.1`, válido hasta 2029;
+- los encabezados HSTS, `nosniff`, `DENY` y `Referrer-Policy` están presentes y nginx no muestra su versión;
+- el HTTP del puerto 5500 sigue funcionando.
+
 ## 4. Despliegue con Docker Compose
 
 Probado con Docker 29.4 y Compose v5.1. Los puertos del host se reasignaron solo para la prueba, porque el equipo tenía otros proyectos ocupándolos.
@@ -223,6 +262,11 @@ Accesibilidad revisada en el código:
 | 13 | El flujo 02 tenía 2 nodos duplicados (mismo nombre e `id`) | Copia de nodos al armar el flujo | `b101c15` |
 | 14 | Un artículo nuevo, editado o desactivado no se reflejaba en Qdrant hasta reindexar a mano | Nadie llamaba al flujo 01 | `8e0eefb` |
 | 15 | La colección de Qdrant había que crearla a mano | El flujo 01 suponía que existía | `a036f64` |
+| 16 | Ruta inexistente, método no permitido o cuerpo no JSON respondían 500 | El manejador de respaldo convertía todo en 500 | `4f5e580` |
+| 17 | Se aceptaba una descripción de 100 000 caracteres y un contexto de IA de 10 000 | Faltaban límites en los DTO | `4f5e580` |
+| 18 | Consultar a la IA sobre un incidente resuelto lo reabría (bajaba el % de resolución) | Se cambiaba el estado siempre | `4f5e580` |
+| 19 | Al cambiar de sección, una ventana abierta seguía en pantalla | Las ventanas no se cerraban al navegar | `073b933` |
+| 20 | Errores del servidor en inglés y solo en un aviso | Sin traducción ni ubicación por campo | `c86619d` |
 
 ## 7. Pendientes
 

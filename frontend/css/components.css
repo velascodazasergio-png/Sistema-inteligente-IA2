@@ -511,6 +511,7 @@
 
 .field {
   display: grid;
+  align-content: start; /* junto a un campo con error, no estira sus filas (quedaba desalineado) */
   gap: var(--space-2);
 }
 

@@ -8,6 +8,7 @@ import { createStarRating, starsHtml } from './rating.js';
 import { ESTADO_CONSULTA, badge, estadoConsulta } from '../catalogs.js';
 import { formatDateTime, formatRatio } from '../format.js';
 import { rateResponse } from '../services/ai-assistance.service.js';
+import { showServerFieldErrors } from './form-errors.js';
 
 // Mensajes del backend por código de fallo, en el idioma de la interfaz.
 const FAILURE_MESSAGES = {
@@ -142,7 +143,8 @@ function mountRatingForm(slot, aiResponseId, users, onRated) {
       <div class="field">
         <label for="${id}-comment">Comentario (opcional)</label>
         <textarea class="input input--area" id="${id}-comment" name="feedbackComment" rows="2" maxlength="500"
-          placeholder="¿Qué funcionó o qué faltó?"></textarea>
+          placeholder="¿Qué funcionó o qué faltó?" aria-describedby="${id}-comment-error"></textarea>
+        <p class="field__error" id="${id}-comment-error" aria-live="polite"></p>
       </div>
       <button class="btn btn--primary" type="submit">${icon('i-star')}Enviar calificación</button>
     </form>`;
@@ -171,7 +173,7 @@ function mountRatingForm(slot, aiResponseId, users, onRated) {
         evaluatorUserId: data.evaluatorUserId,
         score: stars.value,
         helpful: data.helpful === 'true',
-        feedbackComment: data.feedbackComment,
+        feedbackComment: data.feedbackComment.trim(),
       });
       slot.innerHTML = ratingSummaryHtml(rating);
       toast('Gracias: la calificación quedó registrada.', { type: 'success' });
@@ -179,7 +181,9 @@ function mountRatingForm(slot, aiResponseId, users, onRated) {
     } catch (error) {
       setBusy(button, false);
       stars.setDisabled(false);
-      toast(error.message, { type: 'error' });
+      const errorIds = { score: `${id}-stars-error`, evaluatorUserId: `${id}-user-error`, feedbackComment: `${id}-comment-error` };
+      const shown = showServerFieldErrors(form, error, (name) => errorIds[name] ?? `${id}-${name}-error`);
+      toast(shown ? 'Revisa los campos marcados.' : error.message, { type: 'error' });
     }
   });
 }

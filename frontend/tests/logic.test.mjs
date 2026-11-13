@@ -12,6 +12,7 @@ import { estadoConsulta, badge, ESTADO_CONSULTA, labelOf, PRIORIDAD } from '../j
 import { escapeHtml } from '../js/ui.js';
 import { request, ApiError } from '../js/api.js';
 import { requestAssistance, MIN_DESCRIPTION } from '../js/services/ai-assistance.service.js';
+import { translateApiMessage } from '../js/api-messages.js';
 
 describe('format.js', () => {
   test('formatYearWeek convierte la semana ISO del backend', () => {
@@ -113,6 +114,19 @@ describe('ai-response.js · parseResponse', () => {
   });
 });
 
+describe('api-messages.js', () => {
+  test('traduce mensajes fijos y con datos variables', () => {
+    assert.equal(translateApiMessage('Minimum score is 1'), 'La calificación mínima es 1 estrella.');
+    assert.equal(translateApiMessage('Cannot register an incident under an inactive category: Redes'), 'La categoría "Redes" está inactiva: elige otra.');
+    assert.equal(translateApiMessage("Invalid value 'abc' for parameter 'incidentId'"), 'El valor "abc" no es válido para "incidentId".');
+  });
+
+  test('devuelve null si no reconoce el mensaje', () => {
+    assert.equal(translateApiMessage('Something new'), null);
+    assert.equal(translateApiMessage(''), null);
+  });
+});
+
 describe('catalogs.js', () => {
   test('una consulta COMPLETED sin fuentes se muestra como Sin resultados', () => {
     assert.equal(estadoConsulta({ queryStatus: 'COMPLETED', aiResponse: { sources: [] } }), 'NO_RESULTS');
@@ -163,19 +177,29 @@ describe('api.js · cliente HTTP', () => {
     assert.equal(calls[0].init.body, '{"title":"x"}');
   });
 
-  test('convierte los errores de validación de Spring en un mensaje legible', async () => {
+  test('traduce los errores de validación de Spring y los deja por campo', async () => {
     globalThis.fetch = reply(400, { status: 400, details: { title: 'Title is required', description: 'Description is required' } });
     await assert.rejects(request('/api/v1/incidents', { method: 'POST', body: {} }), (error) => {
       assert.ok(error instanceof ApiError);
       assert.equal(error.status, 400);
-      assert.match(error.message, /Title is required · Description is required/);
+      assert.equal(error.message, 'El título es obligatorio. · La descripción es obligatoria.');
+      assert.deepEqual(error.fieldErrors, { title: 'El título es obligatorio.', description: 'La descripción es obligatoria.' });
       return true;
     });
   });
 
-  test('usa el mensaje de negocio del backend en un 409', async () => {
+  test('traduce el mensaje de negocio del backend en un 409', async () => {
     globalThis.fetch = reply(409, { status: 409, message: 'Cannot change the status of an already CLOSED incident' });
-    await assert.rejects(request('/x'), /already CLOSED/);
+    await assert.rejects(request('/x'), /incidente está cerrado/);
+  });
+
+  test('404 con id, 405 y 500 muestran mensajes en español sin detalles técnicos', async () => {
+    globalThis.fetch = reply(404, { status: 404, message: 'Incident not found with ID: 25' });
+    await assert.rejects(request('/x'), (e) => e.message === 'El incidente #25 no existe.');
+    globalThis.fetch = reply(405, { status: 405, message: "Request method 'DELETE' is not supported" });
+    await assert.rejects(request('/x'), (e) => e.message === 'La operación no está permitida.');
+    globalThis.fetch = reply(500, { status: 500, message: 'An unexpected error occurred while processing the request' });
+    await assert.rejects(request('/x'), (e) => e.message === 'Error interno del servidor.');
   });
 
   test('marca NETWORK_ERROR cuando no hay conexión', async () => {
