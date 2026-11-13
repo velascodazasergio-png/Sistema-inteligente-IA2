@@ -23,5 +23,8 @@ target/
 
 ### Environment & Logs ###
 .env
+
+### Certificados TLS (generados o reales) ###
+certs/
 *.log
 

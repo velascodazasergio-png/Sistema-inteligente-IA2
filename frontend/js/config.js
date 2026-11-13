@@ -4,7 +4,11 @@
 
 const STORAGE_KEY = 'incidentes-ia:api-base-url';
 
-export const DEFAULT_API_BASE_URL = 'http://localhost:8080';
+// Servida por HTTPS (proxy nginx), la página usa la API desde su mismo origen: nginx reenvía /api
+// al backend. Así no hay contenido mixto (HTTPS → HTTP) ni hace falta CORS.
+// En desarrollo (HTTP), la API está en el puerto 8080.
+const servedOverHttps = typeof location !== 'undefined' && location.protocol === 'https:';
+export const DEFAULT_API_BASE_URL = servedOverHttps ? location.origin : 'http://localhost:8080';
 
 export function normalizeBaseUrl(url) {
   return String(url).trim().replace(/\/+$/, '');
