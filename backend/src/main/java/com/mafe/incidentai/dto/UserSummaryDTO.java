@@ -11,4 +11,3 @@ public record UserSummaryDTO(
         String email,
         UserRole role
 ) {}
-

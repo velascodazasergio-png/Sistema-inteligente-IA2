@@ -1,0 +1,145 @@
+/* ==========================================================
+   Responsive: portátil, tablet y móvil
+   ========================================================== */
+
+/* Controles del panel móvil: ocultos desde tablet en adelante.
+   Va en este archivo porque se carga después de components.css (.icon-btn). */
+@media (min-width: 768px) {
+  .sidebar__close,
+  .topbar__menu {
+    display: none;
+  }
+}
+
+/* Visualmente oculto pero accesible (mantiene el nombre del control) */
+@media (max-width: 1023px) {
+  .topbar__eyebrow {
+    display: none;
+  }
+
+  .topbar__cta {
+    width: 40px;
+    padding: 0;
+  }
+
+  .topbar__cta-label,
+  .status__text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .status {
+    width: 32px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .view {
+    padding: var(--space-5);
+  }
+
+  .topbar {
+    padding-inline: var(--space-5);
+  }
+}
+
+/* Móvil: la sidebar pasa a ser un panel deslizable */
+@media (max-width: 767px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: min(280px, 86vw);
+    visibility: hidden;
+    transform: translateX(-100%);
+    box-shadow: var(--shadow-2);
+    transition:
+      transform var(--dur) var(--ease-out),
+      visibility 0s linear var(--dur);
+  }
+
+  .app[data-nav-open] .sidebar {
+    visibility: visible;
+    transform: none;
+    transition: transform var(--dur) var(--ease-out), visibility 0s;
+  }
+
+  .sidebar__footer {
+    display: none;
+  }
+
+  .sidebar-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: var(--z-backdrop);
+    display: block;
+    background: rgba(3, 6, 12, 0.6);
+    backdrop-filter: blur(2px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--dur);
+  }
+
+  .app[data-nav-open] .sidebar-backdrop {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+  }
+
+  .search {
+    order: 10;
+    width: 100%;
+  }
+
+  .search .kbd {
+    display: none;
+  }
+
+  .search input {
+    padding-right: 14px;
+  }
+
+  .view {
+    padding: var(--space-4);
+  }
+
+  .page-title {
+    font-size: var(--fs-xl);
+  }
+
+  .card {
+    padding: var(--space-5);
+  }
+
+  .empty-state {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .kv {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-1);
+  }
+
+  .kv dd {
+    margin-bottom: var(--space-2);
+  }
+
+  .toast-region {
+    right: var(--space-4);
+    bottom: var(--space-4);
+    left: var(--space-4);
+    width: auto;
+  }
+}

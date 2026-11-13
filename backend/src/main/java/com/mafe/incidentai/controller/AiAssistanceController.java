@@ -50,11 +50,13 @@ public class AiAssistanceController {
     @Operation(
         summary = "Register AI response and sources (Callback webhook from n8n)",
         description = "Guarda en cadena la respuesta de n8n (AiResponse) y sus fuentes (ResponseSource) con su similitud. "
-                + "Marca AiQuery como COMPLETED si hay fuentes, o NO_RESULTS si n8n no encontro documentos relevantes."
+                + "Marca AiQuery como COMPLETED si hay fuentes, o NO_RESULTS si n8n no encontro documentos relevantes. "
+                + "Si app.callback.token esta configurado, requiere el encabezado X-Callback-Token."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "AiResponse y sus fuentes guardadas en cadena exitosamente"),
         @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
+        @ApiResponse(responseCode = "401", description = "Token de callback ausente o incorrecto"),
         @ApiResponse(responseCode = "404", description = "AiQuery original no encontrada"),
         @ApiResponse(responseCode = "409", description = "La consulta ya tiene una respuesta registrada")
     })
@@ -63,6 +65,25 @@ public class AiAssistanceController {
             @Valid @RequestBody AiResponseDTO responseDto) {
         Map<String, Object> result = aiAssistanceService.registerAiResponse(responseDto);
         return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    // 2b. Recibe desde n8n el reporte de un fallo al procesar la consulta (embeddings, Qdrant o LLM)
+    @Operation(
+        summary = "Report an AI processing failure (Callback webhook from n8n)",
+        description = "Marca la consulta como FAILED y guarda el codigo y mensaje del fallo. Si app.callback.token esta configurado, requiere el encabezado X-Callback-Token."
+    )
+    @ApiResponses({
+        @ApiResponse(responseCode = "200", description = "Fallo registrado"),
+        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
+        @ApiResponse(responseCode = "401", description = "Token de callback ausente o incorrecto"),
+        @ApiResponse(responseCode = "404", description = "AiQuery no encontrada"),
+        @ApiResponse(responseCode = "409", description = "La consulta ya tiene una respuesta o el ID no coincide")
+    })
+    @PostMapping("/queries/{aiQueryId}/failure")
+    public ResponseEntity<Map<String, Object>> reportFailure(
+            @PathVariable Long aiQueryId,
+            @Valid @RequestBody AiFailureReportDTO report) {
+        return ResponseEntity.ok(aiAssistanceService.reportFailure(aiQueryId, report));
     }
 
     // 3. Registra la calificacion (Rating) sobre una respuesta generada por la IA

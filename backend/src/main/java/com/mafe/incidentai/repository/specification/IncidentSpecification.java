@@ -38,12 +38,12 @@ public final class IncidentSpecification {
                 predicates.add(criteriaBuilder.equal(root.get("priority"), priority));
             }
 
-            // 3. Si se envio status, filtramos por el estado actual del incidente
+            // Si se envio status, filtramos por el estado actual del incidente
             if (status != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
             }
 
-            // 4. Si se envio userId, filtramos por el usuario que reporto el incidente
+            // 3. Si se envio userId, filtramos por el usuario que reporto el incidente
             if (userId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
             }

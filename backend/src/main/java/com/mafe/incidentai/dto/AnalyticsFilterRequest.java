@@ -23,4 +23,3 @@ public record AnalyticsFilterRequest(
         @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
         LocalDateTime endDate
 ) {}
-

@@ -62,13 +62,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // 4. Parametro de URL o Query Param con formato invalido (p. ej. un enum o una fecha mal formada) -> HTTP 400
+    // Parametro de URL con formato invalido (p. ej. un estado o una fecha inexistentes)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return badRequest("Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'");
     }
 
-    // 5. Cuerpo JSON mal formado (sintaxis rota) o con un valor de enum desconocido enviado desde n8n -> HTTP 400
+    // Cuerpo JSON mal formado o con un valor de enum desconocido
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadableBody(HttpMessageNotReadableException ex) {
         return badRequest("Malformed request body or invalid field value");
@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // 6. Respaldo general para cualquier error inesperado (HTTP 500) sin exponer trazas sensibles al cliente
+    // 4. Respaldo general para cualquier error inesperado (HTTP 500) sin exponer trazas sensibles al cliente
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         Map<String, Object> body = new LinkedHashMap<>();

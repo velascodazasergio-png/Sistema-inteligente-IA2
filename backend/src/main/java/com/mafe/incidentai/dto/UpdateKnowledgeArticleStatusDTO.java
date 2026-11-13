@@ -11,4 +11,3 @@ public record UpdateKnowledgeArticleStatusDTO(
         @Schema(description = "true para marcar como verificado", example = "true")
         Boolean verified
 ) {}
-

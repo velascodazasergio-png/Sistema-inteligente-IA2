@@ -4,6 +4,10 @@ package com.mafe.incidentai.domain.enums;
 public enum QueryStatus {
     PENDING,
     COMPLETED,
+    // n8n respondio, pero no encontro documentos relevantes en la base de conocimiento
     NO_RESULTS,
-    COMMUNICATION_ERROR
+    // El backend no pudo entregar la consulta a n8n (timeout o error HTTP)
+    COMMUNICATION_ERROR,
+    // n8n recibio la consulta pero fallo al procesarla (embeddings, Qdrant o LLM)
+    FAILED
 }

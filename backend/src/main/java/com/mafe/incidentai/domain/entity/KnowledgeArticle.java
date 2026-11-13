@@ -28,22 +28,23 @@ public class KnowledgeArticle {
     @Column(name = "title", nullable = false, length = 180)
     private String title;
 
-    // Contenido tecnico consolidado del articulo (incluye problema, sintomas, causa y procedimiento)
+    // Texto completo del articulo. Lo usa el flujo RAG de n8n para indexar y citar.
+    // En los articulos nuevos se arma a partir de problema, sintomas, causa y solucion.
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    // Campos estructurados especificos de RF02 (opcionales para desglosar el articulo tecnico)
-    @Column(name = "problem_description", columnDefinition = "TEXT")
-    private String problemDescription;
+    // Secciones estructuradas del articulo (RF02). Opcionales para los articulos antiguos.
+    @Column(name = "problem", columnDefinition = "TEXT")
+    private String problem;
 
     @Column(name = "symptoms", columnDefinition = "TEXT")
     private String symptoms;
 
-    @Column(name = "root_cause", columnDefinition = "TEXT")
-    private String rootCause;
+    @Column(name = "cause", columnDefinition = "TEXT")
+    private String cause;
 
-    @Column(name = "solution_procedure", columnDefinition = "TEXT")
-    private String solutionProcedure;
+    @Column(name = "solution", columnDefinition = "TEXT")
+    private String solution;
 
     @Column(name = "reference_url", length = 500)
     private String referenceUrl;

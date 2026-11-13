@@ -2,16 +2,15 @@ package com.mafe.incidentai.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Contrato DTO para representar la evolucion mensual de incidentes reportados vs resueltos (RF06)
-@Schema(description = "Tendencia mensual de incidentes reportados y resueltos")
+// Incidentes reportados y resueltos en un mes
+@Schema(description = "Tendencia mensual de incidentes reportados vs resueltos")
 public record MonthlyTrendDTO(
-        @Schema(description = "Identificador del mes en formato AAAA-MM", example = "2026-10")
+        @Schema(description = "Mes en formato AAAA-MM", example = "2026-10")
         String yearMonth,
 
-        @Schema(description = "Total de incidentes reportados en ese mes", example = "82")
+        @Schema(description = "Incidentes registrados en el mes", example = "80")
         Long totalReported,
 
-        @Schema(description = "Total de incidentes resueltos o cerrados en ese mes", example = "71")
+        @Schema(description = "De esos incidentes, cuantos estan resueltos o cerrados", example = "72")
         Long totalResolved
 ) {}
-

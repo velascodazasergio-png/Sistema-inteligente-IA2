@@ -1,0 +1,667 @@
+{
+  "name": "Flujo 1 - Indexación de la base de conocimiento",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## 1. Solicitud desde Spring Boot\nSpring Boot llama a este webhook automáticamente tras editar, verificar o activar/desactivar un artículo (`{\"articleId\": N}`). Para reindexar todo: `{\"all\": true}`.",
+        "height": 540,
+        "width": 560,
+        "color": 4
+      },
+      "id": "056ecc44-e579-4173-b193-1257e5ba51f9",
+      "name": "Etapa 1",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 2. Obtener y validar artículos (activos y verificados)",
+        "height": 540,
+        "width": 560,
+        "color": 3
+      },
+      "id": "d2375a44-6f51-4053-b7e8-26134e7b3c52",
+      "name": "Etapa 2",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        640,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 3. Embeddings (OpenRouter)",
+        "height": 540,
+        "width": 830,
+        "color": 5
+      },
+      "id": "0963b3c0-2b80-4757-99a1-2619a022e5d1",
+      "name": "Etapa 3",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 4. Qdrant: upsert sin duplicados y limpieza de desactivados",
+        "height": 540,
+        "width": 830,
+        "color": 6
+      },
+      "id": "6fe84ae1-1a76-4a5f-bbaa-237d88f5bf9e",
+      "name": "Etapa 4",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2110,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## 5. Resumen",
+        "height": 540,
+        "width": 560,
+        "color": 2
+      },
+      "id": "73e86eb9-5d54-4cc4-bc48-4b8fde8e0e50",
+      "name": "Etapa 5",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2980,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "content": "## Manejo de errores",
+        "height": 260,
+        "width": 1100,
+        "color": 3
+      },
+      "id": "4dd2c731-5b4b-4635-ac86-defc735c0744",
+      "name": "Errores",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        40,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "index-knowledge-base",
+        "authentication": "headerAuth",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "51f5ce2f-54b9-42ec-94f7-04d41c490394",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        60,
+        300
+      ],
+      "webhookId": "680dc89c-617c-40b2-8a30-0fac2583d430",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Webhook entrante (Spring Boot)"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const t0 = Date.now();\nconst raw = $input.first().json;\nconst b = raw.body ?? raw;\nconst id = b.articleId == null ? null : Number(b.articleId);\nif (id !== null && (!Number.isInteger(id) || id <= 0)) throw new Error('articleId inválido');\nif (id === null && b.all !== true) throw new Error('Indique articleId o all=true');\nreturn [{ json: { t0, articleId: id, all: id === null } }];"
+      },
+      "id": "74644d81-fbcc-4e54-964f-9a24276cb13a",
+      "name": "Validar solicitud",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        330,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $env.SPRING_BASE_URL }}/api/v1/knowledge-articles{{ $json.articleId ? '/' + $json.articleId : '' }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "6106d725-7d1f-45a0-8a74-c19c21c0e044",
+      "name": "Obtener artículos (Spring Boot)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        660,
+        300
+      ],
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Validar solicitud').first().json;\nconst hash = s => { let h = 5381; for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(16); };\nconst articulos = $input.all().map(i => i.json).filter(a => a && !a.error && a.id != null);\nconst indexar = [], eliminar = [], omitidos = [];\nfor (const a of articulos) {\n  if (a.active !== true) { eliminar.push(a.id); omitidos.push({ id: a.id, motivo: 'desactivado' }); continue; }\n  if (a.verified !== true) { eliminar.push(a.id); omitidos.push({ id: a.id, motivo: 'sin verificar' }); continue; }\n  if (typeof a.title !== 'string' || !a.title.trim() || typeof a.content !== 'string' || !a.content.trim()) { omitidos.push({ id: a.id, motivo: 'título o contenido vacío' }); continue; }\n  const texto = `Categoría: ${a.categoryName ?? 'N/D'}\\nTítulo: ${a.title.trim()}\\nContenido: ${a.content.trim()}`;\n  indexar.push({ id: a.id, texto, payload: {\n    knowledgeArticleId: a.id, title: a.title, categoryId: a.categoryId ?? null, categoryName: a.categoryName ?? null,\n    referenceUrl: a.referenceUrl ?? null, authorUserId: a.authorUserId ?? null,\n    active: true, verified: true, articleUpdatedAt: a.updatedAt ?? null,\n    contentHash: hash(texto), embeddingModel: $env.EMBEDDING_MODEL, indexedAt: new Date().toISOString(), source: 'spring-boot'\n  } });\n}\nif (!req.all && !articulos.some(a => a.id === req.articleId)) {\n  eliminar.push(req.articleId);\n  omitidos.push({ id: req.articleId, motivo: 'no existe en Spring Boot; se elimina su vector' });\n}\nreturn [{ json: { t0: req.t0, indexar, eliminar: [...new Set(eliminar)], omitidos, hayIndexar: indexar.length > 0, hayEliminar: eliminar.length > 0 } }];"
+      },
+      "id": "40f08fd0-ba17-4063-a70a-13eef492b201",
+      "name": "Clasificar artículos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        930,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "3ef6c308-95b1-4e51-a51b-f80e50cb9436",
+              "leftValue": "={{ $json.hayIndexar }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ec877955-7732-4755-b9b8-bcb0a6357609",
+      "name": "¿Hay artículos para indexar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1260,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.OPENROUTER_BASE_URL }}/embeddings",
+        "options": {
+          "timeout": 60000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $env.EMBEDDING_MODEL, input: $json.indexar.map(x => x.texto) }) }}"
+      },
+      "id": "828559a5-fe0b-4460-b83d-c544246e3459",
+      "name": "Generar embeddings (lote)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1530,
+        300
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "OpenRouter API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Clasificar artículos').first().json;\nconst data = [...($json.data ?? [])].sort((a, b) => a.index - b.index);\nif (data.length !== c.indexar.length) throw new Error('Cantidad de embeddings distinta a la de artículos');\nconst dim = Number($env.EMBEDDING_DIM);\nconst points = c.indexar.map((x, i) => {\n  const v = data[i].embedding;\n  if (!Array.isArray(v) || (dim && v.length !== dim)) throw new Error(`CONFIG: dimensión inesperada en el artículo ${x.id}`);\n  return { id: x.id, vector: v, payload: x.payload };\n});\nreturn [{ json: { points } }];"
+      },
+      "id": "48f85877-4dde-4347-89f2-e303911d7b4c",
+      "name": "Armar puntos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
+        300
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.QDRANT_URL }}/collections/{{ $env.QDRANT_COLLECTION }}",
+        "options": {
+          "timeout": 15000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ vectors: { size: Number($env.EMBEDDING_DIM), distance: 'Cosine' } }) }}"
+      },
+      "id": "50f524fd-7949-42a1-b7a3-831b54f227b4",
+      "name": "Asegurar colección en Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1965,
+        480
+      ],
+      "onError": "continueRegularOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Qdrant API Key"
+        }
+      },
+      "notes": "Crea la colección si no existe (tamaño EMBEDDING_DIM, distancia coseno). Si ya existe, Qdrant responde 409 y el flujo sigue.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "={{ $env.QDRANT_URL }}/collections/{{ $env.QDRANT_COLLECTION }}/points?wait=true",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ points: $('Armar puntos').first().json.points }) }}"
+      },
+      "id": "b96b3b0e-bde3-4073-bd73-127b3b918e4b",
+      "name": "Guardar vectores en Qdrant (upsert)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2130,
+        300
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Qdrant API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "0c331035-3e30-407c-ab64-2b62331691dd",
+              "leftValue": "={{ $('Clasificar artículos').first().json.hayEliminar }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9e8f9109-e878-4e75-8f2e-83173cc79a63",
+      "name": "¿Hay vectores que eliminar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $env.QDRANT_URL }}/collections/{{ $env.QDRANT_COLLECTION }}/points/delete?wait=true",
+        "options": {
+          "timeout": 30000
+        },
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ points: $('Clasificar artículos').first().json.eliminar }) }}"
+      },
+      "id": "d8e24b18-a973-4a01-b51c-c65882018b7c",
+      "name": "Eliminar vectores en Qdrant",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2670,
+        300
+      ],
+      "onError": "continueErrorOutput",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REEMPLAZAR",
+          "name": "Qdrant API Key"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const c = $('Clasificar artículos').first().json;\nreturn [{ json: { status: 'OK', indexed: c.indexar.map(x => x.id), deleted: c.eliminar, skipped: c.omitidos,\n  embeddingModel: $env.EMBEDDING_MODEL, processingTimeMs: Date.now() - c.t0 } }];"
+      },
+      "id": "1f274ce5-4111-4e76-870a-7d84decea036",
+      "name": "Armar resumen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3000,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {}
+      },
+      "id": "ef57c34e-6c08-4fe4-81ee-b75b72271558",
+      "name": "Responder resumen",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        3270,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const msg = typeof $json.error === 'string' ? $json.error : ($json.error?.message ?? 'Solicitud inválida');\nreturn [{ json: { status: 'ERROR', errorCode: 'SOLICITUD_INVALIDA', message: msg } }];"
+      },
+      "id": "2ea54b40-736d-466b-80ed-3e068053911a",
+      "name": "Fallo: solicitud inválida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        60,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "id": "03c83687-53db-4cc3-952c-c56d07237a91",
+      "name": "Responder 400",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        330,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const req = $('Validar solicitud').first().json;\nconst e = $json.error;\nconst msg = typeof e === 'string' ? e : (e?.message ?? JSON.stringify(e ?? ''));\nreturn [{ json: { status: 'ERROR',\n  errorCode: /CONFIG:/.test(msg) ? 'CONFIGURACION_INVALIDA' : (/timeout|timed out|ETIMEDOUT/i.test(msg) ? 'TIMEOUT' : 'INDEXACION_FALLO'),\n  message: 'La indexación no se completó. El estado de los vectores no está garantizado; reintente.',\n  technicalDetail: msg.slice(0, 200), processingTimeMs: Date.now() - req.t0 } }];"
+      },
+      "id": "80c76065-3963-438b-9e90-ad025bb38190",
+      "name": "Fallo: indexación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        600,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 502
+        }
+      },
+      "id": "94cb5f4e-14c2-44e6-8f1d-2b786aa030ec",
+      "name": "Responder error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        870,
+        800
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar solicitud",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar solicitud": {
+      "main": [
+        [
+          {
+            "node": "Obtener artículos (Spring Boot)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo: solicitud inválida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallo: solicitud inválida": {
+      "main": [
+        [
+          {
+            "node": "Responder 400",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener artículos (Spring Boot)": {
+      "main": [
+        [
+          {
+            "node": "Clasificar artículos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar artículos": {
+      "main": [
+        [
+          {
+            "node": "¿Hay artículos para indexar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay artículos para indexar?": {
+      "main": [
+        [
+          {
+            "node": "Generar embeddings (lote)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "¿Hay vectores que eliminar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generar embeddings (lote)": {
+      "main": [
+        [
+          {
+            "node": "Armar puntos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo: indexación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar puntos": {
+      "main": [
+        [
+          {
+            "node": "Asegurar colección en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo: indexación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar vectores en Qdrant (upsert)": {
+      "main": [
+        [
+          {
+            "node": "¿Hay vectores que eliminar?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo: indexación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Hay vectores que eliminar?": {
+      "main": [
+        [
+          {
+            "node": "Eliminar vectores en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Armar resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar vectores en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Armar resumen",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fallo: indexación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Armar resumen": {
+      "main": [
+        [
+          {
+            "node": "Responder resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fallo: indexación": {
+      "main": [
+        [
+          {
+            "node": "Responder error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Asegurar colección en Qdrant": {
+      "main": [
+        [
+          {
+            "node": "Guardar vectores en Qdrant (upsert)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "active": false,
+  "pinData": {}
+}

@@ -37,4 +37,3 @@ public class CatalogController {
         return ResponseEntity.ok(catalogService.listUsers(role));
     }
 }
-

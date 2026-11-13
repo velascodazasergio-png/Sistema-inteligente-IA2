@@ -13,6 +13,7 @@ import com.mafe.incidentai.repository.KnowledgeArticleRepository;
 import com.mafe.incidentai.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,17 +22,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-// Servicio de la base de conocimiento (RF02): solo los articulos activos y verificados alimentan al RAG en n8n
+// Servicio de la base de conocimiento (RF02): solo los articulos activos y verificados alimentan al RAG
 @Service
 @RequiredArgsConstructor
 public class KnowledgeArticleService {
 
-    // Inyeccion de dependencias por constructor generada automaticamente por @RequiredArgsConstructor de Lombok
     private final KnowledgeArticleRepository knowledgeArticleRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
-    // Lista articulos con filtros opcionales: texto en titulo o contenido (q), categoria, active y verified
+    // Lista articulos con filtros opcionales: texto en titulo o contenido, categoria, activo y verificado
     @Transactional(readOnly = true)
     public List<KnowledgeArticleResponseDTO> searchArticles(String q, Long categoryId, Boolean active, Boolean verified) {
         Specification<KnowledgeArticle> spec = (root, query, cb) -> {
@@ -65,7 +66,7 @@ public class KnowledgeArticleService {
         return toDTO(findArticle(articleId));
     }
 
-    // Crea un articulo nuevo: nace activo (true) y sin verificar (false) hasta que un especialista lo valide
+    // Crea un articulo. Nace activo y sin verificar: un especialista debe validarlo antes de que lo use la IA.
     @Transactional
     public KnowledgeArticleResponseDTO createArticle(KnowledgeArticleRequestDTO request) {
         KnowledgeArticle article = new KnowledgeArticle();
@@ -75,20 +76,23 @@ public class KnowledgeArticleService {
         return toDTO(knowledgeArticleRepository.save(article));
     }
 
-    // Edita un articulo existente: si cambia el titulo o el contenido, vuelve a quedar sin verificar (verified = false)
+    // Edita un articulo. Si cambia el titulo o el contenido, vuelve a quedar sin verificar.
     @Transactional
     public KnowledgeArticleResponseDTO updateArticle(Long articleId, KnowledgeArticleRequestDTO request) {
         KnowledgeArticle article = findArticle(articleId);
         boolean contentChanged = !Objects.equals(article.getTitle(), request.title().trim())
-                || !Objects.equals(article.getContent(), request.content().trim());
+                || !Objects.equals(article.getContent(), composeContent(request));
         apply(article, request);
         if (contentChanged) {
             article.setVerified(false);
         }
-        return toDTO(knowledgeArticleRepository.save(article));
+        KnowledgeArticle saved = knowledgeArticleRepository.save(article);
+        // Reindexa (o borra el vector si quedo sin verificar) cuando la transaccion se confirme
+        eventPublisher.publishEvent(new KnowledgeArticleChangedEvent(saved.getId()));
+        return toDTO(saved);
     }
 
-    // Activa/desactiva o verifica un articulo de conocimiento
+    // Activa/desactiva o verifica un articulo
     @Transactional
     public KnowledgeArticleResponseDTO updateStatus(Long articleId, UpdateKnowledgeArticleStatusDTO request) {
         if (request.active() == null && request.verified() == null) {
@@ -101,7 +105,10 @@ public class KnowledgeArticleService {
         if (request.verified() != null) {
             article.setVerified(request.verified());
         }
-        return toDTO(knowledgeArticleRepository.save(article));
+        KnowledgeArticle saved = knowledgeArticleRepository.save(article);
+        // Indexa al verificar/activar y borra el vector al desactivar
+        eventPublisher.publishEvent(new KnowledgeArticleChangedEvent(saved.getId()));
+        return toDTO(saved);
     }
 
     private void apply(KnowledgeArticle article, KnowledgeArticleRequestDTO request) {
@@ -118,11 +125,33 @@ public class KnowledgeArticleService {
             article.setAuthorUser(author);
         }
         article.setTitle(request.title().trim());
-        article.setContent(request.content().trim());
+        article.setProblem(request.problem().trim());
+        article.setSymptoms(blankToNull(request.symptoms()));
+        article.setCause(blankToNull(request.cause()));
+        article.setSolution(request.solution().trim());
+        article.setContent(composeContent(request));
         article.setReferenceUrl(request.referenceUrl() == null || request.referenceUrl().isBlank()
                 ? null
                 : request.referenceUrl().trim());
         article.setCategory(category);
+    }
+
+    // Arma el texto completo que indexa el flujo RAG a partir de las secciones del articulo
+    static String composeContent(KnowledgeArticleRequestDTO request) {
+        StringBuilder text = new StringBuilder("Problema: ").append(request.problem().trim());
+        String symptoms = blankToNull(request.symptoms());
+        String cause = blankToNull(request.cause());
+        if (symptoms != null) {
+            text.append("\nSintomas: ").append(symptoms);
+        }
+        if (cause != null) {
+            text.append("\nCausa: ").append(cause);
+        }
+        return text.append("\nSolucion: ").append(request.solution().trim()).toString();
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private KnowledgeArticle findArticle(Long articleId) {
@@ -136,6 +165,10 @@ public class KnowledgeArticleService {
                 a.getId(),
                 a.getTitle(),
                 a.getContent(),
+                a.getProblem(),
+                a.getSymptoms(),
+                a.getCause(),
+                a.getSolution(),
                 a.getReferenceUrl(),
                 a.getActive(),
                 a.getVerified(),
@@ -148,4 +181,3 @@ public class KnowledgeArticleService {
         );
     }
 }
-

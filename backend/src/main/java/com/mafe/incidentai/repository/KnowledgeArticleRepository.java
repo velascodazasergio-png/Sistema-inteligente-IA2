@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-// Repositorio para consultar articulos de la base de conocimiento con soporte para JPQL y Specifications
+// Repositorio para consultar articulos de la base de conocimiento
 public interface KnowledgeArticleRepository extends JpaRepository<KnowledgeArticle, Long>, JpaSpecificationExecutor<KnowledgeArticle> {
 
     // Consulta JPQL explicita que trae solo los articulos activos y verificados (listos para alimentar el RAG de n8n)

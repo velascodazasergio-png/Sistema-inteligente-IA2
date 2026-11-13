@@ -10,4 +10,3 @@ public record CategoryResponseDTO(
         String description,
         Boolean active
 ) {}
-
