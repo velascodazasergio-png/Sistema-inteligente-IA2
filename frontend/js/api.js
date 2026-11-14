@@ -4,6 +4,7 @@
 
 import { getApiBaseUrl, normalizeBaseUrl } from './config.js';
 import { translateApiMessage } from './api-messages.js';
+import { getToken, clearSession } from './auth.js';
 
 const DEFAULT_TIMEOUT_MS = 15000;
 
@@ -87,11 +88,15 @@ export async function request(path, {
   signal,
   timeout = DEFAULT_TIMEOUT_MS,
   headers = {},
+  auth = true,
 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
   const forwardAbort = () => controller.abort();
   signal?.addEventListener('abort', forwardAbort, { once: true });
+
+  // Con sesión, cada petición lleva el JWT. El login (auth: false) no lo necesita.
+  const token = auth ? getToken() : null;
 
   let response;
   try {
@@ -100,6 +105,7 @@ export async function request(path, {
       headers: {
         Accept: 'application/json',
         ...(body !== undefined && { 'Content-Type': 'application/json' }),
+        ...(token && { Authorization: `Bearer ${token}` }),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -122,6 +128,11 @@ export async function request(path, {
 
   const data = await parseBody(response).catch(() => null);
   if (!response.ok) {
+    // Token vencido o inválido: se cierra la sesión y la aplicación vuelve al inicio de sesión
+    if (response.status === 401 && token) {
+      clearSession();
+      if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('auth:expired'));
+    }
     const fieldErrors = fieldErrorsFrom(data);
     throw new ApiError(messageFrom(response.status, data, fieldErrors), { status: response.status, details: data, fieldErrors });
   }

@@ -2,11 +2,12 @@
 // Implementa el patrón combobox de ARIA para que funcione con teclado
 // y lectores de pantalla.
 
-import { routes } from './routes.js';
+import { visibleRoutes } from './routes.js';
 import { navigate } from './router.js';
 import { icon, escapeHtml, normalizeText as normalize } from './ui.js';
 
-const index = routes.map((route) => ({
+// Solo las secciones que el rol del usuario puede abrir (se recalcula al iniciar o cerrar sesión)
+const buildIndex = () => visibleRoutes().map((route) => ({
   route,
   haystack: normalize([route.title, route.rf, route.description, ...(route.keywords ?? [])].join(' ')),
 }));
@@ -35,7 +36,8 @@ export function initSearch() {
 
   function open() {
     const query = normalize(input.value);
-    matches = query ? index.filter((item) => item.haystack.includes(query)).map((item) => item.route) : routes;
+    const index = buildIndex();
+    matches = (query ? index.filter((item) => item.haystack.includes(query)) : index).map((item) => item.route);
     active = matches.length ? 0 : -1;
     renderList();
     list.hidden = false;

@@ -1,5 +1,6 @@
 package com.mafe.incidentai.controller;
 
+import com.mafe.incidentai.security.AccessPolicy;
 import com.mafe.incidentai.domain.enums.QueryStatus;
 import com.mafe.incidentai.dto.*;
 import com.mafe.incidentai.service.AiAssistanceService;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 // Controlador REST para orquestar el analisis de incidentes con n8n, registrar respuestas, calificar y consultar historial
 @RestController
@@ -27,6 +29,7 @@ import java.util.Map;
 public class AiAssistanceController {
 
     private final AiAssistanceService aiAssistanceService;
+    private final AccessPolicy accessPolicy;
 
     // 1. Dispara el analisis de un incidente hacia el webhook de n8n y registra AiQuery (PENDING o COMMUNICATION_ERROR)
     @Operation(
@@ -42,6 +45,7 @@ public class AiAssistanceController {
     @PostMapping("/request")
     public ResponseEntity<Map<String, Object>> requestAiAssistance(
             @Valid @RequestBody AiAssistanceRequestDTO request) {
+        accessPolicy.checkIncident(request.incidentId());
         Map<String, Object> result = aiAssistanceService.requestAiAssistance(request);
         return ResponseEntity.status(HttpStatus.ACCEPTED).body(result);
     }
@@ -101,6 +105,12 @@ public class AiAssistanceController {
     public ResponseEntity<RatingResponseDTO> rateAiResponse(
             @PathVariable Long aiResponseId,
             @Valid @RequestBody CreateRatingRequestDTO request) {
+        // Solo el administrador puede calificar en nombre de otra persona; el resto califica con su usuario
+        if (!accessPolicy.isAdmin()) {
+            accessPolicy.checkIncident(aiAssistanceService.findIncidentIdOfResponse(aiResponseId));
+            request = new CreateRatingRequestDTO(accessPolicy.user().id(), request.score(), request.helpful(),
+                    request.feedbackComment());
+        }
         RatingResponseDTO response = aiAssistanceService.rateAiResponse(aiResponseId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -117,6 +127,7 @@ public class AiAssistanceController {
     @GetMapping("/incidents/{incidentId}/history")
     public ResponseEntity<List<AiQueryHistoryResponseDTO>> getIncidentAiHistory(
             @PathVariable Long incidentId) {
+        accessPolicy.checkIncident(incidentId);
         List<AiQueryHistoryResponseDTO> history = aiAssistanceService.getIncidentAiHistory(incidentId);
         return ResponseEntity.ok(history);
     }
@@ -133,6 +144,12 @@ public class AiAssistanceController {
     @GetMapping("/history")
     public ResponseEntity<List<AiQueryHistoryResponseDTO>> getAiHistory(
             @RequestParam(required = false) QueryStatus status) {
-        return ResponseEntity.ok(aiAssistanceService.getAiHistory(status));
+        List<AiQueryHistoryResponseDTO> history = aiAssistanceService.getAiHistory(status);
+        // Un empleado solo ve las consultas de sus propios incidentes
+        if (accessPolicy.isEmployee()) {
+            Set<Long> own = accessPolicy.ownIncidentIds();
+            history = history.stream().filter(q -> own.contains(q.incidentId())).toList();
+        }
+        return ResponseEntity.ok(history);
     }
 }

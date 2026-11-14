@@ -21,6 +21,7 @@
   <link rel="stylesheet" href="css/modules.css">
   <link rel="stylesheet" href="css/responsive.css">
   <link rel="stylesheet" href="css/color.css">
+  <link rel="stylesheet" href="css/auth.css">
 
   <script type="module" src="js/app.js"></script>
 </head>
@@ -63,6 +64,7 @@
     <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     <symbol id="i-filter" viewBox="0 0 24 24"><path d="M4 5.5h16l-6.2 7.3v5.4l-3.6 1.8v-7.2z"/></symbol>
     <symbol id="i-external" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10M19.5 4.5L11 13M18 14v4.5a1 1 0 0 1-1 1H5.5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1H10"/></symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24"><path d="M14.5 4.5H18a1.5 1.5 0 0 1 1.5 1.5v12a1.5 1.5 0 0 1-1.5 1.5h-3.5"/><path d="M10 16.5L5.5 12 10 7.5M5.5 12h10"/></symbol>
     <symbol id="i-send" viewBox="0 0 24 24"><path d="M20 4L3.5 10.8l6.7 2.6 2.6 6.7z"/><path d="M20 4l-9.8 9.4"/></symbol>
   </svg>
 
@@ -134,6 +136,16 @@
             <svg class="icon" aria-hidden="true"><use href="#i-sparkles"/></svg>
             <span class="topbar__cta-label">Consultar IA</span>
           </a>
+          <div class="user-chip" id="user-chip" hidden>
+            <span data-user-avatar></span>
+            <span class="user-chip__text">
+              <span class="user-chip__name" data-user-name></span>
+              <span class="user-chip__role" data-user-role></span>
+            </span>
+            <button class="icon-btn" type="button" id="logout" aria-label="Cerrar sesión" title="Cerrar sesión">
+              <svg class="icon" aria-hidden="true"><use href="#i-logout"/></svg>
+            </button>
+          </div>
         </div>
       </header>
 

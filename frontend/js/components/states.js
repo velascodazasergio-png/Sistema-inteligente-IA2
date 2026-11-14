@@ -2,6 +2,7 @@
 
 import { icon, escapeHtml } from '../ui.js';
 import { getApiBaseUrl } from '../config.js';
+import { isAdmin } from '../auth.js';
 
 // Bloque de error con botón "Reintentar". El texto viene de ApiError,
 // que ya traduce timeouts, falta de conexión y errores de Spring.
@@ -15,7 +16,7 @@ export function errorState(container, error, onRetry) {
       ${offline ? `<p class="field__hint">Comprueba que Spring Boot esté en ejecución en <code>${escapeHtml(getApiBaseUrl())}</code>.</p>` : ''}
       <div class="cluster">
         ${onRetry ? `<button class="btn btn--primary" type="button" data-retry>${icon('i-refresh')}Reintentar</button>` : ''}
-        ${offline ? `<a class="btn btn--ghost" href="#/configuracion">Configuración</a>` : ''}
+        ${offline && isAdmin() ? `<a class="btn btn--ghost" href="#/configuracion">Configuración</a>` : ''}
       </div>
     </div>`;
   container.querySelector('[data-retry]')?.addEventListener('click', onRetry);

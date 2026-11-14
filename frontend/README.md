@@ -145,13 +145,27 @@ Los degradados de los botones usan tonos oscuros para que el texto blanco cumpla
 node --test "frontend/tests/*.test.mjs"
 ```
 
-23 pruebas unitarias de la lógica: cálculos de analítica, formato, interpretación de las respuestas de la IA, catálogos y el cliente HTTP (con `fetch` simulado).
+41 pruebas unitarias:
+- **Lógica** (`logic.test.mjs`): cálculos de analítica, formato, interpretación de las respuestas de la IA, catálogos y el cliente HTTP (con `fetch` simulado).
+- **Sesión y roles** (`auth.test.mjs`): vencimiento del token, secciones que ve cada rol, envío del JWT y respuesta ante 401 y 403.
+
+## Sesión y roles
+
+- **Inicio de sesión:** `#/login` (`views/login.js`) envía correo y contraseña a `POST /api/v1/auth/login`. `auth.js` guarda el JWT, su vencimiento y el usuario en `localStorage`, y `api.js` lo envía en `Authorization: Bearer …`.
+- **Fin de la sesión:** ante un 401, el cliente cierra la sesión y la aplicación vuelve al login. Si se inicia o se cierra sesión en otra pestaña, esta se pone al día.
+- **Permisos de navegación:** en `routes.js`, cada sección declara los roles que pueden abrirla (`roles`) y, si cambia según el rol, su título (`byRole`, p. ej. *Mis incidentes*). El router lleva al login sin sesión, y a la sección de inicio del rol si este no tiene acceso. El menú y el buscador muestran solo lo permitido.
+- **Vistas según el rol:**
+  - el usuario reporta sin elegir responsable y no cambia estados;
+  - el técnico no verifica artículos;
+  - solo el administrador califica en nombre de otra persona.
+  El backend aplica las mismas reglas: la interfaz no es la única barrera.
 
 ## Endpoints usados
 
 | Método | Ruta | Uso |
 |---|---|---|
 | GET | `/api-docs` | Comprobar que el backend está levantado |
+| POST | `/api/v1/auth/login` | Iniciar sesión (JWT) |
 | GET | `/api/v1/categories`, `/api/v1/users` | Catálogos de formularios y filtros |
 | GET | `/api/v1/incidents` | Listado con filtros `categoryId`, `priority`, `status`, `userId`, `startDate`, `endDate` |
 | GET | `/api/v1/incidents/{id}` | Detalle (enlaces `#/incidentes?id=…`) |
@@ -172,4 +186,3 @@ node --test "frontend/tests/*.test.mjs"
 
 1. **n8n**: sin n8n en ejecución, toda consulta nueva queda en *Error de conexión*. La configuración completa está en el [README del proyecto](../README.md).
 2. **Paginación en el servidor** cuando crezca el volumen de incidentes.
-3. **Autenticación**: no hay mecanismo definido. Cuando exista, se añade en `api.js`.

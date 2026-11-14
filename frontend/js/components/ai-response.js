@@ -3,7 +3,8 @@
 // La usan el Asistente y el Historial. Solo muestra lo que devolvió el backend:
 // si no hay respuesta, no se simula ninguna.
 
-import { icon, escapeHtml, toast, setBusy } from '../ui.js';
+import { icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
+import { currentUser } from '../auth.js';
 import { createStarRating, starsHtml } from './rating.js';
 import { ESTADO_CONSULTA, badge, estadoConsulta } from '../catalogs.js';
 import { formatDateTime, formatRatio } from '../format.js';
@@ -117,22 +118,28 @@ export const searchingHtml = () => `
 
 let uid = 0;
 
-// Formulario de calificación. users: [{id, name}] para elegir al evaluador.
+// Formulario de calificación. users: [{id, name}] para elegir al evaluador (solo administrador).
+// Con users = null califica el usuario de la sesión (el backend usa siempre su id).
 function mountRatingForm(slot, aiResponseId, users, onRated) {
   const id = `rate-${++uid}`;
+  const me = currentUser();
+  const evaluatorField = users ? `
+          <label for="${id}-user">Evaluado por</label>
+          <select class="input" id="${id}-user" name="evaluatorUserId">
+            <option value="">Selecciona…</option>
+            ${users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
+          </select>
+          <p class="field__error" id="${id}-user-error" aria-live="polite"></p>` : `
+          <span class="field__label">Evaluado por</span>
+          <p class="person">${avatar(me?.fullName)}${escapeHtml(me?.fullName ?? '—')} <span class="cell-muted">(tú)</span></p>
+          <input type="hidden" name="evaluatorUserId" value="${me?.id ?? ''}">`;
   slot.innerHTML = `
     <form class="ai-rating" novalidate>
       <h4 class="detail-label">¿Qué tan útil fue esta respuesta?</h4>
       <div data-stars></div>
       <p class="field__error" id="${id}-stars-error" aria-live="polite"></p>
       <div class="form-row">
-        <div class="field">
-          <label for="${id}-user">Evaluado por</label>
-          <select class="input" id="${id}-user" name="evaluatorUserId">
-            <option value="">Selecciona…</option>
-            ${users.map((u) => `<option value="${u.id}">${escapeHtml(u.name)}</option>`).join('')}
-          </select>
-          <p class="field__error" id="${id}-user-error" aria-live="polite"></p>
+        <div class="field">${evaluatorField}
         </div>
         <fieldset class="field segmented">
           <legend>¿Resolvió el problema?</legend>
@@ -161,7 +168,8 @@ function mountRatingForm(slot, aiResponseId, users, onRated) {
     const starsError = stars.value ? '' : 'Elige de 1 a 5 estrellas.';
     const userError = data.evaluatorUserId ? '' : 'Elige quién califica.';
     form.querySelector(`#${id}-stars-error`).textContent = starsError;
-    form.querySelector(`#${id}-user-error`).textContent = userError;
+    const userErrorEl = form.querySelector(`#${id}-user-error`);
+    if (userErrorEl) userErrorEl.textContent = userError;
     form.elements.evaluatorUserId.setAttribute('aria-invalid', String(Boolean(userError)));
     if (starsError || userError) return;
 

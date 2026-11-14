@@ -1,5 +1,6 @@
 package com.mafe.incidentai.controller;
 
+import com.mafe.incidentai.security.AccessPolicy;
 import com.mafe.incidentai.domain.enums.IncidentStatus;
 import com.mafe.incidentai.domain.enums.Priority;
 import com.mafe.incidentai.dto.CreateIncidentRequestDTO;
@@ -28,6 +29,7 @@ import java.util.List;
 public class IncidentController {
 
     private final IncidentService incidentService;
+    private final AccessPolicy accessPolicy;
 
     // 1. Registra un nuevo incidente validando el DTO de entrada con @Valid
     @Operation(summary = "Register a new technological incident", description = "El incidente nace en estado OPEN.")
@@ -40,6 +42,11 @@ public class IncidentController {
     @PostMapping
     public ResponseEntity<IncidentResponseDTO> createIncident(
             @Valid @RequestBody CreateIncidentRequestDTO request) {
+        // Un empleado siempre reporta a su nombre, aunque envie otro userId
+        if (accessPolicy.isEmployee()) {
+            request = new CreateIncidentRequestDTO(request.title(), request.description(), request.priority(),
+                    accessPolicy.user().id(), request.categoryId());
+        }
         IncidentResponseDTO response = incidentService.createIncident(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -52,7 +59,9 @@ public class IncidentController {
     })
     @GetMapping("/{incidentId}")
     public ResponseEntity<IncidentResponseDTO> getIncident(@PathVariable Long incidentId) {
-        return ResponseEntity.ok(incidentService.getIncident(incidentId));
+        IncidentResponseDTO incident = incidentService.getIncident(incidentId);
+        accessPolicy.checkIncident(incident);
+        return ResponseEntity.ok(incident);
     }
 
     // 3. Actualiza la informacion general de un incidente existente (titulo, descripcion, prioridad, categoria, usuario)
@@ -102,6 +111,8 @@ public class IncidentController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
+        // Un empleado solo ve sus propios incidentes
+        if (accessPolicy.isEmployee()) userId = accessPolicy.user().id();
         List<IncidentResponseDTO> results = incidentService.filterIncidents(
                 categoryId, priority, status, userId, startDate, endDate
         );

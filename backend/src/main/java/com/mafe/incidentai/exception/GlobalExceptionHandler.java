@@ -2,6 +2,9 @@ package com.mafe.incidentai.exception;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -31,6 +34,30 @@ public class GlobalExceptionHandler {
         body.put("message", ex.getMessage());
 
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
+    }
+
+    // Credenciales incorrectas en el inicio de sesion: HTTP 401
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<Map<String, Object>> handleAuthentication(AuthenticationException ex) {
+        String message = ex instanceof BadCredentialsException ? ex.getMessage() : "Authentication required";
+        return simple(HttpStatus.UNAUTHORIZED, "Unauthorized", message);
+    }
+
+    // Recurso ajeno (p. ej. un empleado que pide el incidente de otra persona): HTTP 403
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
+        String message = ex.getMessage() == null || ex.getMessage().equals("Access Denied")
+                ? "You do not have permission to perform this action" : ex.getMessage();
+        return simple(HttpStatus.FORBIDDEN, "Forbidden", message);
+    }
+
+    private ResponseEntity<Map<String, Object>> simple(HttpStatus status, String error, String message) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("timestamp", LocalDateTime.now().toString());
+        body.put("status", status.value());
+        body.put("error", error);
+        body.put("message", message);
+        return ResponseEntity.status(status).body(body);
     }
 
     // 2. Maneja violaciones de reglas de negocio devolviendo HTTP 409 Conflict

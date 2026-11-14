@@ -33,6 +33,10 @@ public class User {
     @Column(name = "role", nullable = false, length = 30)
     private UserRole role;
 
+    // Hash BCrypt de la contrasena (nunca la contrasena en claro). Nulo = aun sin contrasena asignada.
+    @Column(name = "password_hash", length = 100)
+    private String passwordHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

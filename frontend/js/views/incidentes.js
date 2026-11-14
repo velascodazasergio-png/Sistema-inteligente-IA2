@@ -1,5 +1,9 @@
 // Incidentes (RF01): registro, consulta, filtrado y cambio de estado.
 // Endpoints: GET/POST /api/v1/incidents, PATCH /api/v1/incidents/{id}/status
+//
+// Según el rol:
+// - Administrador y técnico: todos los incidentes, filtro por usuario y cambio de estado.
+// - Usuario (EMPLOYEE): "Mis incidentes". Solo los suyos, los reporta a su nombre y no cambia estados.
 
 import { pageHeader, icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
@@ -11,6 +15,7 @@ import { ESTADO_INCIDENTE, PRIORIDAD, badge, optionsHtml, labelOf } from '../cat
 import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
 import { showServerFieldErrors, attachCounter } from '../components/form-errors.js';
+import { isEmployee, currentUser } from '../auth.js';
 
 const selectOptions = (items, placeholder) =>
   `<option value="">${escapeHtml(placeholder)}</option>${items.map((i) => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('')}`;
@@ -25,10 +30,14 @@ const RULES = {
 };
 
 export async function render(container, { route, signal }) {
+  const employee = isEmployee();
+  // El usuario siempre reporta a su nombre: no elige responsable
+  const rules = employee ? Object.fromEntries(Object.entries(RULES).filter(([name]) => name !== 'userId')) : RULES;
+
   container.innerHTML = `
     <div class="page-header-row">
       ${pageHeader(route)}
-      <button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}Nuevo incidente</button>
+      <button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}${employee ? 'Reportar incidente' : 'Nuevo incidente'}</button>
     </div>
 
     <div class="stack stack--tight">
@@ -39,7 +48,7 @@ export async function render(container, { route, signal }) {
             <select class="input" id="f-priority" name="priority"><option value="">Todas</option>${optionsHtml(PRIORIDAD)}</select></div>
           <div class="field"><label for="f-status">Estado</label>
             <select class="input" id="f-status" name="status"><option value="">Todos</option>${optionsHtml(ESTADO_INCIDENTE)}</select></div>
-          <div class="field"><label for="f-user">Usuario responsable</label><select class="input" id="f-user" name="userId"></select></div>
+          ${employee ? '' : '<div class="field"><label for="f-user">Usuario responsable</label><select class="input" id="f-user" name="userId"></select></div>'}
           <div class="field"><label for="f-start">Desde</label><input class="input" id="f-start" name="startDate" type="date"></div>
           <div class="field"><label for="f-end">Hasta</label><input class="input" id="f-end" name="endDate" type="date"></div>
         </div>
@@ -60,9 +69,9 @@ export async function render(container, { route, signal }) {
   let incidents = [];
 
   const table = createDataTable(container.querySelector('#inc-table'), {
-    caption: 'Incidentes registrados',
-    searchPlaceholder: 'Buscar por título, categoría, usuario…',
-    emptyMessage: 'No hay incidentes con estos filtros.',
+    caption: employee ? 'Mis incidentes' : 'Incidentes registrados',
+    searchPlaceholder: employee ? 'Buscar por título o categoría…' : 'Buscar por título, categoría, usuario…',
+    emptyMessage: employee ? 'Aún no has reportado incidentes con estos filtros.' : 'No hay incidentes con estos filtros.',
     pageSize: 10,
     initialSort: { key: 'createdAt', dir: 'desc' },
     columns: [
@@ -82,7 +91,8 @@ export async function render(container, { route, signal }) {
         key: 'status', label: 'Estado', render: (r) => badge(ESTADO_INCIDENTE, r.status),
         text: (r) => labelOf(ESTADO_INCIDENTE, r.status), sortValue: (r) => Object.keys(ESTADO_INCIDENTE).indexOf(r.status),
       },
-      { key: 'userFullName', label: 'Responsable', render: (r) => `<span class="person cell-muted">${avatar(r.userFullName)}${escapeHtml(r.userFullName)}</span>` },
+      // En "Mis incidentes" todos son del mismo usuario: la columna sobra
+      ...(employee ? [] : [{ key: 'userFullName', label: 'Responsable', render: (r) => `<span class="person cell-muted">${avatar(r.userFullName)}${escapeHtml(r.userFullName)}</span>` }]),
       {
         key: 'createdAt', label: 'Fecha', render: (r) => `<span class="cell-muted" title="${formatDateTime(r.createdAt)}">${formatDate(r.createdAt)}</span>`,
         text: (r) => formatDateTime(r.createdAt), sortValue: (r) => parseDate(r.createdAt),
@@ -124,9 +134,11 @@ export async function render(container, { route, signal }) {
   const fill = () => {
     const keep = readFilters();
     form.elements.categoryId.innerHTML = selectOptions(catalogs.categories, 'Todas');
-    form.elements.userId.innerHTML = selectOptions(catalogs.users, 'Todos');
     form.elements.categoryId.value = keep.categoryId ?? '';
-    form.elements.userId.value = keep.userId ?? '';
+    if (form.elements.userId) {
+      form.elements.userId.innerHTML = selectOptions(catalogs.users, 'Todos');
+      form.elements.userId.value = keep.userId ?? '';
+    }
   };
 
   async function load() {
@@ -162,7 +174,8 @@ export async function render(container, { route, signal }) {
     const [rows, categories, users] = await Promise.all([
       listIncidents({}, { signal }),
       listCategories({}, { signal }),
-      listUsers({}, { signal }),
+      // El directorio de usuarios es solo para el personal de soporte
+      employee ? [] : listUsers({}, { signal }),
     ]);
     incidents = rows;
     catalogs = {
@@ -203,13 +216,17 @@ export async function render(container, { route, signal }) {
         <div class="cluster">${badge(PRIORIDAD, incident.priority)}${badge(ESTADO_INCIDENTE, incident.status)}</div>
         <dl class="kv kv--detail">
           <dt>Categoría</dt><dd>${escapeHtml(incident.categoryName)}</dd>
-          <dt>Usuario responsable</dt><dd>${escapeHtml(incident.userFullName)}</dd>
+          <dt>${employee ? 'Reportado por' : 'Usuario responsable'}</dt><dd>${escapeHtml(incident.userFullName)}</dd>
           <dt>Registro</dt><dd>${formatDateTime(incident.createdAt)}</dd>
           <dt>Última actualización</dt><dd>${formatDateTime(incident.updatedAt)}</dd>
         </dl>
         <h4 class="detail-label">Descripción</h4>
         <p class="detail-text">${escapeHtml(incident.description)}</p>
 
+        ${employee ? `
+        <p class="note">${icon('i-info')}<span>${closed
+          ? 'Este incidente ya fue cerrado por el equipo de soporte.'
+          : 'El equipo de soporte actualiza el estado a medida que atiende tu incidente. Mientras tanto, puedes pedir orientación a la IA.'}</span></p>` : `
         <form class="status-form" data-status-form>
           <div class="field">
             <label for="detail-status">Cambiar estado</label>
@@ -217,7 +234,7 @@ export async function render(container, { route, signal }) {
             <p class="field__hint">${closed ? 'Un incidente cerrado ya no puede cambiar de estado.' : 'El cambio queda registrado en el backend.'}</p>
           </div>
           <button class="btn btn--primary" type="submit" ${closed ? 'disabled' : ''}>${icon('i-check')}Guardar estado</button>
-        </form>
+        </form>`}
 
         <div class="detail-links">
           ${closed ? '' : `<a class="btn btn--ghost" href="#/asistente?incidente=${incident.id}">${icon('i-sparkles')}Consultar a la IA</a>`}
@@ -229,7 +246,7 @@ export async function render(container, { route, signal }) {
     modal.body.querySelectorAll('.detail-links a').forEach((a) => a.addEventListener('click', () => modal.close()));
 
     const statusForm = modal.body.querySelector('[data-status-form]');
-    statusForm.addEventListener('submit', async (event) => {
+    statusForm?.addEventListener('submit', async (event) => {
       event.preventDefault();
       const next = statusForm.elements.status.value;
       if (next === incident.status) {
@@ -264,7 +281,7 @@ export async function render(container, { route, signal }) {
   /* ---------- Registro ---------- */
   function openCreate() {
     const modal = openModal({
-      title: 'Nuevo incidente',
+      title: employee ? 'Reportar incidente' : 'Nuevo incidente',
       size: 'lg',
       body: `
         <form class="form" id="create-form" novalidate>
@@ -291,11 +308,11 @@ export async function render(container, { route, signal }) {
               <select class="input" id="c-priority" name="priority" aria-describedby="c-priority-error"><option value="">Selecciona…</option>${optionsHtml(PRIORIDAD)}</select>
               <p class="field__error" id="c-priority-error" aria-live="polite"></p>
             </div>
-            <div class="field">
+            ${employee ? '' : `<div class="field">
               <label for="c-user">Usuario responsable</label>
               <select class="input" id="c-user" name="userId" aria-describedby="c-userId-error">${selectOptions(catalogs.users, 'Selecciona…')}</select>
               <p class="field__error" id="c-userId-error" aria-live="polite"></p>
-            </div>
+            </div>`}
           </div>
           <div class="form__actions">
             <button class="btn btn--primary" type="submit">${icon('i-check')}Registrar incidente</button>
@@ -316,7 +333,7 @@ export async function render(container, { route, signal }) {
       return !message;
     };
 
-    Object.keys(RULES).forEach((name) => {
+    Object.keys(rules).forEach((name) => {
       const field = createForm.elements[name];
       field.addEventListener('blur', () => { touched.add(name); validateField(name); });
       field.addEventListener('input', () => { if (touched.has(name)) validateField(name); });
@@ -332,7 +349,7 @@ export async function render(container, { route, signal }) {
 
     createForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const results = Object.keys(RULES).map((name) => { touched.add(name); return validateField(name); });
+      const results = Object.keys(rules).map((name) => { touched.add(name); return validateField(name); });
       if (results.includes(false)) {
         createForm.querySelector('[aria-invalid="true"]')?.focus();
         return;
@@ -343,6 +360,7 @@ export async function render(container, { route, signal }) {
         const data = Object.fromEntries(new FormData(createForm));
         data.title = data.title.trim();
         data.description = data.description.trim();
+        if (employee) data.userId = currentUser().id;
         const created = await createIncident(data);
         incidents = [created, ...incidents];
         showRows();

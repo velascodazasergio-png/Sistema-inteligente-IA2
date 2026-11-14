@@ -10,6 +10,7 @@ import { skeletonLines } from '../components/skeleton.js';
 import { renderAiQuery } from '../components/ai-response.js';
 import { listIncidents } from '../services/incidents.service.js';
 import { listUsers, toOptions } from '../services/catalogs.service.js';
+import { isAdmin } from '../auth.js';
 import { requestAssistance, getIncidentHistory, MIN_DESCRIPTION } from '../services/ai-assistance.service.js';
 import { ESTADO_INCIDENTE, PRIORIDAD, badge } from '../catalogs.js';
 import { formatDateTime } from '../format.js';
@@ -50,8 +51,9 @@ export async function render(container, { route, signal }) {
   let incidents;
   let users;
   try {
-    [incidents, users] = await Promise.all([listIncidents({}, { signal }), listUsers({}, { signal })]);
-    users = toOptions(users);
+    [incidents, users] = await Promise.all([listIncidents({}, { signal }), isAdmin() ? listUsers({}, { signal }) : null]);
+    // Solo el administrador califica en nombre de otra persona; el resto califica con su sesión
+    users = users ? toOptions(users) : null;
   } catch (error) {
     if (signal.aborted) return;
     errorState(root, error, () => render(container, { route, signal }));

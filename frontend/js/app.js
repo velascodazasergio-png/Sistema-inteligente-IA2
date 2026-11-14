@@ -1,21 +1,23 @@
 // Punto de entrada: construye la navegación, controla la sidebar,
 // vigila el estado de la API y arranca el router.
 
-import { routes } from './routes.js';
-import { startRouter } from './router.js';
+import { visibleRoutes } from './routes.js';
+import { startRouter, navigate } from './router.js';
 import { initSearch } from './search.js';
 import { checkHealth } from './api.js';
 import { getApiBaseUrl } from './config.js';
-import { icon, escapeHtml } from './ui.js';
+import { icon, escapeHtml, avatar, toast } from './ui.js';
+import { currentUser, isAdmin, ROLE_LABEL } from './auth.js';
+import { logout } from './services/auth.service.js';
 
 const app = document.getElementById('app');
 const SIDEBAR_KEY = 'incidentes-ia:sidebar';
 const STATUS_INTERVAL_MS = 30000;
 
-/* ---------- Navegación lateral (agrupada por sección) ---------- */
+/* ---------- Navegación lateral (agrupada por sección, solo lo que el rol puede abrir) ---------- */
 function renderNav() {
   const groups = new Map();
-  routes.filter((route) => route.nav !== false).forEach((route) => {
+  visibleRoutes().filter((route) => route.nav !== false).forEach((route) => {
     const name = route.group ?? 'General';
     if (!groups.has(name)) groups.set(name, []);
     groups.get(name).push(route);
@@ -151,7 +153,46 @@ function initStatusMonitor() {
   window.addEventListener('api:config-changed', () => refresh({ showChecking: true }));
 }
 
+/* ---------- Usuario de la sesión ---------- */
+function renderUser() {
+  const user = currentUser();
+  const chip = document.getElementById('user-chip');
+  chip.hidden = !user;
+  if (user) {
+    chip.dataset.role = user.role;
+    chip.querySelector('[data-user-avatar]').innerHTML = avatar(user.fullName);
+    chip.querySelector('[data-user-name]').textContent = user.fullName;
+    chip.querySelector('[data-user-role]').textContent = ROLE_LABEL[user.role] ?? user.role;
+    chip.title = `${user.fullName} · ${user.email}`;
+  }
+  // El estado de la API enlaza a Configuración solo para quien puede abrirla
+  document.querySelectorAll('#api-status, #sidebar-status').forEach((link) => {
+    if (isAdmin()) link.setAttribute('href', '#/configuracion');
+    else link.removeAttribute('href');
+  });
+}
+
+function initSession() {
+  document.getElementById('logout').addEventListener('click', () => {
+    logout();
+    toast('Cerraste sesión.', { type: 'info' });
+    navigate('login');
+  });
+  // Al iniciar o cerrar sesión cambian el menú y el usuario de la barra superior
+  window.addEventListener('auth:changed', () => {
+    renderNav();
+    renderUser();
+  });
+  // El backend rechazó el token (vencido o inválido): de vuelta al login
+  window.addEventListener('auth:expired', () => {
+    toast('Tu sesión expiró. Inicia sesión de nuevo.', { type: 'error' });
+    navigate('login');
+  });
+}
+
 renderNav();
+renderUser();
+initSession();
 initSidebar();
 initSearch();
 initStatusMonitor();

@@ -33,6 +33,16 @@ const EXACT = {
   'Maximum score is 5': 'La calificación máxima es 5 estrellas.',
   'Helpful indicator is required': 'Indica si la respuesta fue útil.',
   'Feedback comment cannot exceed 500 characters': 'El comentario no puede superar 500 caracteres.',
+  // Sesión y permisos (401 / 403)
+  'Invalid email or password': 'Correo o contraseña incorrectos.',
+  'Authentication required': 'Inicia sesión para continuar.',
+  'Invalid or expired token': 'Tu sesión expiró. Inicia sesión de nuevo.',
+  'You do not have permission to perform this action': 'Tu rol no tiene permiso para realizar esta acción.',
+  'You can only access your own incidents': 'Solo puedes consultar los incidentes que tú reportaste.',
+  'This article is not published': 'Este artículo aún no está publicado.',
+  'Email is required': 'Escribe tu correo.',
+  'Email must be a valid address': 'Escribe un correo válido.',
+  'Password is required': 'Escribe tu contraseña.',
   // Reglas de negocio (409)
   'Cannot change the status of an already CLOSED incident': 'El incidente está cerrado: ya no se puede cambiar su estado.',
   'Cannot modify an already CLOSED incident': 'El incidente está cerrado: ya no se puede modificar.',

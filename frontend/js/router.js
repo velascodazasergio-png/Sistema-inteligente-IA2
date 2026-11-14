@@ -1,8 +1,9 @@
 // Router basado en hash (#/seccion): navegación sin recargar la página
 // y compatible con cualquier servidor estático.
 
-import { routes, DEFAULT_ROUTE } from './routes.js';
+import { routes, resolveRoute } from './routes.js';
 import { pageHeader, toast } from './ui.js';
+import { getSession, currentUser, canAccess, homeFor } from './auth.js';
 
 const view = document.getElementById('main');
 const titleEl = document.getElementById('topbar-title');
@@ -22,8 +23,33 @@ export function routeParams() {
   return new URLSearchParams(location.hash.split('?')[1] ?? '');
 }
 
+// Sin sección en la URL: el inicio del rol (o el login si no hay sesión)
 function currentPath() {
-  return location.hash.replace(/^#\/?/, '').split(/[?/]/)[0] || DEFAULT_ROUTE;
+  return location.hash.replace(/^#\/?/, '').split(/[?/]/)[0] || homeFor(currentUser()?.role);
+}
+
+const redirect = (path) => {
+  history.replaceState(null, '', `#/${path}`);
+  return render();
+};
+
+// Decide qué sección mostrar según la sesión y el rol.
+// Devuelve la ruta a dibujar o, si hay que redirigir, la promesa del nuevo render.
+function guard(route) {
+  const session = getSession();
+  if (!route) return redirect(homeFor(session?.user?.role));
+  if (!route.public && !session) {
+    // Sin sesión: al login, recordando a dónde quería ir
+    const next = location.hash.replace(/^#\/?/, '');
+    history.replaceState(null, '', `#/login${next && !next.startsWith('login') ? `?next=${encodeURIComponent(next)}` : ''}`);
+    return render();
+  }
+  if (route.path === 'login' && session) return redirect(homeFor(session.user.role));
+  if (!canAccess(route)) {
+    toast('Tu rol no tiene acceso a esa sección.', { type: 'error' });
+    return redirect(homeFor(session.user.role));
+  }
+  return resolveRoute(route);
 }
 
 function updateChrome(route) {
@@ -39,11 +65,10 @@ function updateChrome(route) {
 }
 
 async function render() {
-  const route = routes.find((r) => r.path === currentPath());
-  if (!route) {
-    history.replaceState(null, '', `#/${DEFAULT_ROUTE}`);
-    return render();
-  }
+  const route = guard(routes.find((r) => r.path === currentPath()));
+  if (route instanceof Promise) return route;
+  // La pantalla de login ocupa toda la ventana (sin barra lateral ni superior)
+  document.getElementById('app').dataset.layout = route.layout ?? 'app';
 
   // Cancela las peticiones de la vista anterior.
   controller?.abort();

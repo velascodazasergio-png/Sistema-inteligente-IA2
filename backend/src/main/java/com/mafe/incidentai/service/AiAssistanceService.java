@@ -218,6 +218,14 @@ public class AiAssistanceService {
         );
     }
 
+    // Incidente al que pertenece una respuesta de la IA (para validar quien puede calificarla)
+    @Transactional(readOnly = true)
+    public Long findIncidentIdOfResponse(Long aiResponseId) {
+        return aiResponseRepository.findById(aiResponseId)
+                .map(r -> r.getAiQuery().getIncident().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("AI Response not found with ID: " + aiResponseId));
+    }
+
     // 4. Consulta el historial de interacciones con la IA (AiQuery) para un incidente especifico
     @Transactional(readOnly = true)
     public List<AiQueryHistoryResponseDTO> getIncidentAiHistory(Long incidentId) {
