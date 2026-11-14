@@ -12,6 +12,7 @@ import { openModal } from '../components/modal.js';
 import { renderAiQuery, responseSummary } from '../components/ai-response.js';
 import { getAiHistory } from '../services/ai-assistance.service.js';
 import { listUsers, toOptions } from '../services/catalogs.service.js';
+import { isAdmin } from '../auth.js';
 import { ESTADO_CONSULTA, badge, estadoConsulta, labelOf, optionsHtml } from '../catalogs.js';
 import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
@@ -39,8 +40,9 @@ export async function render(container, { route, signal }) {
   let entries;
   let users;
   try {
-    [entries, users] = await Promise.all([getAiHistory({}, { signal }), listUsers({}, { signal })]);
-    users = toOptions(users);
+    [entries, users] = await Promise.all([getAiHistory({}, { signal }), isAdmin() ? listUsers({}, { signal }) : null]);
+    // Solo el administrador califica en nombre de otra persona; el resto califica con su sesión
+    users = users ? toOptions(users) : null;
   } catch (error) {
     if (signal.aborted) return;
     errorState(root, error, () => render(container, { route, signal }));

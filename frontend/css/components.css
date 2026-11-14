@@ -515,7 +515,8 @@
   gap: var(--space-2);
 }
 
-.field label {
+.field label,
+.field__label {
   font-size: var(--fs-sm);
   font-weight: 600;
 }

@@ -1,6 +1,11 @@
 // Base de conocimiento (RF02): artículos técnicos que alimentan al asistente.
 // Solo los artículos activos y verificados se usan como fuentes del RAG.
 // Endpoints: GET/POST /api/v1/knowledge-articles, GET/PUT /{id}, PATCH /{id}/status
+//
+// Según el rol:
+// - Administrador: crea, edita, verifica y activa o desactiva artículos.
+// - Técnico: crea y edita; la verificación la hace un administrador.
+// - Usuario (EMPLOYEE): solo lee los artículos publicados (activos y verificados).
 
 import { pageHeader, icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
@@ -11,6 +16,7 @@ import { searchArticles, createArticle, updateArticle, updateArticleStatus } fro
 import { listCategories, listUsers } from '../services/catalogs.service.js';
 import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { showServerFieldErrors } from '../components/form-errors.js';
+import { isAdmin, isEmployee } from '../auth.js';
 
 const VIEW_KEY = 'incidentes-ia:kb-view';
 
@@ -65,7 +71,7 @@ const saveView = (view) => {
   try { localStorage.setItem(VIEW_KEY, view); } catch { /* sin almacenamiento: se usa el valor por defecto */ }
 };
 
-function cardHtml(a) {
+function cardHtml(a, { canEdit }) {
   const s = stateOf(a);
   const summary = a.problem || a.content;
   return `
@@ -82,7 +88,7 @@ function cardHtml(a) {
           <span class="person cell-muted">${a.authorFullName ? avatar(a.authorFullName) : ''}#${a.id} · ${formatDate(a.updatedAt)}${a.authorFullName ? ` · ${escapeHtml(a.authorFullName)}` : ''}</span>
           <span class="row-actions">
             <button class="icon-btn icon-btn--sm" type="button" data-kb-action="view" data-id="${a.id}" aria-label="Ver artículo #${a.id}" title="Ver">${icon('i-eye')}</button>
-            <button class="icon-btn icon-btn--sm" type="button" data-kb-action="edit" data-id="${a.id}" aria-label="Editar artículo #${a.id}" title="Editar">${icon('i-settings')}</button>
+            ${canEdit ? `<button class="icon-btn icon-btn--sm" type="button" data-kb-action="edit" data-id="${a.id}" aria-label="Editar artículo #${a.id}" title="Editar">${icon('i-settings')}</button>` : ''}
           </span>
         </footer>
       </article>
@@ -90,10 +96,14 @@ function cardHtml(a) {
 }
 
 export async function render(container, { route, signal }) {
+  const reader = isEmployee();      // solo lectura de artículos publicados
+  const canEdit = !reader;          // administrador y técnico redactan
+  const canPublish = isAdmin();     // verificar y activar: solo administrador
+
   container.innerHTML = `
     <div class="page-header-row">
       ${pageHeader(route)}
-      <button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}Nuevo artículo</button>
+      ${canEdit ? `<button class="btn btn--primary" type="button" data-action="create" disabled>${icon('i-plus')}Nuevo artículo</button>` : ''}
     </div>
 
     <div class="stack stack--tight">
@@ -102,10 +112,10 @@ export async function render(container, { route, signal }) {
           <div class="field"><label for="kb-q">Buscar</label>
             <input class="input" id="kb-q" name="q" type="search" placeholder="Ej.: VPN, spooler, Kerberos" autocomplete="off"></div>
           <div class="field"><label for="kb-category">Categoría</label><select class="input" id="kb-category" name="categoryId"><option value="">Todas</option></select></div>
-          <div class="field"><label for="kb-active">Estado</label>
+          ${reader ? '' : `<div class="field"><label for="kb-active">Estado</label>
             <select class="input" id="kb-active" name="active"><option value="">Todos</option><option value="true">Activos</option><option value="false">Inactivos</option></select></div>
           <div class="field"><label for="kb-verified">Verificación</label>
-            <select class="input" id="kb-verified" name="verified"><option value="">Todos</option><option value="true">Verificados</option><option value="false">Pendientes de verificación</option></select></div>
+            <select class="input" id="kb-verified" name="verified"><option value="">Todos</option><option value="true">Verificados</option><option value="false">Pendientes de verificación</option></select></div>`}
         </div>
         <div class="form__actions">
           <button class="btn btn--primary" type="submit">${icon('i-search')}Buscar</button>
@@ -115,11 +125,11 @@ export async function render(container, { route, signal }) {
       </form>
 
       <div class="kb-toolbar">
-        <ul class="kb-legend" aria-label="Leyenda de estados">
+        ${reader ? `<ul class="kb-legend"><li><i class="kb-dot kb-dot--ok" aria-hidden="true"></i>Guías verificadas por el equipo de soporte</li></ul>` : `<ul class="kb-legend" aria-label="Leyenda de estados">
           <li><i class="kb-dot kb-dot--ok" aria-hidden="true"></i>Activo y verificado: lo usa el asistente</li>
           <li><i class="kb-dot kb-dot--pending" aria-hidden="true"></i>Pendiente de verificación</li>
           <li><i class="kb-dot kb-dot--inactive" aria-hidden="true"></i>Inactivo</li>
-        </ul>
+        </ul>`}
         <div class="segmented-toggle" role="group" aria-label="Vista">
           <button class="btn btn--ghost" type="button" data-view="cards" aria-pressed="false">${icon('i-layers')}Tarjetas</button>
           <button class="btn btn--ghost" type="button" data-view="table" aria-pressed="false">${icon('i-dashboard')}Tabla</button>
@@ -167,6 +177,10 @@ export async function render(container, { route, signal }) {
 
   const showStats = () => {
     const count = (key) => articles.filter((a) => stateOf(a).key === key).length;
+    if (reader) {
+      stats.innerHTML = `<dl class="history-stats"><div><dt>Guías disponibles</dt><dd>${articles.length}</dd></div></dl>`;
+      return;
+    }
     stats.innerHTML = `
       <dl class="history-stats">
         <div><dt>Artículos</dt><dd>${articles.length}</dd></div>
@@ -185,7 +199,7 @@ export async function render(container, { route, signal }) {
     } else {
       const sorted = [...articles].sort((a, b) => (parseDate(b.updatedAt) ?? 0) - (parseDate(a.updatedAt) ?? 0));
       cardsEl.innerHTML = sorted.length
-        ? `<ul class="kb-grid">${sorted.map(cardHtml).join('')}</ul>`
+        ? `<ul class="kb-grid">${sorted.map((a) => cardHtml(a, { canEdit })).join('')}</ul>`
         : `<div class="card">${emptyHtml('Sin artículos', 'No hay artículos con estos filtros.', 'i-book')}</div>`;
     }
     showStats();
@@ -215,8 +229,8 @@ export async function render(container, { route, signal }) {
 
   form.addEventListener('submit', (event) => { event.preventDefault(); load(); });
   form.addEventListener('reset', () => setTimeout(load));
-  ['categoryId', 'active', 'verified'].forEach((name) => form.elements[name].addEventListener('change', load));
-  createButton.addEventListener('click', () => openEditor());
+  ['categoryId', 'active', 'verified'].forEach((name) => form.elements[name]?.addEventListener('change', load));
+  createButton?.addEventListener('click', () => openEditor());
   container.querySelectorAll('[data-view]').forEach((button) => button.addEventListener('click', () => {
     view = button.dataset.view;
     saveView(view);
@@ -227,12 +241,13 @@ export async function render(container, { route, signal }) {
     if (!button) return;
     const article = articles.find((a) => String(a.id) === button.dataset.id);
     if (!article) return;
-    if (button.dataset.kbAction === 'edit') openEditor(article);
+    if (button.dataset.kbAction === 'edit' && canEdit) openEditor(article);
     else openDetail(article);
   });
 
   try {
-    const [cats, users] = await Promise.all([listCategories({}, { signal }), listUsers({}, { signal })]);
+    // El directorio de usuarios (autores) solo lo necesita quien redacta
+    const [cats, users] = await Promise.all([listCategories({}, { signal }), canEdit ? listUsers({}, { signal }) : []]);
     categories = cats;
     // Redactan artículos los técnicos y administradores.
     authors = users.filter((u) => u.role !== 'EMPLOYEE').map((u) => ({ id: u.id, name: u.fullName }));
@@ -243,7 +258,7 @@ export async function render(container, { route, signal }) {
   }
   if (signal.aborted) return;
   form.elements.categoryId.insertAdjacentHTML('beforeend', categories.map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''));
-  createButton.disabled = false;
+  if (createButton) createButton.disabled = false;
   await load();
 
   /* ---------- Detalle ---------- */
@@ -266,11 +281,13 @@ export async function render(container, { route, signal }) {
         ${hasSections(article)
           ? section('Problema', article.problem) + section('Síntomas', article.symptoms) + section('Causa', article.cause) + section('Solución', article.solution)
           : `${section('Contenido', article.content)}<p class="note note--warning">${icon('i-info')}<span>Este artículo es anterior a las secciones Problema, Síntomas, Causa y Solución. Edítalo para organizarlo.</span></p>`}
-        <div class="detail-links">
+        ${canEdit ? `<div class="detail-links">
           <button class="btn btn--primary" type="button" data-act="edit">${icon('i-settings')}Editar</button>
+          ${canPublish ? `
           <button class="btn btn--ghost" type="button" data-act="verify">${icon('i-check-circle')}${article.verified ? 'Quitar verificación' : 'Marcar como verificado'}</button>
-          <button class="btn ${article.active ? 'btn--danger' : 'btn--ghost'}" type="button" data-act="active">${article.active ? 'Desactivar' : 'Activar'}</button>
-        </div>`,
+          <button class="btn ${article.active ? 'btn--danger' : 'btn--ghost'}" type="button" data-act="active">${article.active ? 'Desactivar' : 'Activar'}</button>`
+          : `<p class="field__hint">Un administrador verifica el artículo antes de que lo use el asistente.</p>`}
+        </div>` : ''}`,
     });
 
     const run = async (button, changes, message) => {
@@ -286,15 +303,15 @@ export async function render(container, { route, signal }) {
       }
     };
 
-    modal.body.querySelector('[data-act="edit"]').addEventListener('click', () => {
+    modal.body.querySelector('[data-act="edit"]')?.addEventListener('click', () => {
       modal.close();
       openEditor(article);
     });
-    modal.body.querySelector('[data-act="verify"]').addEventListener('click', (e) =>
+    modal.body.querySelector('[data-act="verify"]')?.addEventListener('click', (e) =>
       run(e.currentTarget, { verified: !article.verified }, article.verified
         ? 'El artículo quedó pendiente de verificación.'
         : 'Artículo verificado: el asistente puede usarlo si está activo.'));
-    modal.body.querySelector('[data-act="active"]').addEventListener('click', async (e) => {
+    modal.body.querySelector('[data-act="active"]')?.addEventListener('click', async (e) => {
       const button = e.currentTarget;
       if (article.active) {
         const ok = await confirmDialog({
