@@ -155,6 +155,15 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.SPRING_BASE_URL }}/api/v1/knowledge-articles{{ $json.articleId ? '/' + $json.articleId : '' }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Token",
+              "value": "={{ $env.CALLBACK_TOKEN }}"
+            }
+          ]
+        },
         "options": {
           "timeout": 20000
         }
@@ -820,6 +829,15 @@
       "parameters": {
         "method": "GET",
         "url": "={{ $env.SPRING_BASE_URL }}/api/v1/knowledge-articles/{{ $json.knowledgeArticleId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Callback-Token",
+              "value": "={{ $env.CALLBACK_TOKEN }}"
+            }
+          ]
+        },
         "options": {
           "timeout": 10000
         }
