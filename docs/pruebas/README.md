@@ -4,8 +4,8 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
-| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 38 | ✅ 38 / 38 |
-| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 26 | ✅ 26 / 26 |
+| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 56 | ✅ 56 / 56 |
+| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 41 | ✅ 41 / 41 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
 | Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
@@ -13,6 +13,8 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 | Formularios en el navegador (válidos e inválidos) | Edge sin interfaz (CDP) | 11 | ✅ 11 / 11 |
 | Peticiones HTTP inválidas al backend | Script HTTP + pruebas de integración | 27 | ✅ 27 / 27 |
 | HTTPS (proxy nginx) | curl + Edge | 8 | ✅ 8 / 8 |
+| Roles y permisos (JWT) en la API real | curl por `https://localhost:5443` con tokens de los 3 roles y el token de n8n | 20 | ✅ 20 / 20 |
+| Interfaz por rol | Edge sin interfaz (CDP) por HTTPS, escritorio y móvil | 30 | ✅ 30 / 30 |
 | RAG con OpenRouter real (escenarios 1, 2 y 3) | `openai/text-embedding-3-small` + `openai/gpt-4o-mini` | 4 | ✅ 4 / 4 |
 | Despliegue | Docker Compose (PostgreSQL, backend, frontend, Qdrant, n8n) | 8 | ✅ 8 / 8 |
 | Interfaz | Navegador sin interfaz (Edge), escritorio y móvil | 8 vistas | ✅ revisadas |
@@ -204,6 +206,74 @@ En el frontend, cada código tiene un mensaje en español (400, 404, 405, 409, 4
 - el certificado es de `localhost` y `127.0.0.1`, válido hasta 2029;
 - los encabezados HSTS, `nosniff`, `DENY` y `Referrer-Policy` están presentes y nginx no muestra su versión;
 - el HTTP del puerto 5500 sigue funcionando.
+
+## 3f. Roles y permisos con JWT
+
+**Pruebas automáticas (`SecurityTest`, 18 casos).** Usan tokens reales emitidos por `POST /api/v1/auth/login`:
+
+| Caso | Resultado esperado |
+|---|---|
+| Login correcto (el correo no distingue mayúsculas) | 200 con `accessToken`, `tokenType` y el usuario con su rol |
+| Contraseña incorrecta y correo inexistente | El mismo 401 *Invalid email or password* |
+| Login con correo inválido y contraseña vacía | 400 con error por campo |
+| Sin token / token alterado | 401 (`WWW-Authenticate: Bearer error="invalid_token"`) |
+| `/api-docs` | Público (200) |
+| Administrador verifica un artículo | 200 |
+| Técnico: cambia estados, ve analítica y usuarios | 200 |
+| Técnico verifica un artículo | 403 |
+| Usuario lista incidentes pidiendo `userId=7` | Solo recibe los suyos (`userId` 5) |
+| Usuario abre el incidente o el historial de otra persona | 403 *You can only access your own incidents* |
+| Usuario reporta un incidente enviando `userId: 1` | Se registra a su nombre (`userId` 5) |
+| Usuario cambia un estado, ve analítica, ve usuarios o crea un artículo | 403 |
+| Usuario busca artículos sin verificar | Solo recibe artículos activos y verificados |
+| Usuario consulta a la IA sobre un incidente ajeno / propio | 403 / 202 |
+| Historial del usuario | Solo consultas de sus incidentes |
+| n8n con `X-Callback-Token` | Lee artículos (200). Con otro token, 401. No puede leer incidentes (403) |
+
+Las 38 pruebas anteriores corren con un usuario administrador (`@WithMockUser`) y siguen pasando.
+
+**API real** (Docker y PostgreSQL, por `https://localhost:5443`):
+
+| | Incidentes | Usuarios | Analítica | Incidente #2 (ajeno) | Verificar artículo |
+|---|---|---|---|---|---|
+| Sin token | 401 | — | — | — | — |
+| Administrador | 200 | 200 | 200 | 200 | 409 (cuerpo vacío: regla de negocio) |
+| Técnico | 200 | 200 | 200 | 200 | 403 |
+| Usuario | 200 (solo los suyos) | 403 | 403 | 403 | 403 |
+
+Además se comprobó lo siguiente:
+- un login incorrecto da 401;
+- n8n lee artículos con su token (200) pero no incidentes (403);
+- al verificar un artículo como administrador, el flujo 01 lo volvió a indexar en Qdrant leyendo la API con el token de servicio (`indexedAt` actualizado).
+
+**Interfaz por rol** (Edge sin interfaz, por HTTPS, 30 comprobaciones):
+
+- **Login:**
+  - sin sesión, toda sección lleva al login y recuerda la sección pedida (`?next=`);
+  - la pantalla no muestra la barra lateral;
+  - valida campos vacíos y muestra *Correo o contraseña incorrectos.*;
+  - no se desborda en móvil (390 px).
+- **Administrador:**
+  - entra al dashboard y ve las 7 secciones;
+  - en la barra superior aparece su nombre y su rol;
+  - puede verificar y activar artículos.
+- **Técnico:**
+  - entra al dashboard y ve 6 secciones, sin *Configuración*;
+  - abrir `#/configuracion` lo devuelve al dashboard con un aviso;
+  - crea y edita artículos, pero no los verifica;
+  - cambia estados de incidentes.
+- **Usuario:**
+  - entra a *Mis incidentes* y ve 4 secciones: *Mis incidentes*, *Conocimiento*, *Asistente IA* y *Mis consultas*;
+  - no ve el filtro ni la columna de responsable;
+  - reporta incidentes sin elegir responsable;
+  - no cambia estados;
+  - el incidente de otra persona muestra *Solo puedes consultar los incidentes que tú reportaste.*;
+  - abrir `#/dashboard` lo devuelve a sus incidentes;
+  - la base de conocimiento es de solo lectura;
+  - no se desborda en móvil.
+- **Sesión:**
+  - cerrar sesión vuelve al login y borra el token;
+  - con un token inválido, la primera petición devuelve 401 y la aplicación vuelve al login con *Tu sesión expiró*.
 
 ## 4. Despliegue con Docker Compose
 

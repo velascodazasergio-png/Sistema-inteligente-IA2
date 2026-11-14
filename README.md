@@ -52,6 +52,38 @@ Plataforma para registrar incidentes de soporte, administrar una base de conocim
 
 Estados de una consulta a la IA: **Pendiente** (`PENDING`), **Respondida** (`COMPLETED`), **Sin resultados** (`NO_RESULTS`), **Error** (`COMMUNICATION_ERROR` si n8n no responde, `FAILED` si n8n falla al procesar).
 
+## Roles y permisos (JWT)
+
+Para entrar a la aplicación hay que iniciar sesión con correo y contraseña. `POST /api/v1/auth/login` devuelve un **JWT** firmado con HS256 que dura 8 horas. El frontend lo envía en `Authorization: Bearer <token>` en cada petición. Cada uno de los tres roles ve **su propia interfaz**, y el backend vuelve a comprobar cada permiso: ocultar un botón no basta.
+
+| Sección o acción | Administrador (`ADMIN`) | Técnico (`SUPPORT_TECHNICIAN`) | Usuario (`EMPLOYEE`) |
+|---|:-:|:-:|:-:|
+| Dashboard y analítica | ✔ | ✔ | — |
+| Incidentes | Todos | Todos | **Mis incidentes**: solo los suyos |
+| Reportar incidente | A nombre de cualquiera | A nombre de cualquiera | Siempre a su nombre |
+| Cambiar estado de un incidente | ✔ | ✔ | — |
+| Base de conocimiento | Crear, editar, **verificar y activar** | Crear y editar | Leer artículos publicados |
+| Asistente IA | Cualquier incidente | Cualquier incidente | Solo sus incidentes |
+| Historial y calificación | Todo; puede calificar en nombre de otro | Todo; califica con su usuario | **Mis consultas**: las de sus incidentes |
+| Configuración y catálogo de componentes | ✔ | — | — |
+| Sección de inicio | Dashboard | Dashboard | Mis incidentes |
+
+**Cuentas de demostración** (usuarios de `data.sql`). Todas usan la contraseña de `DEMO_PASSWORD`, que por defecto es `Soporte2026*`:
+
+| Rol | Correo |
+|---|---|
+| Administrador | `sarah.jenkins@enterprise.io` |
+| Técnico de soporte | `marcus.vance@enterprise.io` (también `elena.rostova@…`, `david.kim@…`) |
+| Usuario | `laura.chen@enterprise.io` (también `carlos.mendoza@…`, `hannah.abbott@…`, etc.) |
+
+Detalles de seguridad:
+
+- **Contraseñas:** se guardan como hash BCrypt, nunca en claro. Al arrancar, el backend asigna `DEMO_PASSWORD` a los usuarios que todavía no tienen contraseña y nunca sobrescribe las que ya existen. Cámbiala en `.env` fuera de una demostración.
+- **Inicio de sesión:** un correo inexistente y una contraseña incorrecta dan la misma respuesta (`401`, *Correo o contraseña incorrectos*), así no se puede averiguar qué correos están registrados.
+- **Respuestas de error:** sin token o con un token vencido o alterado, la API responde `401` y el frontend vuelve al login. Si el rol no alcanza o el recurso es ajeno (p. ej. el incidente de otra persona), responde `403`.
+- **n8n:** no inicia sesión. Para leer artículos al indexar usa el mismo `X-Callback-Token` de los callbacks, que le da un rol de servicio limitado a esa lectura.
+- **Rutas públicas:** solo el login, `/api-docs` y `/swagger-ui`. En Swagger, inicia sesión con `POST /api/v1/auth/login`, pulsa **Authorize** y pega el `accessToken`.
+
 ## Ejecución local (desarrollo)
 
 Requisitos: Java 21, Maven 3.9 y Python 3 (u otro servidor estático).
@@ -66,6 +98,7 @@ cd frontend
 python -m http.server 5500
 ```
 
+- Inicia sesión en http://localhost:5500 con una de las [cuentas de demostración](#roles-y-permisos-jwt).
 - Swagger: http://localhost:8080/swagger-ui.html
 - Consola H2: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:incidents_db`, usuario `sa`)
 
@@ -120,7 +153,10 @@ Pasos después del primer arranque:
 | `N8N_WEBHOOK_URL` | backend | Webhook del flujo 02 |
 | `N8N_INDEX_WEBHOOK_URL` | backend | Webhook del flujo 01 para reindexar un artículo cuando cambia. Vacío = desactivado |
 | `N8N_WEBHOOK_AUTH_HEADER`, `N8N_WEBHOOK_AUTH_VALUE` | backend | Encabezado de autenticación hacia n8n. Vacío = no se envía |
-| `CALLBACK_TOKEN` | backend y n8n | Token `X-Callback-Token` de los callbacks. Vacío = no se exige |
+| `CALLBACK_TOKEN` | backend y n8n | Token `X-Callback-Token` de los callbacks; también identifica a n8n cuando lee artículos. Vacío = no se exige y la lectura de artículos queda abierta |
+| `JWT_SECRET` | backend | Clave HS256 de las sesiones (mínimo 32 caracteres). Vacío = clave aleatoria en cada arranque, por lo que las sesiones se cierran al reiniciar |
+| `JWT_EXPIRATION_MINUTES` | backend | Duración de la sesión. Por defecto 480 (8 horas) |
+| `DEMO_PASSWORD` | backend | Contraseña inicial de los usuarios de `data.sql`. Por defecto `Soporte2026*` |
 | `CORS_ALLOWED_ORIGINS` | backend | Orígenes permitidos para el frontend |
 | `SPRING_BASE_URL`, `QDRANT_URL`, `QDRANT_COLLECTION` | n8n | Servicios que consultan los flujos |
 | `OPENROUTER_API_KEY` | n8n | Clave de OpenRouter (solo la clave, sin `Bearer`). Tras cambiarla: `docker compose up -d n8n` |
@@ -132,11 +168,11 @@ Las claves nunca se escriben en el código ni en el repositorio: van en `.env` o
 ## Pruebas
 
 ```bash
-cd backend && mvn test                      # backend: 27 pruebas de integración
-node --test "frontend/tests/*.test.mjs"     # frontend: 23 pruebas unitarias (Node 22+; con Node 18–20: node --test frontend/tests/logic.test.mjs)
+cd backend && mvn test                      # backend: 56 pruebas
+node --test "frontend/tests/*.test.mjs"     # frontend: 41 pruebas unitarias (Node 22+)
 ```
 
-Las 27 pruebas de integración del backend con MockMvc sobre H2 y los datos iniciales. Cubren:
+Las pruebas del backend usan MockMvc sobre H2 con los datos iniciales. Cubren:
 
 - validaciones y la regla de incidentes cerrados;
 - filtros de analítica;
@@ -144,7 +180,8 @@ Las 27 pruebas de integración del backend con MockMvc sobre H2 y los datos inic
 - estados `NO_RESULTS` y `FAILED`;
 - una sola calificación por respuesta;
 - el filtro del token de callback;
-- el aviso de reindexación a n8n solo después del commit.
+- el aviso de reindexación a n8n solo después del commit;
+- el inicio de sesión y los permisos de cada rol, con tokens reales (`SecurityTest`).
 
 ## Equipo y ramas
 
@@ -283,7 +320,9 @@ La primera vez tarda unos minutos, porque descarga las imágenes y compila el ba
 Comprueba que la API responde:
 
 ```bash
-curl -s http://localhost:8080/api/v1/analytics/dashboard | head -c 200; echo
+TOKEN=$(curl -s http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"email":"sarah.jenkins@enterprise.io","password":"Soporte2026*"}' | sed 's/.*"accessToken":"\([^"]*\)".*/\1/')
+curl -s -H "Authorization: Bearer $TOKEN" http://localhost:8080/api/v1/analytics/dashboard | head -c 200; echo
 # Debe mostrar {"totalIncidents":150,"resolvedIncidents":130,...}
 ```
 
@@ -328,29 +367,32 @@ Sin clave de OpenRouter el sistema funciona igual, pero las consultas al asisten
 
 ### 7. Probar el sistema
 
-**Recorrido manual**, en http://localhost:5500:
+**Recorrido manual**, en http://localhost:5500. Inicia sesión como administrador (`sarah.jenkins@enterprise.io`):
 
 1. **Dashboard:** indicadores y gráficos; prueba los filtros por fecha, categoría y prioridad.
 2. **Incidentes:** registra uno nuevo con *Nuevo incidente*, fíltralo y cambia su estado.
 3. **Conocimiento:** crea un artículo, verifícalo y desactívalo. Con n8n activo, su vector se crea o se borra en Qdrant.
 4. **Asistente IA:** elige un incidente abierto y consulta; la respuesta trae solución, pasos, fuentes y similitud.
 5. **Historial:** revisa la consulta y califícala de 1 a 5.
+6. **Roles:** cierra sesión con el botón de la barra superior y entra como técnico (`marcus.vance@…`) y como usuario (`laura.chen@…`). El técnico no ve *Configuración* ni puede verificar artículos. El usuario solo ve *Mis incidentes*, *Conocimiento* (solo lectura), *Asistente IA* y *Mis consultas*.
 
 **Pruebas automáticas**, sin instalar Java ni Node (se ejecutan en contenedores temporales):
 
 ```bash
-# Backend: 27 pruebas de integración
+# Backend: 56 pruebas
 docker run --rm -v "$PWD/backend":/app -w /app maven:3.9.9-eclipse-temurin-21 mvn -q test
 
-# Frontend: 23 pruebas unitarias
+# Frontend: 41 pruebas unitarias
 docker run --rm -v "$PWD":/app -w /app node:22-alpine node --test "frontend/tests/*.test.mjs"
 ```
 
 **Comprobaciones rápidas de la API:**
 
 ```bash
-curl -s "http://localhost:8080/api/v1/incidents?status=OPEN" | head -c 300; echo
-curl -s "http://localhost:8080/api/v1/analytics/weekly-trends" | head -c 300; echo
+# Con el TOKEN del paso 5
+curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/incidents?status=OPEN" | head -c 300; echo
+curl -s -H "Authorization: Bearer $TOKEN" "http://localhost:8080/api/v1/analytics/weekly-trends" | head -c 300; echo
+curl -s -o /dev/null -w "Sin token: %{http_code}\n" http://localhost:8080/api/v1/incidents   # 401
 curl -s -o /dev/null -w "Swagger: %{http_code}\n" http://localhost:8080/swagger-ui/index.html
 ```
 
