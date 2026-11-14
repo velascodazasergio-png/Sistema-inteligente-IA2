@@ -1,5 +1,6 @@
 package com.mafe.incidentai.controller;
 
+import com.mafe.incidentai.security.AccessPolicy;
 import com.mafe.incidentai.dto.KnowledgeArticleRequestDTO;
 import com.mafe.incidentai.dto.KnowledgeArticleResponseDTO;
 import com.mafe.incidentai.dto.UpdateKnowledgeArticleStatusDTO;
@@ -32,6 +33,7 @@ import java.util.List;
 public class KnowledgeArticleController {
 
     private final KnowledgeArticleService knowledgeArticleService;
+    private final AccessPolicy accessPolicy;
 
     @Operation(summary = "Search knowledge articles", description = "Filtros opcionales: q (texto en titulo o contenido), categoryId, active y verified.")
     @ApiResponses({
@@ -44,6 +46,11 @@ public class KnowledgeArticleController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Boolean verified) {
+        // Un empleado solo ve los articulos publicados (activos y verificados). n8n (sin usuario) no se filtra.
+        if (accessPolicy.isAuthenticatedUser() && accessPolicy.isEmployee()) {
+            active = true;
+            verified = true;
+        }
         return ResponseEntity.ok(knowledgeArticleService.searchArticles(q, categoryId, active, verified));
     }
 
@@ -54,7 +61,9 @@ public class KnowledgeArticleController {
     })
     @GetMapping("/{articleId}")
     public ResponseEntity<KnowledgeArticleResponseDTO> getArticle(@PathVariable Long articleId) {
-        return ResponseEntity.ok(knowledgeArticleService.getArticle(articleId));
+        KnowledgeArticleResponseDTO article = knowledgeArticleService.getArticle(articleId);
+        if (accessPolicy.isAuthenticatedUser()) accessPolicy.checkArticle(article);
+        return ResponseEntity.ok(article);
     }
 
     @Operation(summary = "Create a knowledge article", description = "El articulo nace activo y sin verificar.")

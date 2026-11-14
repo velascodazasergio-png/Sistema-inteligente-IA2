@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
@@ -30,6 +31,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 // Un HttpServer local hace de webhook de n8n y registra cada peticion recibida.
 @SpringBootTest
 @AutoConfigureMockMvc
+// Las pruebas de la API usan una sesion de administrador; los permisos por rol se prueban en SecurityTest
+@WithMockUser(username = "sarah.jenkins@enterprise.io", roles = "ADMIN")
 class KnowledgeIndexingTest {
 
     private static final BlockingQueue<String> RECEIVED = new LinkedBlockingQueue<>();
