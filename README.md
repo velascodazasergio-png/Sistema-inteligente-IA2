@@ -118,15 +118,10 @@ docker compose up -d --build
 | n8n | http://localhost:5678 |
 | Qdrant | http://localhost:6333/dashboard |
 
-Pasos después del primer arranque:
+n8n se configura solo al arrancar ([n8n/setup.sh](n8n/setup.sh)): crea las credenciales con los valores del `.env`, importa `n8n/workflows/03-flujos-combinados.json` con ellas ya asignadas, desactiva cualquier otro flujo y activa el combinado. No hay que importar ni asignar nada a mano. Si falta `N8N_WEBHOOK_AUTH_VALUE`, n8n no arranca y el log lo dice (`docker compose logs n8n`).
 
-1. **Importar los flujos** de `n8n/workflows/` desde la interfaz de n8n (*Workflows → Import from File*). La CLI (`n8n import:workflow`) espera una lista de flujos, así que con ella hay que envolver cada archivo en `[ … ]`.
-2. **Crear las credenciales en n8n** (tipo *Header Auth*):
-   - Webhooks de los flujos 01 y 02: nombre `N8N_WEBHOOK_AUTH_HEADER` y valor `N8N_WEBHOOK_AUTH_VALUE` del `.env`.
-   - Qdrant, si tiene clave.
+Después del primer arranque solo queda indexar una vez los artículos verificados. La colección de Qdrant se crea sola con la dimensión de `EMBEDDING_DIM`:
 
-   En los JSON todas las credenciales tienen el id `REEMPLAZAR`: después de importar, abre cada nodo con credencial (Webhook y Qdrant) y elige la que corresponde. La clave de OpenRouter **no** va en n8n: se lee de `OPENROUTER_API_KEY` en el `.env`.
-3. **Activar los flujos** e indexar una vez todos los artículos verificados. La colección de Qdrant se crea sola con la dimensión de `EMBEDDING_DIM`:
    ```bash
    curl -X POST http://localhost:5678/webhook/index-knowledge-base \
      -H "X-N8N-Token: <N8N_WEBHOOK_AUTH_VALUE>" -H "Content-Type: application/json" \
@@ -152,7 +147,8 @@ Pasos después del primer arranque:
 | `DB_URL`, `DB_DRIVER`, `DB_USERNAME`, `DB_PASSWORD` | backend | Base de datos. Por defecto H2 en memoria |
 | `N8N_WEBHOOK_URL` | backend | Webhook del flujo 02 |
 | `N8N_INDEX_WEBHOOK_URL` | backend | Webhook del flujo 01 para reindexar un artículo cuando cambia. Vacío = desactivado |
-| `N8N_WEBHOOK_AUTH_HEADER`, `N8N_WEBHOOK_AUTH_VALUE` | backend | Encabezado de autenticación hacia n8n. Vacío = no se envía |
+| `N8N_WEBHOOK_AUTH_HEADER`, `N8N_WEBHOOK_AUTH_VALUE` | backend y n8n | Encabezado de autenticación hacia n8n; n8n crea su credencial con estos valores al arrancar. Obligatorio con Docker Compose |
+| `N8N_AUTO_SETUP` | n8n | `true` (predeterminado): al arrancar crea las credenciales e importa y activa el flujo combinado. `false`: no toca n8n |
 | `CALLBACK_TOKEN` | backend y n8n | Token `X-Callback-Token` de los callbacks; también identifica a n8n cuando lee artículos. Vacío = no se exige y la lectura de artículos queda abierta |
 | `JWT_SECRET` | backend | Clave HS256 de las sesiones (mínimo 32 caracteres). Vacío = clave aleatoria en cada arranque, por lo que las sesiones se cierran al reiniciar |
 | `JWT_EXPIRATION_MINUTES` | backend | Duración de la sesión. Por defecto 480 (8 horas) |
@@ -338,21 +334,39 @@ Al arrancar, el backend crea las tablas y carga los datos iniciales en PostgreSQ
 
 ### 6. Configurar n8n (solo la primera vez)
 
-1. **Crear la cuenta de administrador.** Abre http://localhost:5678; n8n pide nombre, correo y contraseña. Es una cuenta local y no envía correos.
-2. **Crear las credenciales** en *Credentials → Add credential → Header Auth*. La clave de OpenRouter no se configura aquí: los flujos la leen de `OPENROUTER_API_KEY` en el `.env` (paso 4).
+Las credenciales y el flujo se configuran solos cada vez que arranca n8n ([n8n/setup.sh](n8n/setup.sh)):
 
-   | Nombre de la credencial | Name | Value |
-   |---|---|---|
-   | `Webhook entrante (Spring Boot)` | `X-N8N-Token` | el valor de `N8N_WEBHOOK_AUTH_VALUE` del `.env` |
-   | `Qdrant API Key` | `api-key` | cualquier texto (Qdrant no tiene clave en esta configuración) |
+- crea las credenciales `Webhook entrante (Spring Boot)` (con `N8N_WEBHOOK_AUTH_HEADER` y `N8N_WEBHOOK_AUTH_VALUE` del `.env`) y `Qdrant API Key`;
+- importa `n8n/workflows/03-flujos-combinados.json` con esas credenciales ya asignadas;
+- desactiva cualquier otro flujo (por ejemplo, los 01 y 02 importados a mano: dos webhooks con la misma ruta impiden activar) y activa el combinado.
 
-   Para ver el valor del token: `grep N8N_WEBHOOK_AUTH_VALUE .env`.
-3. **Importar los dos flujos** desde *Workflows → Import from File*, con los archivos `n8n/workflows/01-indexacion-base-conocimiento.json` y `n8n/workflows/02-asistencia-rag.json`.
+En el log debe aparecer `[n8n-setup] Listo.` y el flujo como `Started`:
 
-   **Alternativa:** importar solo `n8n/workflows/03-flujos-combinados.json`, que contiene las dos cadenas en un único workflow. Cada webhook ejecuta solo su cadena, y entre ellas no hay conexiones. Usa el combinado **o** los dos separados, nunca ambos activos: n8n no admite dos webhooks activos con la misma ruta. El combinado se genera desde los flujos 01 y 02 con `python3 n8n/combinar_flujos.py`; si cambias alguno de ellos, vuelve a ejecutarlo.
-4. **Asignar las credenciales.** En cada flujo, abre los nodos con credencial (Webhook y Qdrant) y elige la que corresponde. En los JSON aparecen con el id `REEMPLAZAR`.
-5. **Activar los flujos.** Guarda cada uno y enciende el interruptor **Active** (arriba a la derecha).
-6. **Indexar la base de conocimiento** una vez. La colección de Qdrant se crea sola:
+```bash
+docker compose logs n8n | grep -E "n8n-setup|Started"
+```
+
+Lo que queda por hacer a mano:
+
+1. **Crear la cuenta de administrador** (solo para entrar al editor). Abre http://localhost:5678; n8n pide nombre, correo y contraseña. Es una cuenta local y no envía correos. Los webhooks funcionan aunque no la crees.
+2. **Indexar la base de conocimiento** una vez (paso siguiente).
+
+El repositorio es la fuente de verdad: en cada arranque se vuelve a importar el flujo combinado, así que un cambio hecho solo en la interfaz de n8n se pierde. Para editar un flujo, cambia el `01` o el `02`, regenera el combinado con `python3 n8n/combinar_flujos.py` y reinicia n8n (`docker compose restart n8n`). Para trabajar en la interfaz sin que se sobrescriba, pon `N8N_AUTO_SETUP=false` en el `.env`.
+
+**Si n8n no arranca o no responde:**
+
+| Síntoma | Causa y solución |
+|---|---|
+| `ERROR: falta N8N_WEBHOOK_AUTH_VALUE` en el log | Copia `.env.example` como `.env` y completa los tokens; luego `docker compose up -d` |
+| `port is already allocated` al levantar | Otro programa (u otro n8n) usa el 5678. Cambia `N8N_PORT` en el `.env` |
+| `sh: ... \r` o `not found` en el log | Script con fin de línea de Windows. Actualiza el repositorio (`git pull`): `.gitattributes` y el propio compose lo corrigen |
+| El webhook responde `403 Authorization data is wrong!` | `N8N_WEBHOOK_AUTH_VALUE` distinto entre el backend y n8n. Reinicia los dos: `docker compose up -d backend n8n` |
+| El webhook responde `404` | El flujo no está activo. Revisa `docker compose logs n8n` y reinicia: `docker compose restart n8n` |
+| Las consultas terminan en **Error en la IA** | Falta `OPENROUTER_API_KEY` o no tiene saldo |
+
+### Indexar la base de conocimiento
+
+Una vez, después del primer arranque. La colección de Qdrant se crea sola:
 
    ```bash
    TOKEN=$(grep ^N8N_WEBHOOK_AUTH_VALUE .env | cut -d= -f2)

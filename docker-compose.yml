@@ -105,6 +105,11 @@ services:
 
   n8n:
     image: n8nio/n8n:1.80.0
+    # Antes de "n8n start", n8n/setup.sh crea las credenciales con los valores del .env, importa el flujo
+    # combinado y lo activa: n8n queda listo en cualquier equipo, sin pasos manuales.
+    # tr quita los \r que deja Git en Windows (core.autocrlf) y que romperían el script.
+    entrypoint: ["tini", "--", "/bin/sh", "-c"]
+    command: ["tr -d '\\r' < /setup.sh > /tmp/setup.sh && sh /tmp/setup.sh && exec /docker-entrypoint.sh"]
     depends_on:
       qdrant:
         condition: service_healthy
@@ -120,16 +125,21 @@ services:
       QDRANT_COLLECTION: ${QDRANT_COLLECTION:-knowledge_articles}
       OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
-      EMBEDDING_MODEL: ${EMBEDDING_MODEL}
-      EMBEDDING_DIM: ${EMBEDDING_DIM}
-      LLM_MODEL: ${LLM_MODEL}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-openai/text-embedding-3-small}
+      EMBEDDING_DIM: ${EMBEDDING_DIM:-1536}
+      LLM_MODEL: ${LLM_MODEL:-openai/gpt-4o-mini}
       RAG_SCORE_THRESHOLD: ${RAG_SCORE_THRESHOLD:-0.55}
       RAG_TOP_K: ${RAG_TOP_K:-5}
       MIN_CHARS_DESCRIPCION: ${MIN_CHARS_DESCRIPCION:-20}
       CALLBACK_TOKEN: ${CALLBACK_TOKEN:-}
+      # Para n8n/setup.sh: credencial del webhook (la misma que envía el backend)
+      N8N_AUTO_SETUP: ${N8N_AUTO_SETUP:-true}
+      N8N_WEBHOOK_AUTH_HEADER: ${N8N_WEBHOOK_AUTH_HEADER:-X-N8N-Token}
+      N8N_WEBHOOK_AUTH_VALUE: ${N8N_WEBHOOK_AUTH_VALUE:-}
     volumes:
       - n8n-data:/home/node/.n8n
       - ./n8n/workflows:/workflows:ro
+      - ./n8n/setup.sh:/setup.sh:ro
     ports:
       - "127.0.0.1:${N8N_PORT:-5678}:5678"
     healthcheck:
