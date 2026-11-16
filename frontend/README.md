@@ -145,7 +145,7 @@ Los degradados de los botones usan tonos oscuros para que el texto blanco cumpla
 node --test "frontend/tests/*.test.mjs"
 ```
 
-43 pruebas unitarias:
+44 pruebas unitarias:
 - **Lógica** (`logic.test.mjs`): cálculos de analítica, formato, interpretación de las respuestas de la IA, catálogos y el cliente HTTP (con `fetch` simulado).
 - **Sesión y roles** (`auth.test.mjs`): vencimiento del token, secciones que ve cada rol, envío del JWT y respuesta ante 401 y 403.
 - **Fallos de la IA** (`failure-hints.test.mjs`): el backend envía en inglés la indicación de qué revisar cuando falla una consulta, y la interfaz la muestra en español (`translateFailureMessage` en `api-messages.js`).

@@ -38,6 +38,16 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 | Rediseño visual: tipografía, sidebar agrupada, encabezados, resumen del Dashboard, minigráficos, avatares | Código generado y revisado con capturas | — |
 | README, Docker Compose, `.env.example` y este documento | Redacción y prueba del Compose | — |
 | Diagramas, informe de análisis, documento de pruebas, evidencias y presentación (`docs/`) | Generados a partir del código y de consultas reales a la base | — |
+| Auditoría con los servicios reales y correcciones: HTTP/1.1 hacia n8n, secuencias de PostgreSQL, healthchecks, nodos duplicados del flujo 02 | Diagnóstico y corrección | `8c054dd`, `11b3192`, `0d56832`, `b101c15` |
+| Reindexación automática de artículos y creación de la colección de Qdrant | Código generado | `8e0eefb`, `a036f64` |
+| Calibración del umbral RAG (0,55) con OpenRouter real e indicaciones de fallo de la IA | Medición, código y documentación | `cf01f2e`, `9082af6` |
+| Flujo combinado opcional (`03-flujos-combinados.json`) y su script generador | Código generado | `a159703` |
+| HTTPS con proxy nginx, diseño responsive, errores de validación por campo y códigos HTTP correctos | Código generado | `02cac90`, `1744b74`, `c86619d`, `4f5e580` |
+| Inicio de sesión con JWT, tres roles con interfaz propia y permisos en el backend | Código generado | `ac65ea1`, `755c7dc`, `9bbcca1`, `564781d` |
+| Configuración automática de n8n al arrancar (`n8n/setup.sh`) | Código generado | `5d4c8e1` |
+| README reorganizado y capturas de cada rol | Redacción y capturas automatizadas | `f736670`, `c99be9e` |
+| Traducción al inglés del backend y de todos los comentarios; un comentario por función | Traducción y redacción | `cd5a00e`, `fe5fee9` |
+| Revisión contra el enunciado: área del usuario, fecha de resolución, consultas del informe en PostgreSQL, documentos actualizados | Auditoría y corrección | `c62d8d9` y el commit de documentación siguiente |
 
 ### Decisiones técnicas tomadas con apoyo de la IA
 
@@ -56,18 +66,28 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
     - comparación del token en tiempo constante;
     - secretos solo en variables de entorno.
 11. **Mínimo de 20 caracteres** en la descripción de un incidente, igual que el mínimo que exige el flujo RAG.
+12. **Sesiones con JWT (HS256) y tres roles.** La interfaz se adapta al rol, pero el backend vuelve a comprobar cada permiso; un empleado solo accede a sus propios incidentes. n8n no inicia sesión: se identifica con el mismo `X-Callback-Token` como rol de servicio.
+13. **n8n se configura solo al arrancar** (credenciales desde el `.env`, importación y activación del flujo combinado), para que funcione igual en cualquier equipo.
+14. **Umbral de similitud 0,55**, medido con 13 incidentes reales: separa los incidentes con artículo (0,675–0,809) de los que no tienen relación (0,220–0,367).
+15. **Tiempo de atención = `resolved_at − created_at`**, la fecha en que el incidente pasó a resuelto, y no la última modificación.
+16. **Código del backend y comentarios en inglés**; los textos de la interfaz siguen en español y el frontend traduce los mensajes del backend.
 
 ### Verificación
 
-- `mvn test`: 27 pruebas de integración en verde. `node --test`: 23 pruebas unitarias del frontend en verde.
-- Flujo de IA de punta a punta probado con un n8n simulado que respeta el contrato del flujo 02: respondida, sin resultados, fallo y error de conexión.
+- `mvn test`: 60 pruebas de integración en verde. `node --test`: 44 pruebas unitarias del frontend en verde.
+- Flujo de IA de punta a punta probado primero con un n8n simulado y después con n8n, Qdrant y OpenRouter reales: respondida, sin resultados, fallo y error de conexión (`docs/pruebas`, secciones 3b y 3d).
+- Permisos de los tres roles probados contra la API real y en el navegador (`docs/pruebas`, sección 3f).
 - Capturas en navegador sin interfaz, en escritorio y en móvil, de cada módulo con datos reales del backend.
 - Los cálculos del cliente se contrastaron con los del SQL: por ejemplo, 86,67 % de resolución y 4,74 h de tiempo promedio.
 
 ### Limitaciones conocidas
 
-- Docker Compose se probó con PostgreSQL, Qdrant y n8n reales (arranque, carga de datos, reinicio e importación de flujos), pero no se probó una consulta real a OpenRouter porque requiere una clave propia. El flujo de IA de punta a punta se validó con un n8n simulado que respeta el contrato del flujo 02.
-- La autenticación de usuarios no está definida en el proyecto. El frontend no tiene inicio de sesión.
+- Las pruebas de interfaz en el navegador se hicieron con scripts sobre Edge sin ventana que no forman parte del repositorio.
+- Los códigos de error que envía n8n (`EMBEDDING_FALLO`, `LLM_FALLO`, …) quedaron en español porque los definen los flujos.
+
+### Sobre el enfoque de tutoría que pide el enunciado
+
+El enunciado pide que la IA actúe como tutora y no genere soluciones integrales. En esta rama, el integrante pidió de forma explícita implementaciones completas, y la mayor parte del código de `devsergy` fue generada por Claude Code y revisada con pruebas. Se deja constancia para que la evaluación lo tenga en cuenta. Cada decisión técnica está explicada en este documento, en el README y en `docs/`, y el equipo debe poder justificar el código que entrega.
 
 ---
 
@@ -100,6 +120,11 @@ Están documentados en la sección 1:
 
 En el merge final (`e41c35b`) se conservó su consulta JPQL `findActiveAndVerifiedArticles` y sus comentarios.
 
+Cambios posteriores sobre el backend, hechos desde `devsergy` con Claude Code:
+- seguridad con JWT y permisos por rol (`ac65ea1`);
+- traducción al inglés de comentarios, documentación de Swagger y mensajes (`cd5a00e`) y un comentario por método (`fe5fee9`);
+- campo `area` en el usuario, fecha de resolución en los datos iniciales y tiempo de atención calculado con ella (`c62d8d9`).
+
 ## 3. Rama `dev-Lisseth` — flujos n8n (lissethkatherine)
 
 **Uso de IA:** 
@@ -123,4 +148,10 @@ La estudiante, con el apoyo de herramientas de inteligencia artificial, revisó 
 - Encabezado `X-Callback-Token` (`$env.CALLBACK_TOKEN`) en los 2 nodos que llaman a Spring Boot (`7dc1a0e`).
 - El nodo "Reportar fallo a Spring Boot (endpoint pendiente)" pasó a llamarse "Reportar fallo a Spring Boot", porque el endpoint ya existe. Se actualizaron sus conexiones y se verificó que el flujo se importa en n8n 1.80.
 
-Ningún otro nodo se modificó.
+Cambios posteriores sobre sus flujos, hechos desde `devsergy` con Claude Code durante las pruebas con los servicios reales:
+- se quitaron 2 nodos duplicados del flujo 02 (`b101c15`);
+- el flujo 01 crea la colección de Qdrant si no existe (`a036f64`);
+- la clave de OpenRouter se lee de la variable de entorno y se acepta con o sin el prefijo `Bearer` (`810716b`, `cf01f2e`);
+- los nodos que leen artículos envían el token de servicio (`755c7dc`).
+
+Además se agregó el flujo combinado `03-flujos-combinados.json`, que se genera a partir de los flujos 01 y 02 sin cambiar su lógica (`a159703`), y la configuración automática de n8n que lo importa y lo activa al arrancar (`5d4c8e1`). El código de los nodos sigue en español: no se tradujo.

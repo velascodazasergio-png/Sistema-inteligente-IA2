@@ -98,6 +98,7 @@
         <tr><td>RF04–05</td><td>Búsqueda semántica y asistente RAG con fuentes y similitud</td><td>n8n · flujo 02 + Asistente</td></tr>
         <tr><td>RF06–07</td><td>Indicadores con SQL y dashboard con filtros</td><td>Analítica + Dashboard</td></tr>
         <tr><td>RF08</td><td>Historial de consultas y calificación de 1 a 5</td><td>Historial</td></tr>
+        <tr><td>—</td><td>Inicio de sesión con JWT y tres roles con su propia interfaz</td><td>Spring Security + Login</td></tr>
       </tbody>
     </table>
   </section>
@@ -120,6 +121,21 @@
       <li>n8n vuelve a validar en el backend que cada fuente siga activa y verificada antes de usarla.</li>
       <li>Claves y tokens solo en variables de entorno y credenciales de n8n.</li>
     </ul>
+  </section>
+
+  <section class="slide" aria-label="Roles y permisos">
+    <span class="eyebrow">Seguridad · JWT</span>
+    <h2>Cada rol, su propia interfaz</h2>
+    <div class="grid g2">
+      <img class="shot" src="../evidencias/frontend/14-usuario-mis-incidentes.png" alt="Vista Mis incidentes del usuario, con menú reducido a sus secciones">
+      <div class="card"><ul>
+        <li><strong>Administrador:</strong> todo el sistema, verificación de artículos y configuración.</li>
+        <li><strong>Técnico de soporte:</strong> incidentes, artículos, asistente, dashboard y analítica; no verifica artículos.</li>
+        <li><strong>Usuario:</strong> solo <em>Mis incidentes</em>, artículos publicados, el asistente sobre sus incidentes y <em>Mis consultas</em>.</li>
+        <li>Sesión con <strong>JWT</strong> de 8 horas y contraseñas con BCrypt.</li>
+        <li>El backend vuelve a comprobar cada permiso: ocultar un botón no basta (401 y 403).</li>
+      </ul></div>
+    </div>
   </section>
 
   <section class="slide" aria-label="Dashboard">
@@ -192,14 +208,14 @@
     <span class="eyebrow">Calidad</span>
     <h2>Probado de punta a punta</h2>
     <div class="grid g4">
-      <div class="card kpi"><b>50/50</b><span>pruebas automáticas: 27 del backend y 23 del frontend</span></div>
+      <div class="card kpi"><b>104/104</b><span>pruebas automáticas: 60 del backend y 44 del frontend</span></div>
       <div class="card kpi"><b>25/25</b><span>peticiones de la colección Postman</span></div>
       <div class="card kpi"><b>4/4</b><span>escenarios del flujo de IA</span></div>
       <div class="card kpi"><b>5</b><span>servicios con Docker Compose</span></div>
     </div>
     <ul>
       <li>Reglas de negocio: incidentes cerrados, una sola calificación por respuesta, verificación de artículos, rangos de fechas.</li>
-      <li>Seguridad de la integración: token del webhook y <code>X-Callback-Token</code> en los callbacks.</li>
+      <li>Seguridad: JWT con permisos por rol, token del webhook y <code>X-Callback-Token</code> en los callbacks.</li>
       <li>Accesibilidad: teclado, foco visible, lectores de pantalla y <code>prefers-reduced-motion</code>.</li>
     </ul>
   </section>
@@ -212,7 +228,7 @@
       <tbody>
         <tr><td><code>mafe</code></td><td>Mafeqm</td><td>Backend, modelo de datos, datos iniciales</td></tr>
         <tr><td><code>dev-Lisseth</code></td><td>lissethkatherine</td><td>Flujos n8n de indexación y RAG</td></tr>
-        <tr><td><code>devsergy</code></td><td>velascodazasergio-png</td><td>Frontend e integración frontend ↔ backend ↔ n8n</td></tr>
+        <tr><td><code>devsergy</code></td><td>velascodazasergio-png</td><td>Frontend, roles y JWT, integración frontend ↔ backend ↔ n8n</td></tr>
         <tr><td><code>main</code></td><td>Equipo</td><td>Integración final</td></tr>
       </tbody>
     </table>

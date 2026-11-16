@@ -4,8 +4,8 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
-| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 56 | ✅ 56 / 56 |
-| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 41 | ✅ 41 / 41 |
+| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 60 | ✅ 60 / 60 |
+| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 44 | ✅ 44 / 44 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
 | Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
@@ -31,7 +31,7 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 ```bash
 cd backend
 mvn test
-# Tests run: 38, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
+# Tests run: 60, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
 ```
 
 | # | Grupo | Caso | Qué valida | Resultado |
@@ -63,31 +63,38 @@ mvn test
 | 25 | Indexación (RF03) | `statusChangeTriggersReindexWithAuthHeader` | Activar o desactivar un artículo avisa al flujo 01 de n8n tras el commit, con el encabezado de autenticación | ✅ |
 | 26 | Indexación (RF03) | `creatingAnUnverifiedArticleDoesNotTriggerIndexing` | Crear un artículo (nace sin verificar) no llama a n8n | ✅ |
 | 27 | Indexación (RF03) | `failedChangeDoesNotTriggerIndexing` | Un cambio que falla (404) no llama a n8n | ✅ |
-| 28–31 | Mensajes de fallo de IA | `AiFailureHintsTest` | Clave inválida, créditos, límite, modelo, dimensión, conexión cortada y tiempo agotado se traducen en una indicación clara | ✅ |
-| 32 | HTTP | `unknownRouteIs404` | Una ruta inexistente da 404 (antes 500) | ✅ |
-| 33 | HTTP | `unsupportedMethodIs405` | Un método no permitido da 405 (antes 500) | ✅ |
-| 34 | HTTP | `nonJsonBodyIs415` | Un cuerpo que no es JSON da 415 (antes 500) | ✅ |
-| 35 | HTTP | `incidentDescriptionLongerThan4000IsRejected` | Descripción de más de 4000 caracteres da 400 | ✅ |
-| 36 | HTTP | `aiContextLongerThan500IsRejected` | Contexto de IA de más de 500 caracteres da 400 | ✅ |
-| 37 | IA | `resolvedIncidentKeepsItsStatus` | Consultar a la IA sobre un incidente resuelto no lo reabre | ✅ |
-| 38 | IA | `openIncidentMovesToAiAnalysis` | Un incidente abierto pasa a "En análisis IA" | ✅ |
+| 28–32 | Mensajes de fallo de IA | `AiFailureHintsTest` | Clave inválida, créditos, límite, modelo, dimensión, conexión cortada y tiempo agotado se traducen en una indicación clara; el texto exacto coincide con el que traduce el frontend | ✅ |
+| 33 | HTTP | `unknownRouteIs404` | Una ruta inexistente da 404 (antes 500) | ✅ |
+| 34 | HTTP | `unsupportedMethodIs405` | Un método no permitido da 405 (antes 500) | ✅ |
+| 35 | HTTP | `nonJsonBodyIs415` | Un cuerpo que no es JSON da 415 (antes 500) | ✅ |
+| 36 | HTTP | `incidentDescriptionLongerThan4000IsRejected` | Descripción de más de 4000 caracteres da 400 | ✅ |
+| 37 | HTTP | `aiContextLongerThan500IsRejected` | Contexto de IA de más de 500 caracteres da 400 | ✅ |
+| 38 | IA | `resolvedIncidentKeepsItsStatus` | Consultar a la IA sobre un incidente resuelto no lo reabre | ✅ |
+| 39 | IA | `openIncidentMovesToAiAnalysis` | Un incidente abierto pasa a "En análisis IA" | ✅ |
+| 40–57 | Roles y permisos | `SecurityTest` | Login con JWT, 401/403 y lo que puede hacer cada rol (detalle en la sección 3f). `/auth/me` incluye el área del usuario | ✅ |
+| 58 | Incidentes | `seedResolvedIncidentsHaveAResolutionDate` | Los incidentes resueltos de `data.sql` tienen `resolvedAt`; los abiertos no | ✅ |
+| 59 | Incidentes | `resolvingSetsTheResolutionDateAndReopeningClearsIt` | Resolver registra la fecha de resolución; reabrir la borra | ✅ |
+| 60 | Catálogos | `usersIncludeTheirArea` | Cada usuario tiene su área (p. ej. Laura Chen: Finance) | ✅ |
 
 ## 1b. Pruebas unitarias del frontend
 
-**Ubicación:** [`frontend/tests/logic.test.mjs`](../../frontend/tests/logic.test.mjs). Usan el ejecutor de pruebas que trae Node (desde la versión 18), sin dependencias ni navegador. El comando con el patrón `*.test.mjs` requiere Node 22 o superior; con Node 18 a 20 se indica el archivo: `node --test frontend/tests/logic.test.mjs`.
+**Ubicación:** [`frontend/tests/`](../../frontend/tests/) (`logic.test.mjs`, `auth.test.mjs` y `failure-hints.test.mjs`). Usan el ejecutor de pruebas que trae Node (desde la versión 18), sin dependencias ni navegador. El comando con el patrón `*.test.mjs` requiere Node 22 o superior; con Node 18 a 20 se indica el archivo: `node --test frontend/tests/logic.test.mjs`.
 
 ```bash
 node --test "frontend/tests/*.test.mjs"
-# tests 23 · pass 23 · fail 0
+# tests 44 · pass 44 · fail 0
 ```
 
 | Grupo | Casos | Qué valida |
 |---|---:|---|
 | `format.js` | 4 | Semana ISO, porcentajes, conteos, fechas inválidas |
-| `analytics-utils.js` | 4 | Pendientes, críticos abiertos y rangos de tiempo con las reglas del backend; periodo anterior; variación sin dividir entre cero |
+| `analytics-utils.js` | 5 | Pendientes, críticos abiertos y rangos de tiempo con las reglas del backend (tiempo = `resolvedAt − createdAt`); periodo anterior; variación sin dividir entre cero |
 | `ai-response.js` | 5 | Separación de la respuesta RAG en solución, explicación, pasos y advertencias; pasos sin cortar números ("4740.", "2.3"); resumen por estado |
 | `catalogs.js` / `ui.js` | 4 | Estado "Sin resultados" deducido, los 5 estados del backend, escape de HTML ante valores inesperados |
-| `api.js` y servicio de IA | 6 | URL y parámetros, cuerpo JSON, mensajes de error de Spring (400 y 409), error de red, validación previa de la descripción |
+| `api-messages.js` | 2 | Traducción al español de los mensajes del backend |
+| `api.js` y servicio de IA | 7 | URL y parámetros, cuerpo JSON, mensajes de error de Spring (400 y 409), error de red, validación previa de la descripción |
+| Sesión y roles (`auth.test.mjs`) | 15 | Vencimiento del token, secciones de cada rol, envío del JWT, respuesta ante 401 y 403 |
+| Fallos de la IA (`failure-hints.test.mjs`) | 2 | Las indicaciones de fallo que el backend envía en inglés se muestran en español |
 
 ## 2. Contrato de la API
 
@@ -287,10 +294,10 @@ Probado con Docker 29.4 y Compose v5.1. Los puertos del host se reasignaron solo
 | 4 | Registrar un incidente y un artículo en PostgreSQL (los ID continúan en 151 y 11) | ✅ |
 | 5 | Al reiniciar el backend los datos se conservan, la carga inicial no se duplica y se pueden seguir creando registros | ✅ (desde `11b3192`; antes las altas daban 500 tras reiniciar, defecto 11) |
 | 6 | El frontend (nginx), Qdrant y n8n responden; se crea la colección en Qdrant | ✅ |
-| 7 | Los dos flujos se importan y se activan en n8n 1.80 | ✅ |
+| 7 | n8n se configura solo al arrancar (`n8n/setup.sh`): crea las credenciales desde el `.env`, importa el flujo combinado y lo activa. Probado también con un volumen de n8n vacío, como en un equipo nuevo | ✅ |
 | 8 | Los healthchecks del backend, Qdrant y n8n pasan a `healthy` y n8n espera a sus dependencias | ✅ |
 
-No se probó una llamada real a OpenRouter, porque requiere una clave propia.
+La llamada real a OpenRouter se probó después, con la clave del equipo: ver la sección 3d.
 
 ## 5. Pruebas de interfaz
 
@@ -337,8 +344,15 @@ Accesibilidad revisada en el código:
 | 18 | Consultar a la IA sobre un incidente resuelto lo reabría (bajaba el % de resolución) | Se cambiaba el estado siempre | `4f5e580` |
 | 19 | Al cambiar de sección, una ventana abierta seguía en pantalla | Las ventanas no se cerraban al navegar | `073b933` |
 | 20 | Errores del servidor en inglés y solo en un aviso | Sin traducción ni ubicación por campo | `c86619d` |
+| 21 | En otro equipo, n8n no funcionaba tras desplegar | Credenciales, importación y activación eran manuales | `5d4c8e1` |
+| 22 | Los 130 incidentes resueltos de `data.sql` tenían `resolved_at` vacío; el tiempo de atención salía de `updated_at` | La carga inicial no llenaba la fecha de resolución | `c62d8d9` |
+| 23 | El modelo de usuario no tenía el **área** que pide el enunciado | Faltaba la columna | `c62d8d9` |
+| 24 | `docs/informe-analisis/consultas.sql` fallaba en PostgreSQL | `ROUND(double, n)` no existe en PostgreSQL | `c62d8d9` |
 
 ## 7. Pendientes
 
-- Probar una consulta real con OpenRouter y Qdrant, con las claves del equipo (escenarios 1, 2 y 3).
-- Pruebas de extremo a extremo del frontend en navegador (hoy son capturas revisadas manualmente).
+Las pruebas que aparecían aquí ya se hicieron: la consulta real con OpenRouter y Qdrant (sección 3d) y las pruebas de la interfaz en el navegador por rol, escritorio y móvil (secciones 3f y 5).
+
+Limitaciones conocidas:
+- Las pruebas de interfaz en el navegador se ejecutan con scripts sobre Edge sin ventana (CDP) que no forman parte del repositorio; en el repositorio quedan las pruebas unitarias del frontend y las capturas.
+- Los códigos de error que envía n8n (`EMBEDDING_FALLO`, `LLM_FALLO`, …) están en español porque los definen los flujos.
