@@ -15,10 +15,11 @@ export const TIME_BUCKETS = [
   { label: '> 3 d', max: Infinity },
 ];
 
-// Same rule as the backend: handling time = updatedAt − createdAt.
+// Same rule as the backend: handling time = resolvedAt − createdAt
+// (updatedAt only for records that still have no resolution date).
 export const resolutionHours = (i) => {
   const start = parseDate(i.createdAt);
-  const end = parseDate(i.updatedAt);
+  const end = parseDate(i.resolvedAt ?? i.updatedAt);
   return start && end && end >= start ? (end - start) / HOUR : null;
 };
 

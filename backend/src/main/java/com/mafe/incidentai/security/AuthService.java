@@ -46,19 +46,14 @@ public class AuthService {
             throw new BadCredentialsException(BAD_CREDENTIALS);
         }
         JwtService.IssuedToken token = jwtService.issue(user);
-        return new LoginResponseDTO(token.value(), "Bearer", token.expiresAt(), toSummary(user));
+        return new LoginResponseDTO(token.value(), "Bearer", token.expiresAt(), UserSummaryDTO.from(user));
     }
 
     // Public profile of a user
     @Transactional(readOnly = true)
     public UserSummaryDTO profile(Long userId) {
         return userRepository.findById(userId)
-                .map(AuthService::toSummary)
+                .map(UserSummaryDTO::from)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
-    }
-
-    // Maps a User entity to its public summary
-    private static UserSummaryDTO toSummary(User u) {
-        return new UserSummaryDTO(u.getId(), u.getFullName(), u.getEmail(), u.getRole());
     }
 }

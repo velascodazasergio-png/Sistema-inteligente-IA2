@@ -19,6 +19,8 @@ import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -108,6 +110,33 @@ class ApiIntegrationTest {
                     .andExpect(status().isOk());
             mvc.perform(patch("/api/v1/incidents/150/status").contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"OPEN\"}"))
                     .andExpect(status().isConflict());
+        }
+
+        @Test
+        void seedResolvedIncidentsHaveAResolutionDate() throws Exception {
+            mvc.perform(get("/api/v1/incidents").param("status", "RESOLVED"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[*].resolvedAt", everyItem(notNullValue())));
+            mvc.perform(get("/api/v1/incidents").param("status", "OPEN"))
+                    .andExpect(jsonPath("$[*].resolvedAt", everyItem(nullValue())));
+        }
+
+        @Test
+        void resolvingSetsTheResolutionDateAndReopeningClearsIt() throws Exception {
+            mvc.perform(patch("/api/v1/incidents/150/status").contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"RESOLVED\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.resolvedAt", notNullValue()));
+            mvc.perform(patch("/api/v1/incidents/150/status").contentType(MediaType.APPLICATION_JSON).content("{\"status\":\"OPEN\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.resolvedAt", nullValue()));
+        }
+
+        @Test
+        void usersIncludeTheirArea() throws Exception {
+            mvc.perform(get("/api/v1/users"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[*].area", everyItem(notNullValue())))
+                    .andExpect(jsonPath("$[?(@.id == 5)].area", hasItem("Finance")));
         }
 
         @Test

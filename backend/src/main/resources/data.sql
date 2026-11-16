@@ -5,17 +5,17 @@
 -- ============================================================================
 
 -- 1. USERS (EMPLOYEES, TECHNICIANS AND ADMINISTRATORS)
-INSERT INTO users (id, full_name, email, role, created_at) VALUES
-(1, 'Sarah Jenkins', 'sarah.jenkins@enterprise.io', 'ADMIN', '2026-09-01 08:00:00'),
-(2, 'Marcus Vance', 'marcus.vance@enterprise.io', 'SUPPORT_TECHNICIAN', '2026-09-01 08:15:00'),
-(3, 'Elena Rostova', 'elena.rostova@enterprise.io', 'SUPPORT_TECHNICIAN', '2026-09-01 08:30:00'),
-(4, 'David Kim', 'david.kim@enterprise.io', 'SUPPORT_TECHNICIAN', '2026-09-01 08:45:00'),
-(5, 'Laura Chen', 'laura.chen@enterprise.io', 'EMPLOYEE', '2026-09-02 09:00:00'),
-(6, 'Carlos Mendoza', 'carlos.mendoza@enterprise.io', 'EMPLOYEE', '2026-09-02 09:20:00'),
-(7, 'Hannah Abbott', 'hannah.abbott@enterprise.io', 'EMPLOYEE', '2026-09-02 09:40:00'),
-(8, 'Liam OConnor', 'liam.oconnor@enterprise.io', 'EMPLOYEE', '2026-09-03 10:00:00'),
-(9, 'Priya Patel', 'priya.patel@enterprise.io', 'EMPLOYEE', '2026-09-03 10:15:00'),
-(10, 'Noah Williams', 'noah.williams@enterprise.io', 'EMPLOYEE', '2026-09-03 10:30:00');
+INSERT INTO users (id, full_name, email, role, area, created_at) VALUES
+(1, 'Sarah Jenkins', 'sarah.jenkins@enterprise.io', 'ADMIN', 'IT Management', '2026-09-01 08:00:00'),
+(2, 'Marcus Vance', 'marcus.vance@enterprise.io', 'SUPPORT_TECHNICIAN', 'IT Support', '2026-09-01 08:15:00'),
+(3, 'Elena Rostova', 'elena.rostova@enterprise.io', 'SUPPORT_TECHNICIAN', 'IT Support', '2026-09-01 08:30:00'),
+(4, 'David Kim', 'david.kim@enterprise.io', 'SUPPORT_TECHNICIAN', 'IT Support', '2026-09-01 08:45:00'),
+(5, 'Laura Chen', 'laura.chen@enterprise.io', 'EMPLOYEE', 'Finance', '2026-09-02 09:00:00'),
+(6, 'Carlos Mendoza', 'carlos.mendoza@enterprise.io', 'EMPLOYEE', 'Sales', '2026-09-02 09:20:00'),
+(7, 'Hannah Abbott', 'hannah.abbott@enterprise.io', 'EMPLOYEE', 'Human Resources', '2026-09-02 09:40:00'),
+(8, 'Liam OConnor', 'liam.oconnor@enterprise.io', 'EMPLOYEE', 'Engineering', '2026-09-03 10:00:00'),
+(9, 'Priya Patel', 'priya.patel@enterprise.io', 'EMPLOYEE', 'Marketing', '2026-09-03 10:15:00'),
+(10, 'Noah Williams', 'noah.williams@enterprise.io', 'EMPLOYEE', 'Operations', '2026-09-03 10:30:00');
 
 -- 2. TECHNICAL CATEGORIES
 INSERT INTO categories (id, name, description, is_active) VALUES
@@ -191,6 +191,13 @@ INSERT INTO incidents (id, title, description, priority, status, user_id, catego
 (148, 'High disk I/O latency on reporting replica DB-02 [INC-0148]', 'Table bloat on audit_logs table causing sequential scans to exceed 12 seconds during peak hours. Reported on workstation WS-069.', 'HIGH', 'CLOSED', 9, 3, '2026-11-07 12:08:00', '2026-11-07 17:38:00'),
 (149, 'Active Directory account locked out repeatedly [INC-0149]', 'Employee account locks every 15 minutes due to stale cached credentials on mobile Exchange profile. Reported on workstation WS-070.', 'HIGH', 'RESOLVED', 10, 2, '2026-11-08 15:19:00', '2026-11-08 23:19:00'),
 (150, 'PostgreSQL HikariPool-1 connection timeout on ERP node [INC-0150]', 'Production API throwing SQLTransientConnectionException after idle transactions locked invoice rows. Reported on workstation WS-071.', 'CRITICAL', 'OPEN', 5, 3, '2026-11-08 08:30:00', '2026-11-08 08:30:00');
+
+-- Resolution date of the seed incidents: resolved and closed ones were resolved at their last update.
+-- Also fills in an existing database where the INSERTs above are skipped as duplicates.
+UPDATE incidents SET resolved_at = updated_at WHERE status IN ('RESOLVED', 'CLOSED') AND resolved_at IS NULL;
+
+-- Area of the seed users (for an existing database created before the column existed)
+UPDATE users SET area = CASE id WHEN 1 THEN 'IT Management' WHEN 2 THEN 'IT Support' WHEN 3 THEN 'IT Support' WHEN 4 THEN 'IT Support' WHEN 5 THEN 'Finance' WHEN 6 THEN 'Sales' WHEN 7 THEN 'Human Resources' WHEN 8 THEN 'Engineering' WHEN 9 THEN 'Marketing' WHEN 10 THEN 'Operations' END WHERE id <= 10 AND area IS NULL;
 
 -- 5. AI QUERIES (AI_QUERIES), RESPONSES (AI_RESPONSES), SOURCES AND RATINGS
 INSERT INTO ai_queries (id, incident_id, sent_prompt, query_status, queried_at) VALUES

@@ -6,7 +6,7 @@
 
 **Reglas de cálculo:** iguales a las del backend (`AnalyticsService`).
 - Un incidente está **resuelto** si su estado es `RESOLVED` o `CLOSED`.
-- El **tiempo de atención** es `updated_at − created_at` de los incidentes resueltos.
+- El **tiempo de atención** es `resolved_at − created_at` de los incidentes resueltos o cerrados (`resolved_at` es la fecha en que el incidente pasó a resuelto; en los datos iniciales coincide con su última actualización).
 
 > Los datos son sintéticos. Las conclusiones describen este conjunto de datos y sirven para validar el sistema; con datos reales deben recalcularse con las mismas consultas.
 

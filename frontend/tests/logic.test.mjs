@@ -6,7 +6,7 @@ import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { formatYearWeek, formatRatio, countBy, parseDate } from '../js/format.js';
-import { distributions, previousPeriod, pctChange, formatYearMonth, TIME_BUCKETS } from '../js/analytics-utils.js';
+import { distributions, previousPeriod, pctChange, formatYearMonth, TIME_BUCKETS, resolutionHours } from '../js/analytics-utils.js';
 import { parseResponse, responseSummary } from '../js/components/ai-response.js';
 import { estadoConsulta, badge, ESTADO_CONSULTA, labelOf, PRIORIDAD } from '../js/catalogs.js';
 import { escapeHtml } from '../js/ui.js';
@@ -37,6 +37,12 @@ describe('format.js', () => {
 });
 
 describe('analytics-utils.js', () => {
+  test('el tiempo de resolución usa resolvedAt (y updatedAt solo si falta)', () => {
+    const base = { createdAt: '2026-11-01T08:00:00', updatedAt: '2026-11-01T20:00:00' };
+    assert.equal(resolutionHours({ ...base, resolvedAt: '2026-11-01T11:00:00' }), 3);
+    assert.equal(resolutionHours({ ...base, resolvedAt: null }), 12);
+  });
+
   const incidents = [
     { status: 'RESOLVED', priority: 'HIGH', createdAt: '2026-11-01T08:00:00', updatedAt: '2026-11-01T10:30:00' }, // 2,5 h
     { status: 'CLOSED', priority: 'LOW', createdAt: '2026-11-02T08:00:00', updatedAt: '2026-11-02T08:30:00' }, // 0,5 h

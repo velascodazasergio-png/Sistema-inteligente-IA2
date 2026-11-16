@@ -70,11 +70,11 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                               @Param("endDate") LocalDateTime endDate,
                               @Param("overdueThreshold") LocalDateTime overdueThreshold);
 
-    // 6. Average resolution time in seconds (updatedAt - createdAt) of resolved or closed incidents
+    // 6. Average resolution time in seconds (resolvedAt - createdAt) of resolved or closed incidents
     @Query("""
-            SELECT AVG((i.updatedAt - i.createdAt) BY SECOND)
+            SELECT AVG((i.resolvedAt - i.createdAt) BY SECOND)
             FROM Incident i
-            WHERE i.updatedAt IS NOT NULL
+            WHERE i.resolvedAt IS NOT NULL
               AND i.status IN
             """ + RESOLVED_STATUSES + " AND " + ANALYTICS_FILTERS)
     Double averageResolutionSecondsFiltered(@Param("categoryId") Long categoryId,

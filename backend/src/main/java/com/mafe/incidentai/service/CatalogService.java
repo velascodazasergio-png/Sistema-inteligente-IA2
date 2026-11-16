@@ -38,7 +38,7 @@ public class CatalogService {
         return userRepository.findAll(Sort.by("fullName"))
                 .stream()
                 .filter(u -> role == null || u.getRole() == role)
-                .map(u -> new UserSummaryDTO(u.getId(), u.getFullName(), u.getEmail(), u.getRole()))
+                .map(UserSummaryDTO::from)
                 .toList();
     }
 }

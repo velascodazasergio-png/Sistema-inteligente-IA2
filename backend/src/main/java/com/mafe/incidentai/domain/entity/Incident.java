@@ -83,12 +83,16 @@ public class Incident {
         }
     }
 
-    // Updates the modification date and records when the incident was resolved
+    // Updates the modification date and keeps the resolution date in sync with the status:
+    // set the first time it is resolved or closed, cleared if the incident is reopened
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();
-        if ((this.status == IncidentStatus.RESOLVED || this.status == IncidentStatus.CLOSED) && this.resolvedAt == null) {
+        boolean finished = this.status == IncidentStatus.RESOLVED || this.status == IncidentStatus.CLOSED;
+        if (finished && this.resolvedAt == null) {
             this.resolvedAt = this.updatedAt;
+        } else if (!finished) {
+            this.resolvedAt = null;
         }
     }
 }

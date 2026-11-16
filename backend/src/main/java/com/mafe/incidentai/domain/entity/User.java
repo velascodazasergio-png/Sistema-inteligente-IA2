@@ -33,6 +33,10 @@ public class User {
     @Column(name = "role", nullable = false, length = 30)
     private UserRole role;
 
+    // Department or area the user works in (e.g. Finance, IT Support)
+    @Column(name = "area", length = 80)
+    private String area;
+
     // BCrypt hash of the password (never the plain password). Null = no password assigned yet.
     @Column(name = "password_hash", length = 100)
     private String passwordHash;

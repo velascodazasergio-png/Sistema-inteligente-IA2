@@ -101,7 +101,8 @@ class SecurityTest {
         mvc.perform(as(EMPLOYEE, get("/api/v1/auth/me")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value(EMPLOYEE))
-                .andExpect(jsonPath("$.role").value("EMPLOYEE"));
+                .andExpect(jsonPath("$.role").value("EMPLOYEE"))
+                .andExpect(jsonPath("$.area").value("Finance"));
     }
 
     // ---------- No session or invalid token ----------

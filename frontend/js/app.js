@@ -171,7 +171,7 @@ function renderUser() {
     chip.querySelector('[data-user-avatar]').innerHTML = avatar(user.fullName);
     chip.querySelector('[data-user-name]').textContent = user.fullName;
     chip.querySelector('[data-user-role]').textContent = ROLE_LABEL[user.role] ?? user.role;
-    chip.title = `${user.fullName} · ${user.email}`;
+    chip.title = [user.fullName, user.email, user.area].filter(Boolean).join(' · ');
   }
   // The API status links to Configuration only for users who can open it
   document.querySelectorAll('#api-status, #sidebar-status').forEach((link) => {

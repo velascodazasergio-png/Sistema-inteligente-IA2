@@ -1,7 +1,7 @@
 -- Consultas SQL del informe de análisis de datos.
 -- Compatibles con PostgreSQL y con H2 en modo PostgreSQL (base de desarrollo).
 -- "Resuelto" = estado RESOLVED o CLOSED, igual que en AnalyticsService.
--- Tiempo de atención = updated_at - created_at de los incidentes resueltos.
+-- Tiempo de atención = resolved_at - created_at de los incidentes resueltos o cerrados.
 
 -- Q1. Indicadores generales
 SELECT COUNT(*)                                                             AS total_incidentes,
@@ -9,7 +9,7 @@ SELECT COUNT(*)                                                             AS t
        SUM(CASE WHEN status NOT IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) AS pendientes,
        ROUND(100.0 * SUM(CASE WHEN status IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) / COUNT(*), 2) AS tasa_resolucion_pct,
        ROUND(AVG(CASE WHEN status IN ('RESOLVED', 'CLOSED')
-                      THEN EXTRACT(EPOCH FROM (updated_at - created_at)) / 3600.0 END), 2) AS horas_promedio_atencion
+                      THEN EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0 END), 2) AS horas_promedio_atencion
 FROM incidents;
 
 -- Q2. Incidentes por categoría: volumen, participación, resolución y tiempo
@@ -18,7 +18,7 @@ SELECT c.name                                                                AS 
        ROUND(100.0 * COUNT(i.id) / (SELECT COUNT(*) FROM incidents), 2)      AS participacion_pct,
        ROUND(100.0 * SUM(CASE WHEN i.status IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) / COUNT(i.id), 2) AS tasa_resolucion_pct,
        ROUND(AVG(CASE WHEN i.status IN ('RESOLVED', 'CLOSED')
-                      THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 2) AS horas_promedio
+                      THEN EXTRACT(EPOCH FROM (i.resolved_at - i.created_at)) / 3600.0 END), 2) AS horas_promedio
 FROM categories c
 JOIN incidents i ON i.category_id = c.id
 GROUP BY c.name
@@ -29,7 +29,7 @@ SELECT i.priority                                                            AS 
        COUNT(*)                                                              AS incidentes,
        SUM(CASE WHEN i.status NOT IN ('RESOLVED', 'CLOSED') THEN 1 ELSE 0 END) AS pendientes,
        ROUND(AVG(CASE WHEN i.status IN ('RESOLVED', 'CLOSED')
-                      THEN EXTRACT(EPOCH FROM (i.updated_at - i.created_at)) / 3600.0 END), 2) AS horas_promedio
+                      THEN EXTRACT(EPOCH FROM (i.resolved_at - i.created_at)) / 3600.0 END), 2) AS horas_promedio
 FROM incidents i
 GROUP BY i.priority
 ORDER BY CASE i.priority WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 ELSE 4 END;
@@ -70,9 +70,9 @@ FROM (
              ELSE '6. > 3 d'
            END AS rango
     FROM (
-        SELECT EXTRACT(EPOCH FROM (updated_at - created_at)) / 3600.0 AS h
+        SELECT EXTRACT(EPOCH FROM (resolved_at - created_at)) / 3600.0 AS h
         FROM incidents
-        WHERE status IN ('RESOLVED', 'CLOSED') AND updated_at IS NOT NULL
+        WHERE status IN ('RESOLVED', 'CLOSED') AND resolved_at IS NOT NULL
     ) t
 ) r
 GROUP BY rango
@@ -81,7 +81,7 @@ ORDER BY rango;
 -- Q8. Desempeño del asistente IA
 SELECT q.query_status                         AS estado_consulta,
        COUNT(*)                               AS consultas,
-       ROUND(AVG(r.confidence_score), 3)      AS confianza_promedio,
+       ROUND(CAST(AVG(r.confidence_score) AS NUMERIC), 3)      AS confianza_promedio,
        ROUND(AVG(r.processing_time_ms) / 1000.0, 2) AS segundos_promedio
 FROM ai_queries q
 LEFT JOIN ai_responses r ON r.ai_query_id = q.id
@@ -98,9 +98,9 @@ FROM ratings;
 
 -- Q10. Similitud de las fuentes citadas por la IA
 SELECT COUNT(*)                         AS fuentes_citadas,
-       ROUND(AVG(similarity_score), 3)  AS similitud_promedio,
-       ROUND(MIN(similarity_score), 3)  AS similitud_minima,
-       ROUND(MAX(similarity_score), 3)  AS similitud_maxima
+       ROUND(CAST(AVG(similarity_score) AS NUMERIC), 3)  AS similitud_promedio,
+       ROUND(CAST(MIN(similarity_score) AS NUMERIC), 3)  AS similitud_minima,
+       ROUND(CAST(MAX(similarity_score) AS NUMERIC), 3)  AS similitud_maxima
 FROM response_sources;
 
 -- Q11. Cobertura de la base de conocimiento frente a la demanda por categoría

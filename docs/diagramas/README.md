@@ -22,6 +22,8 @@ erDiagram
         varchar full_name
         varchar email UK
         varchar role "EMPLOYEE | SUPPORT_TECHNICIAN | ADMIN"
+        varchar area "área o departamento"
+        varchar password_hash "BCrypt, nunca en claro"
         timestamp created_at
     }
     CATEGORIES {
@@ -38,6 +40,7 @@ erDiagram
         varchar status "OPEN | IN_AI_ANALYSIS | ASSIGNED_TO_TECH | RESOLVED | CLOSED"
         timestamp created_at
         timestamp updated_at
+        timestamp resolved_at "al pasar a RESOLVED o CLOSED"
         bigint user_id FK
         bigint category_id FK
     }
@@ -109,11 +112,11 @@ flowchart LR
     U([Usuario]) --> FE
 
     subgraph Cliente
-        FE["Frontend<br/>HTML · CSS · JS<br/>(nginx :5500)"]
+        FE["Frontend<br/>HTML · CSS · JS<br/>(nginx :5500 HTTP · :5443 HTTPS)"]
     end
 
     subgraph Servidor
-        BE["Backend Spring Boot :8080<br/>API REST · JPA · Swagger"]
+        BE["Backend Spring Boot :8080<br/>API REST · JPA · Swagger<br/>Spring Security (JWT, 3 roles)"]
         DB[("PostgreSQL / H2<br/>datos relacionales")]
     end
 
@@ -123,11 +126,11 @@ flowchart LR
         OR["OpenRouter<br/>embeddings + LLM"]
     end
 
-    FE -- "REST /api/v1" --> BE
+    FE -- "REST /api/v1<br/>+ Bearer JWT" --> BE
     BE -- JDBC --> DB
     BE -- "POST webhook<br/>+ Header Auth" --> N8N
     N8N -- "callback respuesta / fallo<br/>+ X-Callback-Token" --> BE
-    N8N -- "GET artículos" --> BE
+    N8N -- "GET artículos<br/>+ X-Callback-Token (rol SERVICE)" --> BE
     N8N --> QD
     N8N --> OR
 ```
