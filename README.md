@@ -156,7 +156,9 @@ Seguridad:
 
 - **Contraseñas:** se guardan como hash BCrypt, nunca en texto plano. Al arrancar, el backend asigna `DEMO_PASSWORD` a los usuarios que todavía no tienen contraseña, y nunca sobrescribe las que ya existen. Fuera de una demostración, cámbiala en el `.env`.
 - **Inicio de sesión:** un correo inexistente y una contraseña incorrecta reciben la misma respuesta (`401`, *Correo o contraseña incorrectos*). Así no se puede averiguar qué correos están registrados.
-- **Errores:** sin token, o con un token vencido o alterado, la respuesta es `401` y el frontend vuelve al login. Si el rol no alcanza o el recurso es de otra persona, la respuesta es `403`.
+- **Sesiones en la base de datos:** cada inicio de sesión crea una fila en `user_sessions` (usuario, fecha, vencimiento y navegador) y el JWT solo lleva su identificador. En cada petición el backend comprueba que la sesión siga abierta. Al cerrar sesión (`POST /api/v1/auth/logout`) se marca como cerrada y el token deja de funcionar al instante.
+- **Nada se guarda en el navegador** salvo ese token. Los datos del usuario se leen de la base (`GET /api/v1/auth/me`) y sus preferencias (menú lateral, vista de artículos) se guardan en `user_preferences` (`GET` y `PUT /api/v1/auth/me/preferences`), así lo acompañan en cualquier equipo.
+- **Errores:** sin token, o con un token vencido, alterado o de una sesión cerrada, la respuesta es `401` y el frontend vuelve al login. Si el rol no alcanza o el recurso es de otra persona, la respuesta es `403`.
 - **n8n** no inicia sesión. Para leer artículos usa el `X-Callback-Token`, que le da un rol de servicio limitado a esa lectura.
 - **Rutas públicas:** solo el login, `/api-docs` y `/swagger-ui`. Para usar Swagger, ejecuta `POST /api/v1/auth/login`, pulsa **Authorize** y pega el `accessToken`.
 
@@ -188,7 +190,7 @@ Cada cuenta de demostración rellena el correo con un clic. Después del login, 
 |:-:|:-:|
 | ![Detalle de un artículo con verificar y desactivar](docs/evidencias/frontend/07-admin-articulo.png) | ![Historial de consultas](docs/evidencias/frontend/09-admin-historial.png) |
 
-| **Analítica:** indicadores y gráficos calculados con SQL | **Configuración:** conexión con la API (solo administrador) |
+| **Analítica:** indicadores y gráficos calculados con SQL | **Configuración:** conexión con la API y dónde se guarda cada dato (solo administrador) |
 |:-:|:-:|
 | ![Analítica](docs/evidencias/frontend/10-admin-analitica.png) | ![Configuración](docs/evidencias/frontend/11-admin-configuracion.png) |
 
@@ -307,10 +309,10 @@ Por seguridad, los puertos se publican **solo en `127.0.0.1`**. Si alguno está 
 │       │   ├── exception/      # Errores en JSON (400, 401, 403, 404, 409)
 │       │   └── config/         # CORS, callbacks, cliente HTTP, OpenAPI
 │       ├── main/resources/     # application.properties, data.sql
-│       └── test/               # 60 pruebas de integración
+│       └── test/               # 63 pruebas de integración
 ├── frontend/                   # HTML, CSS y JavaScript sin frameworks (ver frontend/README.md)
 │   ├── index.html  css/  js/  assets/
-│   └── tests/                  # 44 pruebas unitarias (node:test)
+│   └── tests/                  # 47 pruebas unitarias (node:test)
 ├── n8n/
 │   ├── workflows/              # 01 indexación · 02 asistencia RAG · 03 combinado (el que se activa)
 │   ├── setup.sh                # Configura n8n al arrancar
@@ -389,10 +391,10 @@ Las claves nunca se escriben en el código ni en el repositorio: van en el `.env
 Se ejecutan en contenedores temporales, desde la raíz del repositorio.
 
 ```bash
-# Backend: 60 pruebas de integración (MockMvc sobre H2)
+# Backend: 63 pruebas de integración (MockMvc sobre H2)
 docker run --rm -v "$PWD/backend":/app -w /app maven:3.9.9-eclipse-temurin-21 mvn -q -B test
 
-# Frontend: 44 pruebas unitarias
+# Frontend: 47 pruebas unitarias
 docker run --rm -v "$PWD/frontend":/app -w /app node:22-alpine node --test "tests/*.test.mjs"
 ```
 
@@ -462,6 +464,7 @@ python -m http.server 5500
 
 - Consola H2: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:incidents_db`, usuario `sa`).
 - Sin n8n, las consultas a la IA quedan en *Error de conexión*. El resto del sistema funciona.
+- **H2 en memoria es solo para desarrollo y pruebas:** sus datos (incluidas sesiones y preferencias) se pierden al detener el backend. Para que todo quede guardado de forma permanente, usa Docker Compose, que trabaja con PostgreSQL.
 
 ---
 
@@ -553,7 +556,7 @@ Lo primero es revisar `docker compose ps` y los logs del servicio que falla (`do
 | El webhook de n8n responde `403 Authorization data is wrong!` | El token no coincide. Revisa `N8N_WEBHOOK_AUTH_VALUE` y ejecuta `docker compose up -d backend n8n` |
 | El webhook de n8n responde `404` | El flujo no está activo. Mira `docker compose logs n8n` y ejecuta `docker compose restart n8n` |
 | Cambios en el editor de n8n desaparecen al reiniciar | Es lo esperado: el flujo se reimporta del repositorio ([sección 5](#5-n8n-configuración-automática)). Usa `N8N_AUTO_SETUP=false` para editar en la interfaz |
-| La página dice "API sin conexión" | El backend no está *healthy*, o la página se abrió como archivo (`file://`). En *Configuración*, la URL debe ser `http://localhost:8080` |
+| La página dice "API sin conexión" | El backend no está *healthy*, o la página se abrió como archivo (`file://`). Ábrela en http://localhost:5500 o https://localhost:5443 |
 | El login dice *Correo o contraseña incorrectos* | La contraseña es la de `DEMO_PASSWORD` (`Soporte2026*`). Si cambiaste `DEMO_PASSWORD` después del primer arranque, sigue valiendo la anterior: solo se asigna a usuarios sin contraseña |
 | La sesión se cierra cada vez que se reinicia el backend | `JWT_SECRET` está vacío en el `.env` (paso 1.2) |
 | Las consultas a la IA quedan en "Error de conexión" | n8n está apagado o sin el flujo activo. Revisa `docker compose logs n8n` |

@@ -47,7 +47,8 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 | Configuración automática de n8n al arrancar (`n8n/setup.sh`) | Código generado | `5d4c8e1` |
 | README reorganizado y capturas de cada rol | Redacción y capturas automatizadas | `f736670`, `c99be9e` |
 | Traducción al inglés del backend y de todos los comentarios; un comentario por función | Traducción y redacción | `cd5a00e`, `fe5fee9` |
-| Revisión contra el enunciado: área del usuario, fecha de resolución, consultas del informe en PostgreSQL, documentos actualizados | Auditoría y corrección | `c62d8d9` y el commit de documentación siguiente |
+| Revisión contra el enunciado: área del usuario, fecha de resolución, consultas del informe en PostgreSQL, documentos actualizados | Auditoría y corrección | `c62d8d9`, `fcd7dbe` |
+| Sesiones y preferencias en la base de datos (`user_sessions`, `user_preferences`); el navegador solo guarda el token | Código generado y probado en el navegador | `76bb364` |
 
 ### Decisiones técnicas tomadas con apoyo de la IA
 
@@ -71,6 +72,7 @@ Este documento registra las herramientas de IA usadas en el desarrollo, su parti
 14. **Umbral de similitud 0,55**, medido con 13 incidentes reales: separa los incidentes con artículo (0,675–0,809) de los que no tienen relación (0,220–0,367).
 15. **Tiempo de atención = `resolved_at − created_at`**, la fecha en que el incidente pasó a resuelto, y no la última modificación.
 16. **Código del backend y comentarios en inglés**; los textos de la interfaz siguen en español y el frontend traduce los mensajes del backend.
+17. **Todo se guarda en la base de datos.** Las sesiones son filas de `user_sessions` que se validan en cada petición y se cierran al salir; las preferencias de cada usuario están en `user_preferences`. En el navegador solo queda el token, que es lo mínimo para mantener la sesión al recargar la página.
 
 ### Verificación
 

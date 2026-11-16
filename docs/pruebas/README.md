@@ -4,8 +4,9 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 
 | Nivel | Herramienta | Casos | Resultado |
 |---|---|---:|---|
-| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 60 | ✅ 60 / 60 |
-| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 44 | ✅ 44 / 44 |
+| Integración del backend | JUnit 5 + MockMvc (`mvn test`) | 63 | ✅ 63 / 63 |
+| Unitarias del frontend | `node:test` (`node --test "frontend/tests/*.test.mjs"`) | 47 | ✅ 47 / 47 |
+| Persistencia en la base de datos (sesiones y preferencias) | API real + Edge sin interfaz + consultas SQL | 5 | ✅ 5 / 5 |
 | Contrato de la API | Colección Postman / script HTTP | 25 | ✅ 25 / 25 |
 | Contrato del flujo de IA | n8n simulado con el contrato del flujo 02 | 4 | ✅ 4 / 4 |
 | Integración real (auditoría) | Docker: n8n, Qdrant, PostgreSQL y OpenRouter reales | 10 escenarios | ✅ 7 · ⏸️ 3 sin clave de OpenRouter |
@@ -31,7 +32,7 @@ Pruebas ejecutadas sobre la rama `devsergy` el 12 de noviembre de 2026. La secci
 ```bash
 cd backend
 mvn test
-# Tests run: 60, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
+# Tests run: 63, Failures: 0, Errors: 0, Skipped: 0 — BUILD SUCCESS
 ```
 
 | # | Grupo | Caso | Qué valida | Resultado |
@@ -75,6 +76,9 @@ mvn test
 | 58 | Incidentes | `seedResolvedIncidentsHaveAResolutionDate` | Los incidentes resueltos de `data.sql` tienen `resolvedAt`; los abiertos no | ✅ |
 | 59 | Incidentes | `resolvingSetsTheResolutionDateAndReopeningClearsIt` | Resolver registra la fecha de resolución; reabrir la borra | ✅ |
 | 60 | Catálogos | `usersIncludeTheirArea` | Cada usuario tiene su área (p. ej. Laura Chen: Finance) | ✅ |
+| 61 | Sesiones | `loginStoresTheSessionInTheDatabase` | Iniciar sesión crea una fila abierta en `user_sessions` | ✅ |
+| 62 | Sesiones | `logoutClosesTheSessionAndTheTokenStopsWorking` | Tras cerrar sesión, el mismo token da 401 y la fila queda con `revoked_at` | ✅ |
+| 63 | Preferencias | `preferencesAreStoredPerUser` | Se guardan por usuario, la actualización parcial conserva lo demás y un valor inválido da 400 | ✅ |
 
 ## 1b. Pruebas unitarias del frontend
 
@@ -82,7 +86,7 @@ mvn test
 
 ```bash
 node --test "frontend/tests/*.test.mjs"
-# tests 44 · pass 44 · fail 0
+# tests 47 · pass 47 · fail 0
 ```
 
 | Grupo | Casos | Qué valida |
@@ -93,7 +97,7 @@ node --test "frontend/tests/*.test.mjs"
 | `catalogs.js` / `ui.js` | 4 | Estado "Sin resultados" deducido, los 5 estados del backend, escape de HTML ante valores inesperados |
 | `api-messages.js` | 2 | Traducción al español de los mensajes del backend |
 | `api.js` y servicio de IA | 7 | URL y parámetros, cuerpo JSON, mensajes de error de Spring (400 y 409), error de red, validación previa de la descripción |
-| Sesión y roles (`auth.test.mjs`) | 15 | Vencimiento del token, secciones de cada rol, envío del JWT, respuesta ante 401 y 403 |
+| Sesión y roles (`auth.test.mjs`) | 18 | Vencimiento del token, secciones de cada rol, envío del JWT, respuesta ante 401 y 403; el navegador solo guarda el token y cerrar sesión llama al servidor |
 | Fallos de la IA (`failure-hints.test.mjs`) | 2 | Las indicaciones de fallo que el backend envía en inglés se muestran en español |
 
 ## 2. Contrato de la API
@@ -281,6 +285,20 @@ Además se comprobó lo siguiente:
 - **Sesión:**
   - cerrar sesión vuelve al login y borra el token;
   - con un token inválido, la primera petición devuelve 401 y la aplicación vuelve al login con *Tu sesión expiró*.
+
+## 3g. Todo se guarda en la base de datos
+
+Entorno: el stack de Docker Compose con PostgreSQL. Se inició sesión en el navegador como Laura Chen y se consultó la base después de cada paso.
+
+| # | Paso | Navegador (`localStorage`) | Base de datos | Estado |
+|---|---|---|---|---|
+| 1 | Iniciar sesión (con datos de una versión anterior en el navegador) | Solo `incidentes-ia:token`; las claves antiguas se borran | Fila nueva en `user_sessions` con fecha, vencimiento y navegador | ✅ |
+| 2 | Abrir Conocimiento | Igual | Las preferencias guardadas antes (menú contraído, vista de tabla) se leen de `user_preferences` y se aplican | ✅ |
+| 3 | Recargar la página | Igual | El usuario se lee con `GET /auth/me`; las preferencias siguen aplicadas | ✅ |
+| 4 | Expandir el menú y pasar a tarjetas | Igual | `user_preferences`: `sidebar_collapsed = false`, `knowledge_view = cards` | ✅ |
+| 5 | Cerrar sesión | Vacío | La fila de la sesión queda con `revoked_at`; el mismo token responde 401 | ✅ |
+
+La URL de la API ya no se guarda en el navegador: se deduce del lugar donde se sirve la página.
 
 ## 4. Despliegue con Docker Compose
 

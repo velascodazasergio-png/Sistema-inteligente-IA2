@@ -16,6 +16,8 @@ erDiagram
     KNOWLEDGE_ARTICLES |o--o{ RESPONSE_SOURCES : "respalda"
     AI_RESPONSES ||--o| RATINGS : "es calificada"
     USERS ||--o{ RATINGS : "evalúa"
+    USERS ||--o{ USER_SESSIONS : "inicia"
+    USERS ||--o| USER_PREFERENCES : "configura"
 
     USERS {
         bigint id PK
@@ -96,12 +98,28 @@ erDiagram
         bigint ai_response_id FK,UK
         bigint evaluator_user_id FK
     }
+    USER_SESSIONS {
+        varchar id PK "UUID = jti del JWT"
+        bigint user_id FK
+        timestamp created_at
+        timestamp expires_at
+        timestamp revoked_at "al cerrar sesión"
+        varchar user_agent
+    }
+    USER_PREFERENCES {
+        bigint user_id PK,FK
+        boolean sidebar_collapsed
+        varchar knowledge_view "cards | table"
+        timestamp updated_at
+    }
 ```
 
 Reglas de negocio reflejadas en el modelo:
 
 - Un incidente puede tener varias consultas a la IA; cada consulta tiene como máximo **una** respuesta (`ai_query_id` único).
 - Cada respuesta tiene como máximo **una** calificación (`ai_response_id` único en `ratings`).
+- Cada inicio de sesión es una fila de `user_sessions`; el JWT solo lleva su `id`. Una sesión cerrada (`revoked_at`) o vencida ya no autentica.
+- Las preferencias de la interfaz de cada usuario están en `user_preferences` (una fila por usuario, misma clave).
 - Una fuente puede apuntar a un artículo de la base de conocimiento. Solo los artículos `is_active` e `is_verified` se usan en el RAG.
 - No se registran incidentes ni artículos nuevos en una categoría inactiva, y un incidente `CLOSED` ya no cambia de estado ni se consulta con la IA.
 
