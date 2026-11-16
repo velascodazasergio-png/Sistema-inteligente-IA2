@@ -2,19 +2,22 @@
 
 Plataforma para registrar incidentes de soporte, administrar una base de conocimiento técnica, analizar indicadores con SQL y obtener orientación de un asistente de IA que responde **solo** con artículos verificados (RAG). Tiene tres roles (administrador, técnico y usuario), cada uno con su propia interfaz, y sesiones con JWT.
 
+![Dashboard del administrador: indicadores, filtros y gráficos calculados con SQL](docs/evidencias/frontend/02-admin-dashboard.png)
+
 **Contenido**
 
 1. [Arranque rápido](#1-arranque-rápido)
 2. [Cuentas, roles y permisos](#2-cuentas-roles-y-permisos)
-3. [Arquitectura](#3-arquitectura)
-4. [n8n: configuración automática](#4-n8n-configuración-automática)
-5. [Variables de entorno](#5-variables-de-entorno)
-6. [Pruebas](#6-pruebas)
-7. [Desarrollo sin Docker](#7-desarrollo-sin-docker)
-8. [Comandos del día a día](#8-comandos-del-día-a-día)
-9. [Despliegue en un servidor Ubuntu](#9-despliegue-en-un-servidor-ubuntu)
-10. [Solución de problemas](#10-solución-de-problemas)
-11. [Equipo, ramas y documentación](#11-equipo-ramas-y-documentación)
+3. [Capturas de pantalla](#3-capturas-de-pantalla)
+4. [Arquitectura](#4-arquitectura)
+5. [n8n: configuración automática](#5-n8n-configuración-automática)
+6. [Variables de entorno](#6-variables-de-entorno)
+7. [Pruebas](#7-pruebas)
+8. [Desarrollo sin Docker](#8-desarrollo-sin-docker)
+9. [Comandos del día a día](#9-comandos-del-día-a-día)
+10. [Despliegue en un servidor Ubuntu](#10-despliegue-en-un-servidor-ubuntu)
+11. [Solución de problemas](#11-solución-de-problemas)
+12. [Equipo, ramas y documentación](#12-equipo-ramas-y-documentación)
 
 ---
 
@@ -22,7 +25,7 @@ Plataforma para registrar incidentes de soporte, administrar una base de conocim
 
 Todo corre en Docker: no hace falta instalar Java, Maven, Node, PostgreSQL ni n8n.
 
-**Requisitos:** Git y Docker con Compose v2. En Windows y macOS es **Docker Desktop** (debe estar abierto). En Ubuntu, sigue el [paso 9.1](#91-instalar-docker).
+**Requisitos:** Git y Docker con Compose v2. En Windows y macOS es **Docker Desktop** (debe estar abierto). En Ubuntu, sigue el [paso 10.1](#101-instalar-docker).
 
 ### 1.1 Descargar el proyecto
 
@@ -76,7 +79,7 @@ docker compose ps
 
 La primera vez tarda unos minutos, porque descarga las imágenes y compila el backend. Al terminar, `backend`, `postgres`, `qdrant`, `n8n` y `frontend` deben aparecer como **healthy**. `certs` aparece como *Exited (0)* porque solo crea el certificado y termina.
 
-n8n **se configura solo** al arrancar: crea sus credenciales, importa el flujo y lo activa ([detalle](#4-n8n-configuración-automática)). Para comprobarlo:
+n8n **se configura solo** al arrancar: crea sus credenciales, importa el flujo y lo activa ([detalle](#5-n8n-configuración-automática)). Para comprobarlo:
 
 ```bash
 docker compose logs n8n | grep -E "n8n-setup|Started"
@@ -159,7 +162,75 @@ Seguridad:
 
 ---
 
-## 3. Arquitectura
+## 3. Capturas de pantalla
+
+Tomadas de la aplicación en funcionamiento, con los datos iniciales y respuestas reales del asistente. Están en [docs/evidencias/frontend/](docs/evidencias/frontend/).
+
+### Inicio de sesión
+
+Cada cuenta de demostración rellena el correo con un clic. Después del login, cada rol llega a su propia sección de inicio.
+
+![Inicio de sesión con las tres cuentas de demostración, una por rol](docs/evidencias/frontend/01-login.png)
+
+### Administrador
+
+**Dashboard** (la imagen del inicio de este README). Indicadores, evolución semanal y mensual, tiempos de resolución y distribución por categoría y estado, con filtros por fecha, categoría y prioridad.
+
+| **Incidentes:** todos los incidentes, con filtros, búsqueda y orden | **Detalle:** datos del incidente, cambio de estado y accesos a la IA |
+|:-:|:-:|
+| ![Lista de incidentes](docs/evidencias/frontend/03-admin-incidentes.png) | ![Detalle de un incidente](docs/evidencias/frontend/04-admin-incidente-detalle.png) |
+
+| **Nuevo incidente:** puede registrarlo a nombre de cualquier usuario | **Base de conocimiento:** artículos activos, pendientes e inactivos |
+|:-:|:-:|
+| ![Formulario de nuevo incidente](docs/evidencias/frontend/05-admin-nuevo-incidente.png) | ![Base de conocimiento](docs/evidencias/frontend/06-admin-conocimiento.png) |
+
+| **Artículo:** solo el administrador lo verifica (o le quita la verificación) y lo desactiva | **Historial:** todas las consultas a la IA, su estado y su calificación |
+|:-:|:-:|
+| ![Detalle de un artículo con verificar y desactivar](docs/evidencias/frontend/07-admin-articulo.png) | ![Historial de consultas](docs/evidencias/frontend/09-admin-historial.png) |
+
+| **Analítica:** indicadores y gráficos calculados con SQL | **Configuración:** conexión con la API (solo administrador) |
+|:-:|:-:|
+| ![Analítica](docs/evidencias/frontend/10-admin-analitica.png) | ![Configuración](docs/evidencias/frontend/11-admin-configuracion.png) |
+
+**Asistente IA (RAG).** La respuesta trae diagnóstico, solución, pasos, confianza y los artículos usados como fuente, con su similitud.
+
+![Asistente IA con una respuesta real](docs/evidencias/frontend/08-admin-asistente.png)
+
+### Técnico de soporte
+
+Ve el dashboard, los incidentes, la base de conocimiento, el asistente y el historial. No ve *Configuración* y no puede verificar artículos: solo crearlos y editarlos.
+
+| **Dashboard del técnico:** sin la sección Configuración en el menú | **Artículo:** puede editarlo, pero la verificación queda para el administrador |
+|:-:|:-:|
+| ![Dashboard del técnico](docs/evidencias/frontend/12-tecnico-dashboard.png) | ![Artículo visto por el técnico, sin botón de verificar](docs/evidencias/frontend/13-tecnico-articulo.png) |
+
+### Usuario
+
+Solo ve *Mis incidentes*, *Conocimiento* (lectura de artículos publicados), *Asistente IA* sobre sus incidentes y *Mis consultas*.
+
+| **Mis incidentes:** solo los que reportó | **Reportar incidente:** siempre queda a su nombre |
+|:-:|:-:|
+| ![Mis incidentes](docs/evidencias/frontend/14-usuario-mis-incidentes.png) | ![Formulario para reportar un incidente](docs/evidencias/frontend/15-usuario-reportar.png) |
+
+| **Mis consultas:** las consultas a la IA sobre sus incidentes | **Conocimiento:** solo artículos activos y verificados, sin edición |
+|:-:|:-:|
+| ![Mis consultas](docs/evidencias/frontend/16-usuario-mis-consultas.png) | ![Base de conocimiento en modo lectura](docs/evidencias/frontend/17-usuario-conocimiento.png) |
+
+### Móvil
+
+| Dashboard | Menú lateral | Inicio de sesión |
+|:-:|:-:|:-:|
+| <img src="docs/evidencias/frontend/18-movil-dashboard.png" alt="Dashboard en móvil" width="240"> | <img src="docs/evidencias/frontend/19-movil-menu.png" alt="Menú lateral en móvil" width="240"> | <img src="docs/evidencias/frontend/20-movil-login.png" alt="Inicio de sesión en móvil" width="240"> |
+
+### API (Swagger)
+
+Los 26 endpoints documentados por módulo. Con **Authorize** se pega el JWT de `POST /api/v1/auth/login`.
+
+![Swagger UI con los endpoints de la API](docs/evidencias/swagger-ui.png)
+
+---
+
+## 4. Arquitectura
 
 ```
 ┌────────────┐  REST   ┌──────────────────┐  JDBC  ┌──────────────┐
@@ -252,7 +323,7 @@ Por seguridad, los puertos se publican **solo en `127.0.0.1`**. Si alguno está 
 
 ---
 
-## 4. n8n: configuración automática
+## 5. n8n: configuración automática
 
 Cada vez que arranca el contenedor `n8n`, antes de `n8n start`, se ejecuta [n8n/setup.sh](n8n/setup.sh). El script:
 
@@ -284,7 +355,7 @@ Los dos exigen el encabezado `X-N8N-Token`. Sin él, o con un valor incorrecto, 
 
 ---
 
-## 5. Variables de entorno
+## 6. Variables de entorno
 
 Se definen en el `.env`. Las marcadas con **\*** son obligatorias para levantar con Docker; el resto tiene un valor por defecto.
 
@@ -305,13 +376,13 @@ Se definen en el `.env`. Las marcadas con **\*** son obligatorias para levantar 
 | `TZ` | postgres, n8n | Zona horaria. Por defecto `America/Bogota` |
 | `*_PORT` | Docker | Puertos del equipo, si los predeterminados están ocupados |
 
-Fuera de Docker (sección 7), el backend también lee `DB_URL`, `DB_DRIVER`, `DB_USERNAME`, `DB_PASSWORD`, `N8N_WEBHOOK_URL` y `N8N_INDEX_WEBHOOK_URL`.
+Fuera de Docker (sección 8), el backend también lee `DB_URL`, `DB_DRIVER`, `DB_USERNAME`, `DB_PASSWORD`, `N8N_WEBHOOK_URL` y `N8N_INDEX_WEBHOOK_URL`.
 
 Las claves nunca se escriben en el código ni en el repositorio: van en el `.env`.
 
 ---
 
-## 6. Pruebas
+## 7. Pruebas
 
 ### Automáticas (sin instalar Java ni Node)
 
@@ -375,7 +446,7 @@ Con los datos iniciales, `totalIncidents` es 150.
 
 ---
 
-## 7. Desarrollo sin Docker
+## 8. Desarrollo sin Docker
 
 Para trabajar en el backend o el frontend con recarga rápida. Requiere Java 21, Maven 3.9 y Python 3 (u otro servidor estático).
 
@@ -394,7 +465,7 @@ python -m http.server 5500
 
 ---
 
-## 8. Comandos del día a día
+## 9. Comandos del día a día
 
 | Acción | Comando |
 |---|---|
@@ -411,11 +482,11 @@ python -m http.server 5500
 
 ---
 
-## 9. Despliegue en un servidor Ubuntu
+## 10. Despliegue en un servidor Ubuntu
 
 Probado en Ubuntu 22.04 y 24.04.
 
-### 9.1 Instalar Docker
+### 10.1 Instalar Docker
 
 ```bash
 sudo apt update
@@ -436,7 +507,7 @@ sudo systemctl enable docker           # que Docker arranque con el sistema
 
 Para comprobarlo, `docker --version` y `docker compose version` deben responder sin error. Después, sigue el [arranque rápido](#1-arranque-rápido) (pasos 1.1 a 1.4).
 
-### 9.2 HTTPS
+### 10.2 HTTPS
 
 La página también se sirve en **https://localhost:5443**. Por HTTPS, nginx reenvía `/api`, `/api-docs` y `/swagger-ui` al backend: la página y la API comparten origen, así que no hay contenido mixto ni hace falta CORS.
 
@@ -454,7 +525,7 @@ La página también se sirve en **https://localhost:5443**. Por HTTPS, nginx ree
   Para publicarlo en internet, en `docker-compose.yml` cambia el puerto HTTPS del frontend de `127.0.0.1:${FRONTEND_HTTPS_PORT:-5443}:443` a `443:443`, y abre el puerto con `sudo ufw allow 443`. El resto de servicios debe seguir en `127.0.0.1`.
 - **Encabezados de seguridad:** HSTS (solo por HTTPS), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` y `Permissions-Policy`. nginx no expone su versión.
 
-### 9.3 Usarlo desde otro computador
+### 10.3 Usarlo desde otro computador
 
 Los servicios solo escuchan en `127.0.0.1` del servidor. Para usarlos desde otro equipo, abre un **túnel SSH**. El servidor necesita `openssh-server`:
 
@@ -467,7 +538,7 @@ Mientras la sesión esté abierta, en ese computador funcionan http://localhost:
 
 ---
 
-## 10. Solución de problemas
+## 11. Solución de problemas
 
 Lo primero es revisar `docker compose ps` y los logs del servicio que falla (`docker compose logs --tail 50 <servicio>`).
 
@@ -481,7 +552,7 @@ Lo primero es revisar `docker compose ps` y los logs del servicio que falla (`do
 | El log de n8n muestra `\r` o `not found` | Copia antigua del repositorio con fin de línea de Windows. Ejecuta `git pull` y `docker compose up -d` |
 | El webhook de n8n responde `403 Authorization data is wrong!` | El token no coincide. Revisa `N8N_WEBHOOK_AUTH_VALUE` y ejecuta `docker compose up -d backend n8n` |
 | El webhook de n8n responde `404` | El flujo no está activo. Mira `docker compose logs n8n` y ejecuta `docker compose restart n8n` |
-| Cambios en el editor de n8n desaparecen al reiniciar | Es lo esperado: el flujo se reimporta del repositorio ([sección 4](#4-n8n-configuración-automática)). Usa `N8N_AUTO_SETUP=false` para editar en la interfaz |
+| Cambios en el editor de n8n desaparecen al reiniciar | Es lo esperado: el flujo se reimporta del repositorio ([sección 5](#5-n8n-configuración-automática)). Usa `N8N_AUTO_SETUP=false` para editar en la interfaz |
 | La página dice "API sin conexión" | El backend no está *healthy*, o la página se abrió como archivo (`file://`). En *Configuración*, la URL debe ser `http://localhost:8080` |
 | El login dice *Correo o contraseña incorrectos* | La contraseña es la de `DEMO_PASSWORD` (`Soporte2026*`). Si cambiaste `DEMO_PASSWORD` después del primer arranque, sigue valiendo la anterior: solo se asigna a usuarios sin contraseña |
 | La sesión se cierra cada vez que se reinicia el backend | `JWT_SECRET` está vacío en el `.env` (paso 1.2) |
@@ -491,7 +562,7 @@ Lo primero es revisar `docker compose ps` y los logs del servicio que falla (`do
 
 ---
 
-## 11. Equipo, ramas y documentación
+## 12. Equipo, ramas y documentación
 
 | Rama | Responsable | Alcance |
 |---|---|---|
