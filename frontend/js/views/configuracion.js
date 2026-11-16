@@ -1,34 +1,17 @@
-// Configuration view: API base URL and connection check.
+// Configuration view (administrator): where the data is stored and connection check.
+// Nothing is configured or saved in the browser: the API address comes from where the page is served.
 
-import { pageHeader, icon, toast, escapeHtml, setBusy } from '../ui.js';
-import {
-  getApiBaseUrl,
-  setApiBaseUrl,
-  resetApiBaseUrl,
-  normalizeBaseUrl,
-  DEFAULT_API_BASE_URL,
-} from '../config.js';
+import { pageHeader, icon, setBusy, toast } from '../ui.js';
+import { getApiBaseUrl } from '../config.js';
 import { checkHealth } from '../api.js';
 
-// Error message for an invalid URL, or empty if it is valid
-function validateUrl(value) {
-  if (!value) return 'Escribe la URL base de la API.';
-  try {
-    const url = new URL(value);
-    if (!['http:', 'https:'].includes(url.protocol)) return 'La URL debe empezar por http:// o https://.';
-  } catch {
-    return 'La URL no es válida. Ejemplo: http://localhost:8080';
-  }
-  return '';
-}
-
-// Configuration view: API URL, connection test and reset
+// Configuration view: API address, connection test and storage summary
 export function render(container, { signal }) {
   container.innerHTML = `
     ${pageHeader({
       title: 'Configuración',
       icon: 'i-settings',
-      description: 'Ajustes guardados solo en este navegador. No se envían al servidor.',
+      description: 'Conexión con el backend. Todos los datos, las sesiones y las preferencias se guardan en la base de datos.',
     })}
 
     <div class="grid-2">
@@ -38,112 +21,62 @@ export function render(container, { signal }) {
           El frontend solo se comunica con la API REST de Spring Boot.
           Nunca llama directamente a n8n, Qdrant ni OpenRouter.
         </p>
-
-        <form class="form" id="api-form" novalidate>
-          <div class="field">
-            <label for="api-url">URL base de la API</label>
-            <input class="input" id="api-url" name="apiUrl" type="url" inputmode="url" required
-                   spellcheck="false" autocomplete="url" aria-describedby="api-url-hint api-url-error"
-                   value="${escapeHtml(getApiBaseUrl())}">
-            <p class="field__hint" id="api-url-hint">Por defecto: <code>${DEFAULT_API_BASE_URL}</code></p>
-            <p class="field__error" id="api-url-error" aria-live="polite"></p>
-          </div>
-
-          <div class="form__actions">
-            <button class="btn btn--primary" type="submit">${icon('i-check')}Guardar</button>
-            <button class="btn btn--ghost" type="button" data-action="test">Probar conexión</button>
-            <button class="btn btn--ghost" type="button" data-action="reset">Restablecer</button>
-          </div>
-        </form>
-      </section>
-
-      <section class="card" aria-labelledby="api-info-title">
-        <h2 class="card__title" id="api-info-title">Estado de la conexión</h2>
-        <p class="card__subtitle">Resultado de la última comprobación.</p>
         <dl class="kv">
-          <dt>URL activa</dt>
+          <dt>URL de la API</dt>
           <dd><code data-field="url"></code></dd>
           <dt>Estado</dt>
           <dd data-field="state"><span class="badge">Sin comprobar</span></dd>
           <dt>Última comprobación</dt>
           <dd data-field="checked">—</dd>
         </dl>
+        <div class="form__actions">
+          <button class="btn btn--primary" type="button" data-action="test">${icon('i-check')}Probar conexión</button>
+        </div>
         <p class="field__hint">
-          La comprobación solo verifica que el servidor responda (consulta <code>/api-docs</code>).
-          Para leer datos, el backend también debe permitir CORS desde el origen de este frontend.
+          La URL se deduce del lugar donde se sirve la página: por HTTPS, el mismo origen (nginx reenvía <code>/api</code>);
+          en desarrollo, <code>http://localhost:8080</code>.
         </p>
+      </section>
+
+      <section class="card" aria-labelledby="storage-title">
+        <h2 class="card__title" id="storage-title">Dónde se guarda la información</h2>
+        <p class="card__subtitle">Todo queda en la base de datos del backend (PostgreSQL).</p>
+        <dl class="kv">
+          <dt>Datos del sistema</dt>
+          <dd>Incidentes, artículos, consultas a la IA y calificaciones</dd>
+          <dt>Sesiones</dt>
+          <dd><code>user_sessions</code></dd>
+          <dt>Preferencias</dt>
+          <dd><code>user_preferences</code></dd>
+          <dt>En el navegador</dt>
+          <dd>Solo el token que identifica tu sesión</dd>
+        </dl>
       </section>
     </div>`;
 
-  const form = container.querySelector('#api-form');
-  const input = container.querySelector('#api-url');
-  const errorEl = container.querySelector('#api-url-error');
   const testButton = container.querySelector('[data-action="test"]');
   // Element of the connection result by name
   const field = (name) => container.querySelector(`[data-field="${name}"]`);
-  let touched = false;
 
-  // Validates the URL field and shows the error
-  const validate = () => {
-    const message = validateUrl(input.value.trim());
-    errorEl.textContent = message;
-    input.setAttribute('aria-invalid', String(Boolean(message)));
-    return !message;
-  };
-
-  // Tells the app that the API URL changed
-  const notifyChange = () => window.dispatchEvent(new CustomEvent('api:config-changed'));
-
-  const runCheck = async (url = getApiBaseUrl(), { silent = false } = {}) => {
+  // Checks whether the backend answers and shows the result
+  const runCheck = async ({ silent = false } = {}) => {
+    const url = getApiBaseUrl();
     setBusy(testButton, true, 'Probando…');
     const ok = await checkHealth(url);
     setBusy(testButton, false);
     if (signal.aborted) return;
 
-    field('url').textContent = normalizeBaseUrl(url);
+    field('url').textContent = url;
     field('state').innerHTML = ok
       ? '<span class="badge badge--success">Responde</span>'
       : '<span class="badge badge--danger">Sin respuesta</span>';
     field('checked').textContent = new Date().toLocaleTimeString('es-CO');
-
     if (!silent) {
-      toast(
-        ok ? `El backend responde en ${normalizeBaseUrl(url)}.` : `No hay respuesta en ${normalizeBaseUrl(url)}. ¿Está Spring Boot en ejecución?`,
-        { type: ok ? 'success' : 'error' },
-      );
+      toast(ok ? `El backend responde en ${url}.` : `No hay respuesta en ${url}. ¿Está Spring Boot en ejecución?`,
+        { type: ok ? 'success' : 'error' });
     }
   };
 
-  // Live validation (after the first interaction with the field).
-  input.addEventListener('input', () => { if (touched) validate(); });
-  input.addEventListener('blur', () => { touched = true; validate(); });
-
-  form.addEventListener('submit', (event) => {
-    event.preventDefault();
-    touched = true;
-    if (!validate()) {
-      input.focus();
-      return;
-    }
-    input.value = setApiBaseUrl(input.value);
-    toast('URL de la API guardada.', { type: 'success' });
-    notifyChange();
-    runCheck(input.value, { silent: true });
-  });
-
-  testButton.addEventListener('click', () => {
-    touched = true;
-    if (validate()) runCheck(input.value.trim());
-  });
-
-  container.querySelector('[data-action="reset"]').addEventListener('click', () => {
-    resetApiBaseUrl();
-    input.value = DEFAULT_API_BASE_URL;
-    validate();
-    toast('Se restableció la URL por defecto.', { type: 'info' });
-    notifyChange();
-    runCheck(DEFAULT_API_BASE_URL, { silent: true });
-  });
-
-  runCheck(getApiBaseUrl(), { silent: true });
+  testButton.addEventListener('click', () => runCheck());
+  runCheck({ silent: true });
 }

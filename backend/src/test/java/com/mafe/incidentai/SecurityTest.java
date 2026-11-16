@@ -1,6 +1,7 @@
 package com.mafe.incidentai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mafe.incidentai.repository.UserSessionRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -15,9 +16,12 @@ import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.not;
+import static org.hamcrest.Matchers.nullValue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -47,6 +51,9 @@ class SecurityTest {
 
     @Autowired
     private ObjectMapper json;
+
+    @Autowired
+    private UserSessionRepository sessions;
 
     // Logs in with the given email and returns the JWT
     private String login(String email) throws Exception {
@@ -94,6 +101,49 @@ class SecurityTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.details.email").exists())
                 .andExpect(jsonPath("$.details.password").exists());
+    }
+
+    // ---------- Sessions and preferences stored in the database ----------
+
+    @Test
+    void loginStoresTheSessionInTheDatabase() throws Exception {
+        long before = sessions.count();
+        login(EMPLOYEE);
+        assertThat(sessions.count()).isEqualTo(before + 1);
+        assertThat(sessions.findAll()).anyMatch(s -> s.getUser().getEmail().equals(EMPLOYEE) && s.getRevokedAt() == null);
+    }
+
+    @Test
+    void logoutClosesTheSessionAndTheTokenStopsWorking() throws Exception {
+        String token = login(EMPLOYEE);
+        mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token)).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/auth/logout").header("Authorization", "Bearer " + token)).andExpect(status().isNoContent());
+        mvc.perform(get("/api/v1/auth/me").header("Authorization", "Bearer " + token))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.message").value("Invalid or expired token"));
+        assertThat(sessions.findAll()).anyMatch(s -> s.getUser().getEmail().equals(EMPLOYEE) && s.getRevokedAt() != null);
+    }
+
+    @Test
+    void preferencesAreStoredPerUser() throws Exception {
+        String laura = login(EMPLOYEE);
+        mvc.perform(put("/api/v1/auth/me/preferences").header("Authorization", "Bearer " + laura)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"knowledgeView\":\"table\",\"sidebarCollapsed\":true}"))
+                .andExpect(status().isOk());
+        // A partial update keeps the other field
+        mvc.perform(put("/api/v1/auth/me/preferences").header("Authorization", "Bearer " + laura)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"sidebarCollapsed\":false}"))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/v1/auth/me/preferences").header("Authorization", "Bearer " + login(EMPLOYEE)))
+                .andExpect(jsonPath("$.knowledgeView").value("table"))
+                .andExpect(jsonPath("$.sidebarCollapsed").value(false));
+        // Another user does not see them
+        mvc.perform(as(TECH, get("/api/v1/auth/me/preferences")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.knowledgeView", nullValue()));
+        mvc.perform(put("/api/v1/auth/me/preferences").header("Authorization", "Bearer " + laura)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"knowledgeView\":\"grid\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -35,7 +35,7 @@ frontend/
 │   └── responsive.css          # Tablet y móvil
 └── js/
     ├── app.js                  # Punto de entrada
-    ├── config.js               # URL base de la API
+    ├── config.js               # URL base de la API (se deduce; no se guarda)
     ├── api.js                  # Cliente HTTP único (errores, timeouts, cancelación)
     ├── routes.js               # Secciones y datos que necesita cada una
     ├── router.js               # Navegación por hash (#/seccion)
@@ -145,14 +145,16 @@ Los degradados de los botones usan tonos oscuros para que el texto blanco cumpla
 node --test "frontend/tests/*.test.mjs"
 ```
 
-44 pruebas unitarias:
+47 pruebas unitarias:
 - **Lógica** (`logic.test.mjs`): cálculos de analítica, formato, interpretación de las respuestas de la IA, catálogos y el cliente HTTP (con `fetch` simulado).
 - **Sesión y roles** (`auth.test.mjs`): vencimiento del token, secciones que ve cada rol, envío del JWT y respuesta ante 401 y 403.
 - **Fallos de la IA** (`failure-hints.test.mjs`): el backend envía en inglés la indicación de qué revisar cuando falla una consulta, y la interfaz la muestra en español (`translateFailureMessage` en `api-messages.js`).
 
 ## Sesión y roles
 
-- **Inicio de sesión:** `#/login` (`views/login.js`) envía correo y contraseña a `POST /api/v1/auth/login`. `auth.js` guarda el JWT, su vencimiento y el usuario en `localStorage`, y `api.js` lo envía en `Authorization: Bearer …`.
+- **Inicio de sesión:** `#/login` (`views/login.js`) envía correo y contraseña a `POST /api/v1/auth/login`. El backend abre la sesión en la base de datos (`user_sessions`). En el navegador solo queda el token, que `api.js` envía en `Authorization: Bearer …`. Al cargar la página, el usuario se lee de la base con `GET /api/v1/auth/me`.
+- **Preferencias:** el menú lateral contraído y la vista de artículos (tarjetas o tabla) se guardan en la base (`services/preferences.service.js` → `/api/v1/auth/me/preferences`), no en el navegador.
+- **Cerrar sesión:** `POST /api/v1/auth/logout` cierra la sesión en la base; después se borra el token.
 - **Fin de la sesión:** ante un 401, el cliente cierra la sesión y la aplicación vuelve al login. Si se inicia o se cierra sesión en otra pestaña, esta se pone al día.
 - **Permisos de navegación:** en `routes.js`, cada sección declara los roles que pueden abrirla (`roles`) y, si cambia según el rol, su título (`byRole`, p. ej. *Mis incidentes*). El router lleva al login sin sesión, y a la sección de inicio del rol si este no tiene acceso. El menú y el buscador muestran solo lo permitido.
 - **Vistas según el rol:**

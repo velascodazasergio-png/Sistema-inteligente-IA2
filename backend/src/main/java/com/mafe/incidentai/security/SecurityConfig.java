@@ -2,6 +2,7 @@ package com.mafe.incidentai.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import lombok.extern.slf4j.Slf4j;
+import com.mafe.incidentai.repository.UserSessionRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -70,13 +71,15 @@ public class SecurityConfig {
     }
 
     @Bean
-    JwtDecoder jwtDecoder(SecretKey jwtSigningKey) {
+    JwtDecoder jwtDecoder(SecretKey jwtSigningKey, UserSessionRepository sessionRepository) {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        // Validates the expiration (exp) and that this API issued the token (iss)
+        // Validates the expiration (exp), that this API issued the token (iss)
+        // and that its session is still open in the database (jti)
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(JwtService.ISSUER)));
+                JwtValidators.createDefaultWithIssuer(JwtService.ISSUER),
+                new ActiveSessionValidator(sessionRepository)));
         return decoder;
     }
 

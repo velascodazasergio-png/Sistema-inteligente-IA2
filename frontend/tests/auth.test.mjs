@@ -4,7 +4,8 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isExpired, canAccess, homeFor, setSession, clearSession, getSession, currentUser, isEmployee } from '../js/auth.js';
+import { isExpired, canAccess, homeFor, setSession, clearSession, getSession, currentUser, isEmployee, tokenExpiration } from '../js/auth.js';
+import { logout } from '../js/services/auth.service.js';
 import { routes, resolveRoute, visibleRoutes } from '../js/routes.js';
 import { request } from '../js/api.js';
 
@@ -131,3 +132,49 @@ describe('cliente HTTP con sesión', () => {
       (error) => error.message === 'Correo o contraseña incorrectos.');
   });
 });
+
+describe('la sesión vive en la base de datos', () => {
+  const realFetch = globalThis.fetch;
+  const realStorage = globalThis.localStorage;
+  let store;
+  beforeEach(() => {
+    store = new Map();
+    // localStorage simulado: permite ver exactamente qué guarda el navegador
+    globalThis.localStorage = {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)),
+      removeItem: (k) => store.delete(k),
+    };
+  });
+  afterEach(() => {
+    globalThis.fetch = realFetch;
+    globalThis.localStorage = realStorage;
+    clearSession({ silent: true });
+  });
+
+  test('el navegador solo guarda el token, no los datos del usuario', () => {
+    setSession({ accessToken: 'jwt-abc', expiresAt: inOneHour(), user: { id: 5, fullName: 'Laura Chen', role: 'EMPLOYEE' } });
+    assert.deepEqual([...store.entries()], [['incidentes-ia:token', 'jwt-abc']]);
+  });
+
+  test('la fecha de vencimiento se lee del propio token (claim exp)', () => {
+    const payload = Buffer.from(JSON.stringify({ exp: 1893456000 })).toString('base64url');
+    assert.equal(tokenExpiration(`h.${payload}.s`), '2030-01-01T00:00:00.000Z');
+    assert.equal(tokenExpiration('no-es-un-jwt'), null);
+  });
+
+  test('cerrar sesión la cierra en el servidor y borra el token', async () => {
+    const calls = [];
+    globalThis.fetch = async (url, init) => {
+      calls.push({ url: String(url), method: init.method });
+      return new Response(null, { status: 204 });
+    };
+    setSession({ accessToken: 'jwt-abc', expiresAt: inOneHour(), user: { id: 5, role: 'EMPLOYEE' } });
+    await logout();
+    assert.equal(calls[0].method, 'POST');
+    assert.match(calls[0].url, /\/api\/v1\/auth\/logout$/);
+    assert.equal(store.size, 0);
+    assert.equal(getSession(), null);
+  });
+});
+

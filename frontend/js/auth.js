@@ -1,8 +1,10 @@
-// User session: the JWT returned by POST /api/v1/auth/login and the data of the logged-in user.
-// It is kept in this browser (localStorage) until it expires or the user logs out.
+// User session. The session itself lives in the database (table user_sessions): the backend opens it
+// at login, checks it on every request and closes it at logout. The browser only keeps the token,
+// the key that identifies that session; the user data always comes from the database (GET /auth/me).
 // The UI adapts to the role, but the backend always has the final word on permissions.
 
-const STORAGE_KEY = 'incidentes-ia:session';
+const TOKEN_KEY = 'incidentes-ia:token';
+const LEGACY_KEYS = ['incidentes-ia:session', 'incidentes-ia:sidebar', 'incidentes-ia:kb-view', 'incidentes-ia:api-base-url'];
 
 export const ROLE = {
   ADMIN: 'ADMIN',
@@ -23,6 +25,7 @@ const HOME = {
   EMPLOYEE: 'incidentes',
 };
 
+// Session in memory: { token, expiresAt, user }. user stays null until it is read from the database.
 let cached;
 
 // Notifies the app that the logged-in user changed
@@ -30,10 +33,31 @@ const emit = (user) => {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('auth:changed', { detail: { user } }));
 };
 
-// Session stored in this browser, or null
-function read() {
+// Earlier versions kept the whole session and the preferences in the browser: they are removed
+function dropLegacyData() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    LEGACY_KEYS.forEach((key) => localStorage.removeItem(key));
+  } catch {
+    // No storage: nothing to remove.
+  }
+}
+
+// Expiration date written inside the JWT (exp claim), or null if it cannot be read
+export function tokenExpiration(token) {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+    return Number.isFinite(payload.exp) ? new Date(payload.exp * 1000).toISOString() : null;
+  } catch {
+    return null;
+  }
+}
+
+// Token stored in this browser, as a session whose user is not known yet
+function read() {
+  dropLegacyData();
+  try {
+    const token = localStorage.getItem(TOKEN_KEY);
+    return token ? { token, expiresAt: tokenExpiration(token), user: null } : null;
   } catch {
     return null;
   }
@@ -52,22 +76,30 @@ export function getSession() {
   return cached;
 }
 
-// Stores the session returned by the login (memory + localStorage)
+// Stores the session returned by the login: only the token goes to the browser storage
 export function setSession({ accessToken, expiresAt, user }) {
   cached = { token: accessToken, expiresAt, user };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cached));
+    localStorage.setItem(TOKEN_KEY, accessToken);
   } catch {
     // Storage blocked: the session lasts until the page is reloaded.
   }
   emit(user);
 }
 
-// Deletes the session (silent: without notifying the app)
+// Sets the user read from the database for the current token
+export function setSessionUser(user) {
+  const session = getSession();
+  if (!session) return;
+  session.user = user;
+  emit(user);
+}
+
+// Deletes the session from this browser (silent: without notifying the app)
 export function clearSession({ silent = false } = {}) {
   cached = null;
   try {
-    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(TOKEN_KEY);
   } catch {
     // No storage: nothing to delete.
   }
@@ -77,9 +109,10 @@ export function clearSession({ silent = false } = {}) {
 // Another tab logged in or out: this tab catches up (the storage event only reaches the other tabs)
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
-    if (event.key !== STORAGE_KEY && event.key !== null) return;
+    if (event.key !== TOKEN_KEY && event.key !== null) return;
     cached = read();
-    emit(cached?.user ?? null);
+    if (cached) window.dispatchEvent(new CustomEvent('auth:restore'));
+    else emit(null);
   });
 }
 

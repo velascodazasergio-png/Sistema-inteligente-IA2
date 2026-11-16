@@ -17,8 +17,8 @@ import { listCategories, listUsers } from '../services/catalogs.service.js';
 import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { showServerFieldErrors } from '../components/form-errors.js';
 import { isAdmin, isEmployee } from '../auth.js';
+import { getPreference, savePreference } from '../services/preferences.service.js';
 
-const VIEW_KEY = 'incidentes-ia:kb-view';
 
 // Visual state of an article: usable by the AI, pending verification or inactive.
 function stateOf(a) {
@@ -67,14 +67,10 @@ const SECTIONS = [
 const options = (items, placeholder, selected) =>
   `<option value="">${escapeHtml(placeholder)}</option>${items.map((i) => `<option value="${i.id}" ${String(i.id) === String(selected ?? '') ? 'selected' : ''}>${escapeHtml(i.name)}</option>`).join('')}`;
 
-// Saved view mode (cards or table)
-const readView = () => {
-  try { return localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'cards'; } catch { return 'cards'; }
-};
-// Saves the view mode in this browser
-const saveView = (view) => {
-  try { localStorage.setItem(VIEW_KEY, view); } catch { /* no storage: the default value is used */ }
-};
+// View mode stored in the database for the user (cards by default)
+const readView = () => (getPreference('knowledgeView') === 'table' ? 'table' : 'cards');
+// Saves the view mode in the database
+const saveView = (view) => savePreference('knowledgeView', view);
 
 // Article card for the cards view
 function cardHtml(a, { canEdit }) {

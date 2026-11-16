@@ -8,10 +8,10 @@ import { checkHealth } from './api.js';
 import { getApiBaseUrl } from './config.js';
 import { icon, escapeHtml, avatar, toast } from './ui.js';
 import { currentUser, isAdmin, ROLE_LABEL } from './auth.js';
-import { logout } from './services/auth.service.js';
+import { logout, restoreSession } from './services/auth.service.js';
+import { getPreference, savePreference, loadPreferences, clearPreferences } from './services/preferences.service.js';
 
 const app = document.getElementById('app');
-const SIDEBAR_KEY = 'incidentes-ia:sidebar';
 const STATUS_INTERVAL_MS = 30000;
 
 /* ---------- Side navigation (grouped by section, only what the role can open) ---------- */
@@ -40,24 +40,6 @@ function renderNav() {
     </li>`).join('');
 }
 
-// Saved sidebar state (expanded/collapsed), or null
-function readSidebarPref() {
-  try {
-    return localStorage.getItem(SIDEBAR_KEY);
-  } catch {
-    return null;
-  }
-}
-
-// Saves the sidebar state in this browser
-function saveSidebarPref(value) {
-  try {
-    localStorage.setItem(SIDEBAR_KEY, value);
-  } catch {
-    // No storage available: the preference only lasts for this session.
-  }
-}
-
 // Sidebar behaviour: collapse button, mobile drawer and responsive default
 function initSidebar() {
   const toggle = document.getElementById('sidebar-toggle');
@@ -75,19 +57,24 @@ function initSidebar() {
     toggleLabel.textContent = text;
   };
 
-  // No saved preference: collapsed on medium screens, and it follows the window size
-  // (opening the page in a small window and maximizing it expands the menu).
+  // The preference is stored in the database for each user. Without one: collapsed on medium screens,
+  // following the window size (opening the page in a small window and maximizing it expands the menu).
   const mediumScreen = window.matchMedia('(max-width: 1023px)');
-  const saved = readSidebarPref();
-  setCollapsed(saved ? saved === 'collapsed' : mediumScreen.matches);
+  // Applies the stored preference, or the automatic behaviour when there is none
+  const applyPreference = () => {
+    const saved = getPreference('sidebarCollapsed');
+    setCollapsed(typeof saved === 'boolean' ? saved : mediumScreen.matches);
+  };
+  applyPreference();
+  window.addEventListener('preferences:loaded', applyPreference);
   mediumScreen.addEventListener('change', (event) => {
-    if (!readSidebarPref()) setCollapsed(event.matches);
+    if (typeof getPreference('sidebarCollapsed') !== 'boolean') setCollapsed(event.matches);
   });
 
   toggle.addEventListener('click', () => {
     const collapsed = app.dataset.sidebar !== 'collapsed';
     setCollapsed(collapsed);
-    saveSidebarPref(collapsed ? 'collapsed' : 'expanded');
+    if (currentUser()) savePreference('sidebarCollapsed', collapsed);
   });
 
   // Mobile drawer
@@ -158,7 +145,6 @@ function initStatusMonitor() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refresh();
   });
-  window.addEventListener('api:config-changed', () => refresh({ showChecking: true }));
 }
 
 /* ---------- Logged-in user ---------- */
@@ -182,15 +168,25 @@ function renderUser() {
 
 // Logout button, user chip in the top bar and reaction to session changes
 function initSession() {
-  document.getElementById('logout').addEventListener('click', () => {
-    logout();
+  document.getElementById('logout').addEventListener('click', async () => {
+    await logout();
     toast('Cerraste sesión.', { type: 'info' });
     navigate('login');
   });
-  // Logging in or out changes the menu and the user shown in the top bar
-  window.addEventListener('auth:changed', () => {
+  // Logging in or out changes the menu, the user shown in the top bar and the preferences
+  window.addEventListener('auth:changed', (event) => {
     renderNav();
     renderUser();
+    if (event.detail?.user) loadPreferences();
+    else {
+      clearPreferences();
+      window.dispatchEvent(new CustomEvent('preferences:loaded'));
+    }
+  });
+  // Another tab logged in: read the user of the new session from the database
+  window.addEventListener('auth:restore', async () => {
+    await restoreSession();
+    if (!currentUser()) navigate('login');
   });
   // The backend rejected the token (expired or invalid): back to the login screen
   window.addEventListener('auth:expired', () => {
@@ -199,10 +195,12 @@ function initSession() {
   });
 }
 
-renderNav();
-renderUser();
+// Startup: the session and the preferences are read from the database before showing any section
 initSession();
 initSidebar();
 initSearch();
 initStatusMonitor();
+if (await restoreSession()) await loadPreferences();
+renderNav();
+renderUser();
 startRouter();

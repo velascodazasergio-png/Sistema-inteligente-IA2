@@ -32,6 +32,12 @@ public class CurrentUser {
         return find().orElseThrow(() -> new AuthenticationCredentialsNotFoundException("Authentication required"));
     }
 
+    // Id of the database session of the current request (jti claim of the JWT), if any
+    public Optional<String> sessionId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        return auth instanceof JwtAuthenticationToken jwtAuth ? Optional.ofNullable(jwtAuth.getToken().getId()) : Optional.empty();
+    }
+
     // Empty when there is no user: an anonymous request or a service (n8n with X-Callback-Token)
     public Optional<AuthUser> find() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();

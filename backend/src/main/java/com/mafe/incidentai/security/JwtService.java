@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 
-// Issues the session JWTs. Claims: sub (email), uid (user ID), role and name.
+// Issues the session JWTs. Claims: jti (id of the session stored in the database), sub (email), uid (user ID), role and name.
 @Service
 public class JwtService {
 
@@ -32,12 +32,13 @@ public class JwtService {
     // Signed token and its expiration time
     public record IssuedToken(String value, Instant expiresAt) {}
 
-    // Issues a signed JWT for the user (email, id, role and name as claims)
-    public IssuedToken issue(User user) {
+    // Issues a signed JWT for the user and the given database session (its id goes in the jti claim)
+    public IssuedToken issue(User user, String sessionId) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(lifetime);
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .issuer(ISSUER)
+                .id(sessionId)
                 .issuedAt(now)
                 .expiresAt(expiresAt)
                 .subject(user.getEmail())
