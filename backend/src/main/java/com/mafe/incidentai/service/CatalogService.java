@@ -12,7 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-// Servicio de solo lectura para los catalogos que usan los formularios del frontend
+// Read-only service for the catalogs used by the frontend forms
 @Service
 @RequiredArgsConstructor
 public class CatalogService {
@@ -20,7 +20,7 @@ public class CatalogService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
 
-    // Lista las categorias; con activeOnly=true solo las que admiten nuevos incidentes
+    // Lists the categories; with activeOnly=true, only those that accept new incidents
     @Transactional(readOnly = true)
     public List<CategoryResponseDTO> listCategories(boolean activeOnly) {
         var categories = activeOnly
@@ -32,7 +32,7 @@ public class CatalogService {
                 .toList();
     }
 
-    // Lista los usuarios, opcionalmente filtrados por rol
+    // Lists the users, optionally filtered by role
     @Transactional(readOnly = true)
     public List<UserSummaryDTO> listUsers(UserRole role) {
         return userRepository.findAll(Sort.by("fullName"))

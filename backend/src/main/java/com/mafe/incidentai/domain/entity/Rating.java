@@ -7,7 +7,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-// Entidad para registrar la calificacion y retroalimentacion humana sobre la utilidad de la respuesta de IA
+// Entity that records the human rating and feedback on how useful an AI response was
 @Entity
 @Table(name = "ratings")
 @Getter
@@ -19,7 +19,7 @@ public class Rating {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // Puntuacion en escala de 1 a 5 estrellas
+    // Score on a 1 to 5 star scale
     @Column(name = "score", nullable = false)
     private Integer score;
 
@@ -32,12 +32,12 @@ public class Rating {
     @Column(name = "rated_at", nullable = false, updatable = false)
     private LocalDateTime ratedAt;
 
-    // Dueno de la relacion 1:1 con AiResponse
+    // Owning side of the 1:1 relationship with AiResponse
     @OneToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ai_response_id", nullable = false, unique = true)
     private AiResponse aiResponse;
 
-    // Dueno de la relacion N:1 con User (usuario o tecnico que evalua la respuesta)
+    // Owning side of the N:1 relationship with User (the user or technician who rates the response)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "evaluator_user_id", nullable = false)
     private User evaluatorUser;

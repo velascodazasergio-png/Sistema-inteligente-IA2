@@ -2,16 +2,16 @@ package com.mafe.incidentai.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Contrato DTO para representar la evolucion y tendencia semanal de incidentes (RF06)
-@Schema(description = "Tendencia semanal de incidentes reportados y resueltos")
+// DTO with the weekly trend of incidents (RF06)
+@Schema(description = "Weekly trend of reported and resolved incidents")
 public record WeeklyTrendDTO(
-        @Schema(description = "Identificador de la semana ISO (Ano-Semana)", example = "2026-W44")
+        @Schema(description = "ISO week identifier (Year-Week)", example = "2026-W44")
         String yearWeek,
 
-        @Schema(description = "Total de incidentes reportados en esa semana", example = "28")
+        @Schema(description = "Total incidents reported in that week", example = "28")
         Long totalReported,
 
-        @Schema(description = "Total de incidentes resueltos o cerrados en esa semana", example = "24")
+        @Schema(description = "Total incidents resolved or closed in that week", example = "24")
         Long totalResolved
 ) {}
 

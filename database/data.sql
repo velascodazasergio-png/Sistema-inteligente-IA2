@@ -1,10 +1,10 @@
 -- ============================================================================
--- SCRIPT DE DATOS SEMILLA (DATA.SQL) PARA ANALITICA E HISTORIAL DE IA (RF06)
--- Incluye: 10 Usuarios, 6 Categorias, 10 Articulos Verificados, 150 Incidentes
--- Sinteticos en Ingles distribuidos en 8 semanas, y flujo completo de IA.
+-- SEED DATA SCRIPT (DATA.SQL) FOR ANALYTICS AND AI HISTORY (RF06)
+-- Includes: 10 users, 6 categories, 10 verified articles, 150 synthetic incidents
+-- in English spread over 8 weeks, and a complete AI flow.
 -- ============================================================================
 
--- 1. INSERCION DE USUARIOS (EMPLEADOS, TECNICOS Y ADMINISTRADORES)
+-- 1. USERS (EMPLOYEES, TECHNICIANS AND ADMINISTRATORS)
 INSERT INTO users (id, full_name, email, role, created_at) VALUES
 (1, 'Sarah Jenkins', 'sarah.jenkins@enterprise.io', 'ADMIN', '2026-09-01 08:00:00'),
 (2, 'Marcus Vance', 'marcus.vance@enterprise.io', 'SUPPORT_TECHNICIAN', '2026-09-01 08:15:00'),
@@ -17,7 +17,7 @@ INSERT INTO users (id, full_name, email, role, created_at) VALUES
 (9, 'Priya Patel', 'priya.patel@enterprise.io', 'EMPLOYEE', '2026-09-03 10:15:00'),
 (10, 'Noah Williams', 'noah.williams@enterprise.io', 'EMPLOYEE', '2026-09-03 10:30:00');
 
--- 2. INSERCION DE CATEGORIAS TECNICAS
+-- 2. TECHNICAL CATEGORIES
 INSERT INTO categories (id, name, description, is_active) VALUES
 (1, 'Networking & Connectivity', 'Corporate VPN, firewall rules, DNS resolution, Wi-Fi and WAN links', true),
 (2, 'Identity & Access Management', 'Active Directory, SSO, MFA tokens, RBAC permissions and account lockouts', true),
@@ -26,7 +26,7 @@ INSERT INTO categories (id, name, description, is_active) VALUES
 (5, 'Enterprise Applications & ERP', 'SAP, CRM integrations, billing microservices and internal web portals', true),
 (6, 'Endpoint & Hardware', 'Corporate laptops, docking stations, BitLocker encryption and OS updates', true);
 
--- 3. INSERCION DE ARTICULOS DE CONOCIMIENTO ACTIVOS Y VERIFICADOS (BASE PARA RAG EN N8N)
+-- 3. ACTIVE AND VERIFIED KNOWLEDGE ARTICLES (SOURCE FOR THE RAG IN N8N)
 INSERT INTO knowledge_articles (id, title, content, reference_url, is_active, is_verified, category_id, author_user_id, created_at, updated_at) VALUES
 (1, 'IPSec VPN Error 809 Troubleshooting Runbook', 'Verify UDP ports 500 and 4500 on perimeter firewall and restart IKEEXT and PolicyAgent services on Windows 11 clients.', 'https://kb.enterprise.io/net/vpn-error-809', true, true, 1, 2, '2026-09-05 10:00:00', '2026-09-05 10:00:00'),
 (2, 'Corporate DNS Split-Horizon Resolution Guide', 'Flush local DNS cache and confirm internal forwarders 10.20.0.10 and 10.20.0.11 are reachable over the VPN interface.', 'https://kb.enterprise.io/net/dns-split-horizon', true, true, 1, 2, '2026-09-05 11:00:00', '2026-09-05 11:00:00'),
@@ -39,7 +39,7 @@ INSERT INTO knowledge_articles (id, title, content, reference_url, is_active, is
 (9, 'ERP Billing Webhook Deadlock and Retry Queue Recovery', 'Replay dead-letter queue messages in RabbitMQ after clearing stale row locks in the invoice_headers table.', 'https://kb.enterprise.io/erp/billing-dlq-recovery', true, true, 5, 4, '2026-09-09 10:00:00', '2026-09-09 10:00:00'),
 (10, 'BitLocker Recovery Prompt After BIOS Firmware Update', 'Suspend BitLocker protection for one reboot cycle using Manage-bde -Protectors -Disable C: and reseal TPM 2.0 PCR7.', 'https://kb.enterprise.io/endpoint/bitlocker-tpm-pcr7', true, true, 6, 2, '2026-09-10 08:45:00', '2026-09-10 08:45:00');
 
--- 4. INSERCION DE 150 INCIDENTES SINTETICOS EN INGLES (DISTRIBUIDOS EN 8 SEMANAS)
+-- 4. 150 SYNTHETIC INCIDENTS IN ENGLISH (SPREAD OVER 8 WEEKS)
 INSERT INTO incidents (id, title, description, priority, status, user_id, category_id, created_at, updated_at) VALUES
 (1, 'Kubernetes payment-service pods OOMKilled (Exit 137) [INC-0001]', 'Pods restarting in CrashLoopBackOff under heavy batch load when heap exceeds 1024Mi limit. Reported on workstation WS-002.', 'CRITICAL', 'RESOLVED', 6, 4, '2026-09-14 11:11:00', '2026-09-14 15:41:00'),
 (2, 'Okta SSO SAML assertion rejected by CRM portal [INC-0002]', 'Users receive SAML timestamp skew validation error when launching the corporate CRM dashboard. Reported on workstation WS-003.', 'MEDIUM', 'CLOSED', 7, 2, '2026-09-14 14:22:00', '2026-09-14 18:22:00'),
@@ -192,7 +192,7 @@ INSERT INTO incidents (id, title, description, priority, status, user_id, catego
 (149, 'Active Directory account locked out repeatedly [INC-0149]', 'Employee account locks every 15 minutes due to stale cached credentials on mobile Exchange profile. Reported on workstation WS-070.', 'HIGH', 'RESOLVED', 10, 2, '2026-11-08 15:19:00', '2026-11-08 23:19:00'),
 (150, 'PostgreSQL HikariPool-1 connection timeout on ERP node [INC-0150]', 'Production API throwing SQLTransientConnectionException after idle transactions locked invoice rows. Reported on workstation WS-071.', 'CRITICAL', 'OPEN', 5, 3, '2026-11-08 08:30:00', '2026-11-08 08:30:00');
 
--- 5. INSERCION DE CONSULTAS IA (AI_QUERIES), RESPUESTAS (AI_RESPONSES), FUENTES Y CALIFICACIONES
+-- 5. AI QUERIES (AI_QUERIES), RESPONSES (AI_RESPONSES), SOURCES AND RATINGS
 INSERT INTO ai_queries (id, incident_id, sent_prompt, query_status, queried_at) VALUES
 (1, 1, '[Networking & Connectivity | Priority: HIGH] Corporate VPN tunnel drops with error 809', 'COMPLETED', '2026-09-14 11:15:00'),
 (2, 2, '[Identity & Access Management | Priority: MEDIUM] Okta SSO SAML assertion rejected by CRM portal', 'COMPLETED', '2026-09-14 14:30:00'),
@@ -218,7 +218,7 @@ INSERT INTO ratings (id, ai_response_id, evaluator_user_id, score, is_helpful, f
 (3, 3, 4, 5, true, 'Pinpointed the exact pg_stat_activity lock issue.', '2026-09-15 10:05:00'),
 (4, 4, 2, 5, true, 'Tuning MaxRAMPercentage prevented further OOMKills.', '2026-09-15 13:00:00');
 
--- 6. AJUSTE DE SECUENCIAS AUTO-INCREMENTALES PARA NUEVOS REGISTROS DESDE LA API
+-- 6. RESET THE AUTO-INCREMENT SEQUENCES FOR NEW RECORDS CREATED THROUGH THE API
 ALTER TABLE users ALTER COLUMN id RESTART WITH 11;
 ALTER TABLE categories ALTER COLUMN id RESTART WITH 7;
 ALTER TABLE knowledge_articles ALTER COLUMN id RESTART WITH 11;

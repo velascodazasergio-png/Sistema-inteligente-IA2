@@ -19,23 +19,23 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Inicio de sesion (JWT) y perfil del usuario autenticado
+// Login (JWT) and profile of the authenticated user
 @RestController
 @RequestMapping("/api/v1/auth")
 @RequiredArgsConstructor
-@Tag(name = "Authentication", description = "Inicio de sesion con JWT y perfil del usuario autenticado")
+@Tag(name = "Authentication", description = "JWT login and profile of the authenticated user")
 public class AuthController {
 
     private final AuthService authService;
     private final CurrentUser currentUser;
 
     @Operation(summary = "Log in and get a JWT",
-            description = "Devuelve un token Bearer. Enviarlo en el encabezado Authorization: Bearer <token>.")
+            description = "Returns a Bearer token. Send it in the header Authorization: Bearer <token>.")
     @SecurityRequirements
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Sesion iniciada"),
-        @ApiResponse(responseCode = "400", description = "Correo o contrasena con formato invalido"),
-        @ApiResponse(responseCode = "401", description = "Correo o contrasena incorrectos")
+        @ApiResponse(responseCode = "200", description = "Logged in"),
+        @ApiResponse(responseCode = "400", description = "Email or password with an invalid format"),
+        @ApiResponse(responseCode = "401", description = "Wrong email or password")
     })
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@Valid @RequestBody LoginRequestDTO request) {
@@ -44,8 +44,8 @@ public class AuthController {
 
     @Operation(summary = "Get the authenticated user")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Usuario de la sesion"),
-        @ApiResponse(responseCode = "401", description = "Sin sesion o token vencido")
+        @ApiResponse(responseCode = "200", description = "User of the session"),
+        @ApiResponse(responseCode = "401", description = "No session or expired token")
     })
     @GetMapping("/me")
     public ResponseEntity<UserSummaryDTO> me() {

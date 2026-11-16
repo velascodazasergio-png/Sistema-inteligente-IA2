@@ -7,10 +7,10 @@ import org.springframework.data.jpa.repository.Query;
 
 import java.util.List;
 
-// Repositorio para consultar articulos de la base de conocimiento
+// Repository to read knowledge base articles
 public interface KnowledgeArticleRepository extends JpaRepository<KnowledgeArticle, Long>, JpaSpecificationExecutor<KnowledgeArticle> {
 
-    // Consulta JPQL explicita que trae solo los articulos activos y verificados (listos para alimentar el RAG de n8n)
+    // Explicit JPQL query that returns only active and verified articles (ready to feed the n8n RAG)
     @Query("""
             SELECT ka
             FROM KnowledgeArticle ka
@@ -20,12 +20,12 @@ public interface KnowledgeArticleRepository extends JpaRepository<KnowledgeArtic
             """)
     List<KnowledgeArticle> findActiveAndVerifiedArticles();
 
-    // Consulta derivada equivalente en Spring Data JPA
+    // Equivalent Spring Data JPA derived query
     List<KnowledgeArticle> findByActiveTrueAndVerifiedTrue();
 
-    // Consulta articulos activos y verificados filtrando ademas por una categoria especifica
+    // Active and verified articles, also filtered by a specific category
     List<KnowledgeArticle> findByCategoryIdAndActiveTrueAndVerifiedTrue(Long categoryId);
 
-    // Busqueda por palabra clave en el titulo solo entre articulos activos y verificados
+    // Keyword search in the title, only among active and verified articles
     List<KnowledgeArticle> findByTitleContainingIgnoreCaseAndActiveTrueAndVerifiedTrue(String keyword);
 }

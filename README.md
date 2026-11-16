@@ -307,10 +307,10 @@ Por seguridad, los puertos se publican **solo en `127.0.0.1`**. Si alguno está 
 │       │   ├── exception/      # Errores en JSON (400, 401, 403, 404, 409)
 │       │   └── config/         # CORS, callbacks, cliente HTTP, OpenAPI
 │       ├── main/resources/     # application.properties, data.sql
-│       └── test/               # 56 pruebas de integración
+│       └── test/               # 57 pruebas de integración
 ├── frontend/                   # HTML, CSS y JavaScript sin frameworks (ver frontend/README.md)
 │   ├── index.html  css/  js/  assets/
-│   └── tests/                  # 41 pruebas unitarias (node:test)
+│   └── tests/                  # 43 pruebas unitarias (node:test)
 ├── n8n/
 │   ├── workflows/              # 01 indexación · 02 asistencia RAG · 03 combinado (el que se activa)
 │   ├── setup.sh                # Configura n8n al arrancar
@@ -389,10 +389,10 @@ Las claves nunca se escriben en el código ni en el repositorio: van en el `.env
 Se ejecutan en contenedores temporales, desde la raíz del repositorio.
 
 ```bash
-# Backend: 56 pruebas de integración (MockMvc sobre H2)
+# Backend: 57 pruebas de integración (MockMvc sobre H2)
 docker run --rm -v "$PWD/backend":/app -w /app maven:3.9.9-eclipse-temurin-21 mvn -q -B test
 
-# Frontend: 41 pruebas unitarias
+# Frontend: 43 pruebas unitarias
 docker run --rm -v "$PWD/frontend":/app -w /app node:22-alpine node --test "tests/*.test.mjs"
 ```
 

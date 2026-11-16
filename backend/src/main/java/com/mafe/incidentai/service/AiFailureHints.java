@@ -2,9 +2,10 @@ package com.mafe.incidentai.service;
 
 import java.util.Locale;
 
-// Traduce el detalle tecnico que envia n8n (respuesta HTTP de OpenRouter o Qdrant, timeouts, errores de
-// configuracion) a una indicacion corta en espanol sobre que revisar. El detalle crudo no se guarda ni se
-// muestra: puede contener datos internos.
+// Turns the technical detail sent by n8n (HTTP response from OpenRouter or Qdrant, timeouts, configuration
+// errors) into a short hint about what to check. The raw detail is never stored or shown: it can contain
+// internal data. The frontend translates these hints into the language of the interface
+// (frontend/js/api-messages.js), so their wording is part of the API contract.
 public final class AiFailureHints {
 
     private AiFailureHints() {
@@ -14,52 +15,52 @@ public final class AiFailureHints {
         String code = errorCode == null ? "" : errorCode.toUpperCase(Locale.ROOT);
         String detail = technicalDetail == null ? "" : technicalDetail.toLowerCase(Locale.ROOT);
         String service = code.contains("QDRANT") ? "Qdrant"
-                : code.contains("EMBEDDING") ? "OpenRouter (modelo de embeddings)"
-                : code.contains("LLM") ? "OpenRouter (modelo de chat)"
+                : code.contains("EMBEDDING") ? "OpenRouter (embedding model)"
+                : code.contains("LLM") ? "OpenRouter (chat model)"
                 : null;
 
         if (detail.isBlank()) {
             return null;
         }
         if (detail.contains("config:") && detail.contains("dimens")) {
-            return "La dimensión del modelo de embeddings no coincide con EMBEDDING_DIM: revisa el .env.";
+            return "The embedding model dimension does not match EMBEDDING_DIM: check the .env file.";
         }
         if (detail.contains("config:")) {
-            return "Falta una variable de configuración de n8n (EMBEDDING_MODEL, LLM_MODEL o RAG_SCORE_THRESHOLD): revisa el .env.";
+            return "An n8n configuration variable is missing (EMBEDDING_MODEL, LLM_MODEL or RAG_SCORE_THRESHOLD): check the .env file.";
         }
         if (service == null) {
             return null;
         }
         if (startsWithStatus(detail, "401") || startsWithStatus(detail, "403")) {
-            return service + " rechazó la clave de API: revisa OPENROUTER_API_KEY en el .env"
-                    + " y aplica el cambio con \"docker compose up -d n8n\".";
+            return service + " rejected the API key: check OPENROUTER_API_KEY in the .env file"
+                    + " and apply the change with \"docker compose up -d n8n\".";
         }
         if (startsWithStatus(detail, "402")) {
-            return "La cuenta de OpenRouter no tiene créditos suficientes.";
+            return "The OpenRouter account does not have enough credits.";
         }
         if (startsWithStatus(detail, "429")) {
-            return service + " limitó las solicitudes (429): espera un momento y vuelve a intentarlo.";
+            return service + " rate-limited the requests (429): wait a moment and try again.";
         }
-        if ((startsWithStatus(detail, "400") || startsWithStatus(detail, "404"))
-                && (detail.contains("model") || detail.contains("modelo"))) {
-            return service + " no reconoce el modelo configurado: revisa EMBEDDING_MODEL o LLM_MODEL en el .env.";
+        // "model" also matches the Spanish "modelo" that some n8n messages contain
+        if ((startsWithStatus(detail, "400") || startsWithStatus(detail, "404")) && detail.contains("model")) {
+            return service + " does not recognize the configured model: check EMBEDDING_MODEL or LLM_MODEL in the .env file.";
         }
         if (startsWithStatus(detail, "404") && service.equals("Qdrant")) {
-            return "No existe la colección en Qdrant: ejecuta la indexación inicial del flujo 01.";
+            return "The Qdrant collection does not exist: run the initial indexing of workflow 01.";
         }
         if (detail.contains("timeout") || detail.contains("timed out") || detail.contains("etimedout")) {
-            return service + " tardó demasiado en responder: vuelve a intentarlo.";
+            return service + " took too long to respond: try again.";
         }
         if (detail.contains("socket hang up") || detail.contains("econnreset")) {
-            return "Se cortó la conexión entre n8n y " + service + ": vuelve a intentarlo.";
+            return "The connection between n8n and " + service + " was cut: try again.";
         }
         if (detail.contains("econnrefused") || detail.contains("enotfound") || detail.contains("eai_again")) {
-            return "n8n no pudo conectarse con " + service + ": revisa la red o la URL configurada.";
+            return "n8n could not connect to " + service + ": check the network or the configured URL.";
         }
         return null;
     }
 
-    // n8n escribe los errores HTTP como "401 - {...}"
+    // n8n writes HTTP errors as "401 - {...}"
     private static boolean startsWithStatus(String detail, String status) {
         return detail.startsWith(status + " ") || detail.startsWith(status + "-") || detail.equals(status);
     }

@@ -8,7 +8,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-// Entidad que registra cada solicitud de analisis (prompt) enviada hacia n8n para un incidente
+// Entity that records each analysis request (prompt) sent to n8n for an incident
 @Entity
 @Table(
     name = "ai_queries",
@@ -36,19 +36,19 @@ public class AiQuery {
     @Column(name = "queried_at", nullable = false, updatable = false)
     private LocalDateTime queriedAt;
 
-    // Codigo y mensaje del fallo cuando la consulta termina en COMMUNICATION_ERROR o FAILED
+    // Failure code and message when the query ends in COMMUNICATION_ERROR or FAILED
     @Column(name = "failure_code", length = 60)
     private String failureCode;
 
     @Column(name = "failure_message", length = 500)
     private String failureMessage;
 
-    // Dueno de la relacion N:1 con Incident
+    // Owning side of the N:1 relationship with Incident
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "incident_id", nullable = false)
     private Incident incident;
 
-    // Lado inverso de la relacion 1:1 con AiResponse
+    // Inverse side of the 1:1 relationship with AiResponse
     @OneToOne(mappedBy = "aiQuery", cascade = CascadeType.ALL, orphanRemoval = true)
     private AiResponse aiResponse;
 

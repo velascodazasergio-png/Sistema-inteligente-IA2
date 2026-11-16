@@ -19,12 +19,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-// Manejador global de excepciones que intercepta errores en todos los controladores REST
+// Global exception handler that catches errors from every REST controller
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. Maneja recursos no encontrados en base de datos devolviendo HTTP 404 Not Found
+    // 1. Resources not found in the database return HTTP 404 Not Found
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -36,14 +36,14 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
-    // Credenciales incorrectas en el inicio de sesion: HTTP 401
+    // Wrong credentials at login: HTTP 401
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<Map<String, Object>> handleAuthentication(AuthenticationException ex) {
         String message = ex instanceof BadCredentialsException ? ex.getMessage() : "Authentication required";
         return simple(HttpStatus.UNAUTHORIZED, "Unauthorized", message);
     }
 
-    // Recurso ajeno (p. ej. un empleado que pide el incidente de otra persona): HTTP 403
+    // Someone else's resource (e.g. an employee asking for another person's incident): HTTP 403
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, Object>> handleAccessDenied(AccessDeniedException ex) {
         String message = ex.getMessage() == null || ex.getMessage().equals("Access Denied")
@@ -60,7 +60,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(body);
     }
 
-    // 2. Maneja violaciones de reglas de negocio devolviendo HTTP 409 Conflict
+    // 2. Business rule violations return HTTP 409 Conflict
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<Map<String, Object>> handleBusinessRule(BusinessRuleException ex) {
         Map<String, Object> body = new LinkedHashMap<>();
@@ -72,12 +72,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
-    // 3. Maneja errores de validacion (@Valid) en los DTOs devolviendo HTTP 400 Bad Request con el detalle por campo
+    // 3. Validation errors (@Valid) in DTOs return HTTP 400 Bad Request with the detail per field
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new HashMap<>();
-        // Extraemos cada campo que fallo la validacion junto con su mensaje configurado en el DTO.
-        // Si el valor no pudo convertirse (p. ej. un enum inexistente en un query param), se usa un mensaje legible.
+        // Collects each field that failed validation with the message configured in the DTO.
+        // If the value could not be converted (e.g. an unknown enum in a query param), a readable message is used.
         ex.getBindingResult().getFieldErrors().forEach(error ->
                 fieldErrors.put(error.getField(), error.isBindingFailure()
                         ? "Invalid value '" + error.getRejectedValue() + "'"
@@ -93,13 +93,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // Parametro de URL con formato invalido (p. ej. un estado o una fecha inexistentes)
+    // URL parameter with an invalid format (e.g. a status or date that does not exist)
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, Object>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         return badRequest("Invalid value '" + ex.getValue() + "' for parameter '" + ex.getName() + "'");
     }
 
-    // Cuerpo JSON mal formado o con un valor de enum desconocido
+    // Malformed JSON body or an unknown enum value
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadableBody(HttpMessageNotReadableException ex) {
         return badRequest("Malformed request body or invalid field value");
@@ -114,10 +114,10 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
-    // 4. Respaldo general. Las excepciones propias de Spring MVC ya traen su codigo HTTP
+    // 4. General fallback. Spring MVC exceptions already carry their own HTTP status
     //    (404 ruta inexistente, 405 metodo no permitido, 415 formato no soportado, 400 parametro faltante...):
-    //    se respeta ese codigo en lugar de convertirlas en 500.
-    //    Lo demas es un error inesperado (HTTP 500): se registra en el log y no se exponen trazas al cliente.
+    //    and that status is kept instead of turning them into a 500.
+    //    Anything else is an unexpected error (HTTP 500): it is logged and no stack trace reaches the client.
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
         if (ex instanceof ErrorResponse errorResponse && !errorResponse.getStatusCode().is5xxServerError()) {

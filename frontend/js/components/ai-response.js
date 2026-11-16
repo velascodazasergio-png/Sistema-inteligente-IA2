@@ -10,12 +10,13 @@ import { ESTADO_CONSULTA, badge, estadoConsulta } from '../catalogs.js';
 import { formatDateTime, formatRatio } from '../format.js';
 import { rateResponse } from '../services/ai-assistance.service.js';
 import { showServerFieldErrors } from './form-errors.js';
+import { translateFailureMessage } from '../api-messages.js';
 
 // Mensajes del backend por código de fallo, en el idioma de la interfaz.
 const FAILURE_MESSAGES = {
   N8N_UNREACHABLE: 'El servicio de IA (n8n) no aceptó la solicitud o no respondió a tiempo.',
 };
-const failureText = (query) => FAILURE_MESSAGES[query.failureCode] ?? query.failureMessage;
+const failureText = (query) => FAILURE_MESSAGES[query.failureCode] ?? translateFailureMessage(query.failureMessage);
 
 const decimal = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 

@@ -7,7 +7,7 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 
-// Entidad que almacena articulos de la base de conocimiento (manuales, guias o soluciones documentadas para el RAG)
+// Entity that stores knowledge base articles (manuals, guides or documented solutions for the RAG)
 @Entity
 @Table(
     name = "knowledge_articles",
@@ -28,12 +28,12 @@ public class KnowledgeArticle {
     @Column(name = "title", nullable = false, length = 180)
     private String title;
 
-    // Texto completo del articulo. Lo usa el flujo RAG de n8n para indexar y citar.
-    // En los articulos nuevos se arma a partir de problema, sintomas, causa y solucion.
+    // Full text of the article. The n8n RAG workflow uses it to index and cite.
+    // For new articles it is built from problem, symptoms, cause and solution.
     @Column(name = "content", nullable = false, columnDefinition = "TEXT")
     private String content;
 
-    // Secciones estructuradas del articulo (RF02). Opcionales para los articulos antiguos.
+    // Structured sections of the article (RF02). Optional for older articles.
     @Column(name = "problem", columnDefinition = "TEXT")
     private String problem;
 
@@ -49,11 +49,11 @@ public class KnowledgeArticle {
     @Column(name = "reference_url", length = 500)
     private String referenceUrl;
 
-    // Indica si el articulo sigue vigente y disponible para consulta
+    // Whether the article is still current and available
     @Column(name = "is_active", nullable = false)
     private Boolean active = true;
 
-    // Indica si un especialista o lider tecnico ya valido que la solucion del articulo es correcta
+    // Whether a specialist or technical lead has confirmed that the solution is correct
     @Column(name = "is_verified", nullable = false)
     private Boolean verified = false;
 
@@ -63,12 +63,12 @@ public class KnowledgeArticle {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Dueno de la relacion N:1: Cada articulo pertenece a una categoria tecnica
+    // Owning side of the N:1 relationship: each article belongs to a technical category
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    // Relacion opcional N:1 con el usuario (tecnico o administrador) que redacto o verifico el articulo
+    // Optional N:1 relationship with the user (technician or administrator) who wrote or verified the article
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "author_user_id")
     private User authorUser;

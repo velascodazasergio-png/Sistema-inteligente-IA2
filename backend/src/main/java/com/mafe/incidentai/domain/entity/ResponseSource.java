@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-// Entidad que vincula una respuesta de la IA con las fuentes o articulos de conocimiento y su puntaje de similitud
+// Entity that links an AI response to its sources or knowledge articles and their similarity score
 @Entity
 @Table(name = "response_sources")
 @Getter
@@ -26,16 +26,16 @@ public class ResponseSource {
     @Column(name = "cited_snippet", columnDefinition = "TEXT")
     private String citedSnippet;
 
-    // Puntaje de similitud vectorial/semantica (entre 0.0 y 1.0) calculado por el motor RAG en n8n
+    // Vector/semantic similarity score (0.0 to 1.0) computed by the RAG engine in n8n
     @Column(name = "similarity_score")
     private Double similarityScore;
 
-    // Dueno de la relacion N:1 con AiResponse
+    // Owning side of the N:1 relationship with AiResponse
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "ai_response_id", nullable = false)
     private AiResponse aiResponse;
 
-    // Relacion opcional N:1 con KnowledgeArticle cuando la fuente proviene de la base de conocimiento interna
+    // Optional N:1 relationship with KnowledgeArticle when the source comes from the internal knowledge base
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "knowledge_article_id")
     private KnowledgeArticle knowledgeArticle;

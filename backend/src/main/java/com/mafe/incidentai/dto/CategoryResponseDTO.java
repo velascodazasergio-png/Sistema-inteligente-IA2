@@ -2,8 +2,8 @@ package com.mafe.incidentai.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Categoria tecnica para llenar selectores y filtros del frontend
-@Schema(description = "Categoria tecnica de incidentes y articulos de conocimiento")
+// Technical category used to fill the frontend selectors and filters
+@Schema(description = "Technical category of incidents and knowledge articles")
 public record CategoryResponseDTO(
         Long id,
         String name,

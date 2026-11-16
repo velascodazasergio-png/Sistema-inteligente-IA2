@@ -3,7 +3,7 @@ package com.mafe.incidentai;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
-// Clase principal que inicia el contexto de Spring Boot
+// Main class that starts the Spring Boot context
 @SpringBootApplication
 public class IncidentAiApplication {
 

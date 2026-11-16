@@ -26,12 +26,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// RF03: al cambiar un articulo, el backend avisa al flujo 01 de n8n (despues del commit) para reindexarlo.
-// Sin @Transactional: el aviso solo se envia cuando la transaccion se confirma de verdad.
-// Un HttpServer local hace de webhook de n8n y registra cada peticion recibida.
+// RF03: when an article changes, the backend notifies n8n workflow 01 (after the commit) to reindex it.
+// No @Transactional: the notification is only sent when the transaction really commits.
+// A local HttpServer plays the n8n webhook and records every request it receives.
 @SpringBootTest
 @AutoConfigureMockMvc
-// Las pruebas de la API usan una sesion de administrador; los permisos por rol se prueban en SecurityTest
+// API tests use an administrator session; role permissions are tested in SecurityTest
 @WithMockUser(username = "sarah.jenkins@enterprise.io", roles = "ADMIN")
 class KnowledgeIndexingTest {
 
@@ -84,7 +84,7 @@ class KnowledgeIndexingTest {
 
         assertThat(RECEIVED.poll(5, TimeUnit.SECONDS)).isEqualTo("index-secret {\"articleId\":3}");
 
-        // Restaurar el articulo para no afectar a otras pruebas
+        // Restore the article so other tests are not affected
         mvc.perform(patch("/api/v1/knowledge-articles/3/status")
                         .contentType(MediaType.APPLICATION_JSON).content("{\"active\":true}"))
                 .andExpect(status().isOk());

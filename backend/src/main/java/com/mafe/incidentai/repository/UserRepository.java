@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Optional;
 
-// Repositorio para operaciones CRUD y busquedas sobre la entidad User
+// Repository for CRUD operations and lookups on the User entity
 public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmail(String email);
 }

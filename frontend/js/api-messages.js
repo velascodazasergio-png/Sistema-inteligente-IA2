@@ -68,6 +68,48 @@ const PATTERNS = [
   [/^Invalid value '(.*)'/, (value) => `El valor "${value}" no es válido.`],
 ];
 
+// Indicaciones que el backend añade al mensaje de fallo de una consulta a la IA
+// (backend/.../service/AiFailureHints.java). Van en inglés y pueden estar al final del mensaje de n8n.
+const SERVICE_NAMES = {
+  'OpenRouter (embedding model)': 'OpenRouter (modelo de embeddings)',
+  'OpenRouter (chat model)': 'OpenRouter (modelo de chat)',
+};
+const service = (name) => SERVICE_NAMES[name] ?? name;
+const SERVICE = '(Qdrant|OpenRouter \\((?:embedding|chat) model\\))';
+
+const FAILURE_HINTS = [
+  [/The embedding model dimension does not match EMBEDDING_DIM: check the \.env file\./,
+    () => 'La dimensión del modelo de embeddings no coincide con EMBEDDING_DIM: revisa el .env.'],
+  [/An n8n configuration variable is missing \(EMBEDDING_MODEL, LLM_MODEL or RAG_SCORE_THRESHOLD\): check the \.env file\./,
+    () => 'Falta una variable de configuración de n8n (EMBEDDING_MODEL, LLM_MODEL o RAG_SCORE_THRESHOLD): revisa el .env.'],
+  [new RegExp(`${SERVICE} rejected the API key: check OPENROUTER_API_KEY in the \\.env file and apply the change with "docker compose up -d n8n"\\.`),
+    (s) => `${service(s)} rechazó la clave de API: revisa OPENROUTER_API_KEY en el .env y aplica el cambio con "docker compose up -d n8n".`],
+  [/The OpenRouter account does not have enough credits\./,
+    () => 'La cuenta de OpenRouter no tiene créditos suficientes.'],
+  [new RegExp(`${SERVICE} rate-limited the requests \\(429\\): wait a moment and try again\\.`),
+    (s) => `${service(s)} limitó las solicitudes (429): espera un momento y vuelve a intentarlo.`],
+  [new RegExp(`${SERVICE} does not recognize the configured model: check EMBEDDING_MODEL or LLM_MODEL in the \\.env file\\.`),
+    (s) => `${service(s)} no reconoce el modelo configurado: revisa EMBEDDING_MODEL o LLM_MODEL en el .env.`],
+  [/The Qdrant collection does not exist: run the initial indexing of workflow 01\./,
+    () => 'No existe la colección en Qdrant: ejecuta la indexación inicial del flujo 01.'],
+  [new RegExp(`${SERVICE} took too long to respond: try again\\.`),
+    (s) => `${service(s)} tardó demasiado en responder: vuelve a intentarlo.`],
+  [new RegExp(`The connection between n8n and ${SERVICE} was cut: try again\\.`),
+    (s) => `Se cortó la conexión entre n8n y ${service(s)}: vuelve a intentarlo.`],
+  [new RegExp(`n8n could not connect to ${SERVICE}: check the network or the configured URL\\.`),
+    (s) => `n8n no pudo conectarse con ${service(s)}: revisa la red o la URL configurada.`],
+];
+
+/** Traduce la indicación en inglés que el backend agrega al mensaje de fallo de una consulta a la IA. */
+export function translateFailureMessage(message) {
+  if (typeof message !== 'string') return message;
+  for (const [regex, build] of FAILURE_HINTS) {
+    const match = regex.exec(message);
+    if (match) return message.replace(regex, build(...match.slice(1)));
+  }
+  return message;
+}
+
 export function translateApiMessage(message) {
   if (typeof message !== 'string' || !message.trim()) return null;
   const text = message.trim();

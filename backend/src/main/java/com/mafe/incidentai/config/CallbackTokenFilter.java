@@ -16,8 +16,8 @@ import java.security.MessageDigest;
 import java.time.LocalDateTime;
 import java.util.regex.Pattern;
 
-// Protege los callbacks que solo debe llamar n8n (respuesta y fallo de una consulta IA).
-// Si app.callback.token esta vacio la verificacion se desactiva (modo desarrollo).
+// Protects the callbacks that only n8n may call (response and failure of an AI query).
+// If app.callback.token is empty, the check is disabled (development mode).
 @Component
 public class CallbackTokenFilter extends OncePerRequestFilter {
 
@@ -43,7 +43,7 @@ public class CallbackTokenFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String received = request.getHeader(HEADER);
-        // Comparacion en tiempo constante para no filtrar informacion del token
+        // Constant-time comparison so the token does not leak through timing
         if (received != null && MessageDigest.isEqual(expectedToken, received.getBytes(StandardCharsets.UTF_8))) {
             chain.doFilter(request, response);
             return;

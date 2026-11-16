@@ -6,8 +6,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-// Contrato DTO de salida para devolver la informacion de un incidente sin exponer la entidad JPA
-@Schema(description = "Respuesta con el detalle de un incidente registrado")
+// Output DTO that returns an incident without exposing the JPA entity
+@Schema(description = "Response with the detail of a registered incident")
 public record IncidentResponseDTO(
         Long id,
         String title,

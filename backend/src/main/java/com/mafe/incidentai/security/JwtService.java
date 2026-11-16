@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.Instant;
 
-// Emite los JWT de sesion. Claims: sub (correo), uid (id del usuario), role y name.
+// Issues the session JWTs. Claims: sub (email), uid (user ID), role and name.
 @Service
 public class JwtService {
 

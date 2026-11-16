@@ -21,7 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Servicio de negocio para registrar, actualizar informacion, cambiar estados y filtrar incidentes tecnologicos (RF01)
+// Business service to register, update, change the status of and filter technology incidents (RF01)
 @Service
 @RequiredArgsConstructor
 public class IncidentService {
@@ -30,7 +30,7 @@ public class IncidentService {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
 
-    // 1. Registra un nuevo incidente verificando primero que el usuario y la categoria existan y esten activos
+    // 1. Registers a new incident after checking that the user and the category exist and are active
     @Transactional
     public IncidentResponseDTO createIncident(CreateIncidentRequestDTO request) {
         User user = userRepository.findById(request.userId())
@@ -39,7 +39,7 @@ public class IncidentService {
         Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.categoryId()));
 
-        // Regla de negocio: No se pueden asignar incidentes a una categoria inactiva
+        // Business rule: incidents cannot be assigned to an inactive category
         if (Boolean.FALSE.equals(category.getActive())) {
             throw new BusinessRuleException("Cannot register an incident under an inactive category: " + category.getName());
         }
@@ -56,7 +56,7 @@ public class IncidentService {
         return mapToResponseDTO(savedIncident);
     }
 
-    // 2. Actualiza la informacion general de un incidente existente (RF01)
+    // 2. Updates the general information of an existing incident (RF01)
     @Transactional
     public IncidentResponseDTO updateIncident(Long incidentId, CreateIncidentRequestDTO request) {
         Incident incident = incidentRepository.findById(incidentId)
@@ -85,13 +85,13 @@ public class IncidentService {
         return mapToResponseDTO(incidentRepository.save(incident));
     }
 
-    // 3. Actualiza el estado de un incidente aplicando validaciones de transicion y registrando fecha de resolucion
+    // 3. Updates the status of an incident, validating the transition and recording the resolution date
     @Transactional
     public IncidentResponseDTO updateIncidentStatus(Long incidentId, IncidentStatus newStatus) {
         Incident incident = incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + incidentId));
 
-        // Regla de negocio: Un incidente que ya fue cerrado (CLOSED) no puede modificarse
+        // Business rule: an incident that is already closed (CLOSED) cannot be modified
         if (incident.getStatus() == IncidentStatus.CLOSED) {
             throw new BusinessRuleException("Cannot change the status of an already CLOSED incident");
         }
@@ -109,7 +109,7 @@ public class IncidentService {
         return mapToResponseDTO(updatedIncident);
     }
 
-    // 4. Filtra incidentes de forma dinamica combinando categoria, prioridad, estado, usuario y rango de fechas
+    // 4. Filters incidents dynamically by category, priority, status, user and date range
     @Transactional(readOnly = true)
     public List<IncidentResponseDTO> filterIncidents(
             Long categoryId,
@@ -119,7 +119,7 @@ public class IncidentService {
             LocalDateTime startDate,
             LocalDateTime endDate) {
 
-        // Validamos que el rango de fechas sea coherente si ambos parametros fueron enviados
+        // Check that the date range is consistent when both parameters were sent
         if (startDate != null && endDate != null && startDate.isAfter(endDate)) {
             throw new BusinessRuleException("Start date cannot be after end date");
         }
@@ -134,7 +134,7 @@ public class IncidentService {
                 .toList();
     }
 
-    // 5. Devuelve el detalle de un incidente por su ID
+    // 5. Returns the detail of an incident by its ID
     @Transactional(readOnly = true)
     public IncidentResponseDTO getIncident(Long incidentId) {
         return incidentRepository.findById(incidentId)
@@ -142,7 +142,7 @@ public class IncidentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Incident not found with ID: " + incidentId));
     }
 
-    // Convierte la entidad JPA Incident al contrato de salida IncidentResponseDTO
+    // Maps the JPA Incident entity to the IncidentResponseDTO output contract
     private IncidentResponseDTO mapToResponseDTO(Incident incident) {
         LocalDateTime effectiveResolvedAt = incident.getResolvedAt();
         if (effectiveResolvedAt == null

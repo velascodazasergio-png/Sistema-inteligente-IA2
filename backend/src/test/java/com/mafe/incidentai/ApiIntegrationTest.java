@@ -26,9 +26,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Pruebas de integracion de la API REST sobre H2 con los datos de data.sql (150 incidentes).
-// Cada prueba se revierte al terminar (@Transactional), asi no se afectan entre si.
-// n8n apunta a un puerto cerrado para simular que el servicio de IA no esta disponible.
+// Integration tests of the REST API on H2 with the data.sql data (150 incidents).
+// Each test is rolled back when it ends (@Transactional), so tests do not affect each other.
+// n8n points to a closed port to simulate that the AI service is unavailable.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -38,7 +38,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.show-sql=false",
         "spring.datasource.url=jdbc:h2:mem:api_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL"
 })
-// Las pruebas de la API usan una sesion de administrador; los permisos por rol se prueban en SecurityTest
+// API tests use an administrator session; role permissions are tested in SecurityTest
 @WithMockUser(username = "sarah.jenkins@enterprise.io", roles = "ADMIN")
 class ApiIntegrationTest {
 
@@ -57,7 +57,7 @@ class ApiIntegrationTest {
     }
 
     @Nested
-    @DisplayName("Incidentes (RF01)")
+    @DisplayName("Incidents (RF01)")
     class Incidents {
 
         @Test
@@ -144,7 +144,7 @@ class ApiIntegrationTest {
     }
 
     @Nested
-    @DisplayName("Base de conocimiento (RF02)")
+    @DisplayName("Knowledge base (RF02)")
     class Knowledge {
 
         private static final String ARTICLE = """
@@ -159,8 +159,8 @@ class ApiIntegrationTest {
                     .andExpect(jsonPath("$.active", is(true)))
                     .andExpect(jsonPath("$.verified", is(false)))
                     .andExpect(jsonPath("$.cause").doesNotExist())
-                    .andExpect(jsonPath("$.content", containsString("Problema: Print jobs")))
-                    .andExpect(jsonPath("$.content", containsString("Solucion: Restart")));
+                    .andExpect(jsonPath("$.content", containsString("Problem: Print jobs")))
+                    .andExpect(jsonPath("$.content", containsString("Solution: Restart")));
         }
 
         @Test
@@ -184,7 +184,7 @@ class ApiIntegrationTest {
     }
 
     @Nested
-    @DisplayName("Asistencia IA (RF04, RF05, RF08)")
+    @DisplayName("AI assistance (RF04, RF05, RF08)")
     class AiAssistance {
 
         private static final String REQUEST = """
@@ -214,7 +214,7 @@ class ApiIntegrationTest {
         void responseWithoutSourcesIsNoResults() throws Exception {
             long queryId = requestQuery();
             postJson("/api/v1/ai-assistance/responses", """
-                    {"aiQueryId":%d,"suggestedDiagnosis":"Sin informacion suficiente","confidenceScore":0,"sources":[]}""".formatted(queryId))
+                    {"aiQueryId":%d,"suggestedDiagnosis":"Not enough information","confidenceScore":0,"sources":[]}""".formatted(queryId))
                     .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.queryStatus", is("NO_RESULTS")));
             mvc.perform(get("/api/v1/ai-assistance/history").param("status", "NO_RESULTS"))
@@ -238,19 +238,19 @@ class ApiIntegrationTest {
         void failureReportMarksQueryAsFailed() throws Exception {
             long queryId = requestQuery();
             postJson("/api/v1/ai-assistance/queries/" + queryId + "/failure", """
-                    {"aiQueryId":%d,"errorCode":"EMBEDDING_FALLO","message":"No se pudo generar el embedding"}""".formatted(queryId))
+                    {"aiQueryId":%d,"errorCode":"EMBEDDING_FALLO","message":"Could not generate the embedding"}""".formatted(queryId))
                     .andExpect(status().isOk())
                     .andExpect(jsonPath("$.queryStatus", is("FAILED")));
             mvc.perform(get("/api/v1/ai-assistance/incidents/150/history"))
                     .andExpect(jsonPath("$[0].queryStatus", is("FAILED")))
-                    .andExpect(jsonPath("$[0].failureMessage", is("No se pudo generar el embedding")));
+                    .andExpect(jsonPath("$[0].failureMessage", is("Could not generate the embedding")));
         }
 
         @Test
         void failureCannotOverrideAResponse() throws Exception {
             long queryId = requestQuery();
             postJson("/api/v1/ai-assistance/responses", """
-                    {"aiQueryId":%d,"suggestedDiagnosis":"Sin informacion suficiente","sources":[]}""".formatted(queryId));
+                    {"aiQueryId":%d,"suggestedDiagnosis":"Not enough information","sources":[]}""".formatted(queryId));
             postJson("/api/v1/ai-assistance/queries/" + queryId + "/failure", "{\"errorCode\":\"LLM_FALLO\",\"message\":\"late failure\"}")
                     .andExpect(status().isConflict());
         }

@@ -1,13 +1,13 @@
 package com.mafe.incidentai.domain.enums;
 
-// Estado de trazabilidad de la consulta enviada al flujo de IA en n8n
+// Tracking status of the query sent to the AI workflow in n8n
 public enum QueryStatus {
     PENDING,
     COMPLETED,
-    // n8n respondio, pero no encontro documentos relevantes en la base de conocimiento
+    // n8n answered, but found no relevant documents in the knowledge base
     NO_RESULTS,
-    // El backend no pudo entregar la consulta a n8n (timeout o error HTTP)
+    // The backend could not deliver the query to n8n (timeout or HTTP error)
     COMMUNICATION_ERROR,
-    // n8n recibio la consulta pero fallo al procesarla (embeddings, Qdrant o LLM)
+    // n8n received the query but failed to process it (embeddings, Qdrant or LLM)
     FAILED
 }

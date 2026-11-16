@@ -14,7 +14,7 @@ import org.springframework.web.client.RestTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-// Componente cliente encargado de enviar las peticiones HTTP POST al webhook de n8n
+// Client component that sends the HTTP POST requests to the n8n webhooks
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -25,18 +25,18 @@ public class N8nWebhookClient {
     @Value("${n8n.webhook.assistance-url}")
     private String n8nWebhookUrl;
 
-    // Autenticacion del webhook (credencial "Header Auth" en n8n). Si el valor esta vacio no se envia.
+    // Webhook authentication ("Header Auth" credential in n8n). When the value is empty, no header is sent.
     @Value("${n8n.webhook.auth-header-name:X-N8N-Token}")
     private String authHeaderName;
 
     @Value("${n8n.webhook.auth-header-value:}")
     private String authHeaderValue;
 
-    // Webhook del flujo 01 (indexacion). Vacio = la reindexacion automatica esta desactivada.
+    // Webhook of workflow 01 (indexing). Empty = automatic reindexing is disabled.
     @Value("${n8n.webhook.index-url:}")
     private String indexWebhookUrl;
 
-    // Dispara el webhook de n8n enviando el ID de la consulta IA y los datos del incidente; retorna true si n8n respondio 2xx
+    // Calls the n8n webhook with the AI query ID and the incident data; returns true if n8n answered 2xx
     public boolean triggerIncidentAnalysis(Long aiQueryId, AiAssistanceRequestDTO request) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -45,7 +45,7 @@ public class N8nWebhookClient {
                 headers.set(authHeaderName, authHeaderValue);
             }
 
-            // Construimos el payload JSON incluyendo el aiQueryId para que n8n sepa a que consulta asociar su respuesta
+            // The JSON payload includes the aiQueryId so n8n knows which query its answer belongs to
             Map<String, Object> payload = new HashMap<>();
             payload.put("aiQueryId", aiQueryId);
             payload.put("incidentId", request.incidentId());
@@ -62,14 +62,14 @@ public class N8nWebhookClient {
             return true;
 
         } catch (RestClientException ex) {
-            // Capturamos timeouts (ResourceAccessException) o errores HTTP 4xx/5xx de n8n sin romper la transaccion principal
+            // Catches timeouts (ResourceAccessException) and HTTP 4xx/5xx errors from n8n without breaking the main transaction
             log.error("Failed to communicate with n8n webhook for aiQueryId={}: {}", aiQueryId, ex.getMessage());
             return false;
         }
     }
 
-    // Pide al flujo 01 que reindexe un articulo. Nunca lanza excepciones: si falla, el articulo se
-    // puede reindexar despues llamando al mismo webhook (o con {"all": true} para todos).
+    // Asks workflow 01 to reindex an article. Never throws: if it fails, the article can be
+    // reindexed later by calling the same webhook (or with {"all": true} for every article).
     public void triggerKnowledgeIndexing(Long articleId) {
         if (indexWebhookUrl == null || indexWebhookUrl.isBlank()) {
             return;

@@ -12,8 +12,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// Reglas de acceso que dependen del recurso (no solo de la ruta): un empleado solo trabaja con sus incidentes
-// y solo lee articulos publicados. Administradores y tecnicos no tienen estas restricciones.
+// Access rules that depend on the resource (not only on the route): an employee only works with their own incidents
+// and only reads published articles. Administrators and technicians have no such restrictions.
 @Component
 @RequiredArgsConstructor
 public class AccessPolicy {
@@ -28,7 +28,7 @@ public class AccessPolicy {
         return currentUser.get();
     }
 
-    // true si la peticion la hace una persona con sesion (no n8n ni una peticion anonima)
+    // true if the request comes from a person with a session (not n8n and not an anonymous request)
     public boolean isAuthenticatedUser() {
         return currentUser.find().isPresent();
     }
@@ -41,7 +41,7 @@ public class AccessPolicy {
         return user().is(UserRole.ADMIN);
     }
 
-    // Lanza 403 si un empleado intenta ver un incidente de otra persona
+    // Throws 403 if an employee tries to see another person's incident
     public void checkIncident(IncidentResponseDTO incident) {
         var me = user();
         if (me.is(UserRole.EMPLOYEE) && !Objects.equals(incident.userId(), me.id())) {
@@ -53,13 +53,13 @@ public class AccessPolicy {
         if (isEmployee()) checkIncident(incidentService.getIncident(incidentId));
     }
 
-    // Ids de los incidentes del empleado actual (para filtrar su historial de IA)
+    // IDs of the current employee's incidents (to filter their AI history)
     public Set<Long> ownIncidentIds() {
         return incidentService.filterIncidents(null, null, null, user().id(), null, null)
                 .stream().map(IncidentResponseDTO::id).collect(Collectors.toSet());
     }
 
-    // Un empleado solo puede leer articulos activos y verificados (los mismos que usa la IA)
+    // An employee can only read active and verified articles (the same ones the AI uses)
     public void checkArticle(KnowledgeArticleResponseDTO article) {
         if (isEmployee() && !(Boolean.TRUE.equals(article.active()) && Boolean.TRUE.equals(article.verified()))) {
             throw new AccessDeniedException(ARTICLE_NOT_PUBLISHED);

@@ -14,7 +14,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Con app.callback.token configurado, solo quien envie X-Callback-Token puede registrar respuestas o fallos.
+// With app.callback.token set, only a caller that sends X-Callback-Token can record responses or failures.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.show-sql=false",
         "spring.datasource.url=jdbc:h2:mem:callback_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL"
 })
-// Las pruebas de la API usan una sesion de administrador; los permisos por rol se prueban en SecurityTest
+// API tests use an administrator session; role permissions are tested in SecurityTest
 @WithMockUser(username = "sarah.jenkins@enterprise.io", roles = "ADMIN")
 class CallbackTokenTest {
 
@@ -49,7 +49,7 @@ class CallbackTokenTest {
 
     @Test
     void acceptsCallbackWithToken() throws Exception {
-        // La consulta 1 ya tiene respuesta en data.sql: pasar el filtro y llegar a la regla de negocio (409)
+        // Query 1 already has a response in data.sql: it passes the filter and reaches the business rule (409)
         mvc.perform(post("/api/v1/ai-assistance/responses").header("X-Callback-Token", "test-secret")
                         .contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().isConflict());

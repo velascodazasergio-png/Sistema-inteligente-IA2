@@ -13,14 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
 
-// Inicio de sesion con correo y contrasena: devuelve un JWT con el rol del usuario
+// Login with email and password: returns a JWT with the user role
 @Service
 public class AuthService {
 
     public static final String BAD_CREDENTIALS = "Invalid email or password";
 
-    // Hash BCrypt de una contrasena cualquiera: se compara cuando el correo no existe,
-    // para que la respuesta tarde lo mismo y no revele que correos estan registrados.
+    // BCrypt hash of an arbitrary password: it is compared when the email does not exist,
+    // so the response takes the same time and does not reveal which emails are registered.
     private final String dummyHash;
 
     private final UserRepository userRepository;

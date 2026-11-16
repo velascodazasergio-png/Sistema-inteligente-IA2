@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// Entidad que representa a los usuarios del sistema (empleados, tecnicos o administradores)
+// Entity that represents the system users (employees, technicians or administrators)
 @Entity
 @Table(name = "users")
 @Getter
@@ -28,23 +28,23 @@ public class User {
     @Column(name = "email", nullable = false, unique = true, length = 120)
     private String email;
 
-    // Usamos EnumType.STRING para almacenar el nombre del rol en texto y evitar corrupcion si cambia el orden
+    // EnumType.STRING stores the role name as text, so reordering the enum cannot corrupt data
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false, length = 30)
     private UserRole role;
 
-    // Hash BCrypt de la contrasena (nunca la contrasena en claro). Nulo = aun sin contrasena asignada.
+    // BCrypt hash of the password (never the plain password). Null = no password assigned yet.
     @Column(name = "password_hash", length = 100)
     private String passwordHash;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    // Lado inverso (1:N): Un usuario puede reportar multiples incidentes
+    // Inverse side (1:N): a user can report many incidents
     @OneToMany(mappedBy = "user")
     private List<Incident> reportedIncidents = new ArrayList<>();
 
-    // Se ejecuta automaticamente antes de insertar el registro en la base de datos
+    // Runs automatically before the record is inserted into the database
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();

@@ -3,8 +3,8 @@ package com.mafe.incidentai.dto;
 import com.mafe.incidentai.domain.enums.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Datos publicos de un usuario para selectores (quien reporta, quien califica, autor)
-@Schema(description = "Resumen de un usuario del sistema")
+// Public data of a user for selectors (reporter, evaluator, author)
+@Schema(description = "Summary of a system user")
 public record UserSummaryDTO(
         Long id,
         String fullName,

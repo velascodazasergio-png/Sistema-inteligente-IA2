@@ -5,9 +5,9 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-// Permite que el frontend (servido en otro puerto, p. ej. Live Server en 5500)
-// consuma la API REST desde el navegador. Los origenes se configuran en
-// application.properties con app.cors.allowed-origins.
+// Lets the frontend (served on another port, e.g. Live Server on 5500)
+// call the REST API from the browser. Allowed origins are set in
+// application.properties with app.cors.allowed-origins.
 @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 

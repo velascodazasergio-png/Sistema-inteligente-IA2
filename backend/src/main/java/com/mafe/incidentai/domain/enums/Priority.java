@@ -1,6 +1,6 @@
 package com.mafe.incidentai.domain.enums;
 
-// Nivel de prioridad tecnica o de impacto del incidente
+// Technical priority or impact level of the incident
 public enum Priority {
     LOW,
     MEDIUM,

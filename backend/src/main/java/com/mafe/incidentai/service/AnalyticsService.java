@@ -13,26 +13,26 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Servicio analitico (RF06) que extrae los 10 KPIs reales desde la base de datos mediante consultas JPQL.
-// Todos los indicadores aceptan los mismos filtros opcionales: categoria, prioridad y rango de fechas.
+// Analytics service (RF06) that computes the 10 real KPIs in the database with JPQL queries.
+// Every indicator accepts the same optional filters: category, priority and date range.
 @Service
 @RequiredArgsConstructor
 public class AnalyticsService {
 
-    // Umbral SLA por defecto: un incidente pendiente con mas de 48 horas sin resolverse se considera vencido (overdue)
+    // Default SLA threshold: a pending incident unresolved for more than 48 hours is considered overdue
     private static final long SLA_OVERDUE_HOURS = 48L;
 
     private final IncidentRepository incidentRepository;
     private final RatingRepository ratingRepository;
 
-    // Regla de negocio: el rango de fechas debe ser coherente
+    // Business rule: the date range must be consistent
     private void validate(AnalyticsFilterRequest f) {
         if (f.startDate() != null && f.endDate() != null && f.startDate().isAfter(f.endDate())) {
             throw new BusinessRuleException("Start date cannot be after end date");
         }
     }
 
-    // Consolida los 10 indicadores analiticos del dashboard ejecutando las consultas agregadas en BD
+    // Consolidates the 10 dashboard indicators by running the aggregate queries in the database
     @Transactional(readOnly = true)
     public AnalyticsDashboardDTO getDashboardMetrics(AnalyticsFilterRequest f) {
         validate(f);
@@ -45,7 +45,7 @@ public class AnalyticsService {
                 f.categoryId(), f.priority(), f.startDate(), f.endDate(), overdueThreshold
         );
 
-        // Calculo de la tasa de resolucion sobre el total de incidentes filtrados
+        // Resolution rate over the total of filtered incidents
         double resolutionRate = totalIncidents > 0
                 ? roundToTwoDecimals((resolvedIncidents * 100.0) / totalIncidents)
                 : 0.0;
@@ -72,7 +72,7 @@ public class AnalyticsService {
         );
     }
 
-    // 2 y 7. Ranking de categorias con mayor volumen de incidentes y su peso porcentual
+    // 2 and 7. Ranking of the categories with the most incidents and their percentage
     @Transactional(readOnly = true)
     public List<CategoryMetricDTO> getTopCategories(AnalyticsFilterRequest f) {
         validate(f);
@@ -94,7 +94,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    // 3. Distribucion de incidentes agrupados por prioridad
+    // 3. Distribution of incidents grouped by priority
     @Transactional(readOnly = true)
     public List<PriorityMetricDTO> getIncidentsByPriority(AnalyticsFilterRequest f) {
         validate(f);
@@ -115,7 +115,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    // 4. Distribucion de incidentes agrupados por estado operativo
+    // 4. Distribution of incidents grouped by operational status
     @Transactional(readOnly = true)
     public List<StatusMetricDTO> getIncidentsByStatus(AnalyticsFilterRequest f) {
         validate(f);
@@ -136,7 +136,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    // 8. Serie de incidentes reportados vs resueltos agrupados por semana ISO ("AAAA-WNN")
+    // 8. Series of reported vs resolved incidents grouped by ISO week ("YYYY-WNN")
     @Transactional(readOnly = true)
     public List<WeeklyTrendDTO> getWeeklyTrends(AnalyticsFilterRequest f) {
         validate(f);
@@ -150,7 +150,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    // 9. Serie de incidentes reportados vs resueltos agrupados por mes ("AAAA-MM")
+    // 9. Series of reported vs resolved incidents grouped by month ("YYYY-MM")
     @Transactional(readOnly = true)
     public List<MonthlyTrendDTO> getMonthlyTrends(AnalyticsFilterRequest f) {
         validate(f);
@@ -164,7 +164,7 @@ public class AnalyticsService {
                 .toList();
     }
 
-    // Redondea valores decimales a 2 cifras para presentacion limpia en el dashboard
+    // Rounds decimals to 2 places for a clean display on the dashboard
     private double roundToTwoDecimals(double value) {
         return Math.round(value * 100.0) / 100.0;
     }

@@ -14,9 +14,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
-// Identifica a n8n como el rol SERVICE cuando envia el mismo X-Callback-Token que usa en los callbacks.
-// Asi n8n puede leer los articulos para indexarlos sin tener usuario ni JWT.
-// Un token ausente o incorrecto no rechaza la peticion aqui: simplemente no la autentica.
+// Identifies n8n with the SERVICE role when it sends the same X-Callback-Token it uses for callbacks.
+// This way n8n can read the articles to index them without a user or a JWT.
+// A missing or wrong token does not reject the request here: it just does not authenticate it.
 class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
 
     private final byte[] expectedToken;

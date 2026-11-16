@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Consultar a la IA solo mueve a IN_AI_ANALYSIS un incidente abierto; uno resuelto no se reabre
+// Asking the AI only moves an open incident to IN_AI_ANALYSIS; a resolved one is not reopened
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -24,7 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.show-sql=false",
         "spring.datasource.url=jdbc:h2:mem:ai_status_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL"
 })
-// Las pruebas de la API usan una sesion de administrador; los permisos por rol se prueban en SecurityTest
+// API tests use an administrator session; role permissions are tested in SecurityTest
 @WithMockUser(username = "sarah.jenkins@enterprise.io", roles = "ADMIN")
 class AiRequestStatusTest {
 
@@ -40,7 +40,7 @@ class AiRequestStatusTest {
 
     @Test
     void resolvedIncidentKeepsItsStatus() throws Exception {
-        // El incidente 1 esta RESOLVED en data.sql
+        // Incident 1 is RESOLVED in data.sql
         mvc.perform(post("/api/v1/ai-assistance/request").contentType(MediaType.APPLICATION_JSON).content(request(1)))
                 .andExpect(status().isAccepted());
         mvc.perform(get("/api/v1/incidents/1")).andExpect(jsonPath("$.status").value("RESOLVED"));
@@ -48,7 +48,7 @@ class AiRequestStatusTest {
 
     @Test
     void openIncidentMovesToAiAnalysis() throws Exception {
-        // El incidente 150 esta OPEN en data.sql
+        // Incident 150 is OPEN in data.sql
         mvc.perform(post("/api/v1/ai-assistance/request").contentType(MediaType.APPLICATION_JSON).content(request(150)))
                 .andExpect(status().isAccepted());
         mvc.perform(get("/api/v1/incidents/150")).andExpect(jsonPath("$.status").value("IN_AI_ANALYSIS"));

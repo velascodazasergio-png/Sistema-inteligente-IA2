@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 
-// Respuestas 401 y 403 de Spring Security con el mismo formato JSON que GlobalExceptionHandler
+// Spring Security 401 and 403 responses with the same JSON format as GlobalExceptionHandler
 @Component
 public class JsonSecurityErrorHandler implements AuthenticationEntryPoint, AccessDeniedHandler {
 
@@ -28,7 +28,7 @@ public class JsonSecurityErrorHandler implements AuthenticationEntryPoint, Acces
             throws IOException {
         boolean badToken = ex instanceof InvalidBearerTokenException
                 || ex.getCause() instanceof InvalidBearerTokenException;
-        // Encabezado estandar para clientes que usan Bearer (RFC 6750)
+        // Standard header for clients that use Bearer (RFC 6750)
         response.setHeader("WWW-Authenticate", badToken ? "Bearer error=\"invalid_token\"" : "Bearer");
         write(response, HttpStatus.UNAUTHORIZED, badToken ? INVALID_TOKEN : AUTH_REQUIRED);
     }

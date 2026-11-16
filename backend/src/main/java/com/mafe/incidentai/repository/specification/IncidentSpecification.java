@@ -10,11 +10,11 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// Clase utilitaria que construye predicados JPA dinamicos segun los filtros que envie el usuario
+// Utility class that builds dynamic JPA predicates from the filters sent by the user
 public final class IncidentSpecification {
 
     private IncidentSpecification() {
-        // Constructor privado para evitar instanciacion de clase utilitaria
+        // Private constructor: utility class, not meant to be instantiated
     }
 
     public static Specification<Incident> withDynamicFilters(
@@ -28,42 +28,42 @@ public final class IncidentSpecification {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // 1. Si se envio categoryId, filtramos por la llave foranea de categoria
+            // 1. If categoryId was sent, filter by the category foreign key
             if (categoryId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("category").get("id"), categoryId));
             }
 
-            // 2. Si se envio priority, filtramos por el nivel de prioridad del incidente
+            // 2. If priority was sent, filter by the priority level of the incident
             if (priority != null) {
                 predicates.add(criteriaBuilder.equal(root.get("priority"), priority));
             }
 
-            // Si se envio status, filtramos por el estado actual del incidente
+            // If status was sent, filter by the current status of the incident
             if (status != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
             }
 
-            // 3. Si se envio userId, filtramos por el usuario que reporto el incidente
+            // 3. If userId was sent, filter by the user who reported the incident
             if (userId != null) {
                 predicates.add(criteriaBuilder.equal(root.get("user").get("id"), userId));
             }
 
-            // 5. Si se envio startDate, filtramos incidentes creados desde esa fecha en adelante
+            // 5. If startDate was sent, keep incidents created on or after that date
             if (startDate != null) {
                 predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("createdAt"), startDate));
             }
 
-            // 6. Si se envio endDate, filtramos incidentes creados hasta esa fecha limite
+            // 6. If endDate was sent, keep incidents created up to that date
             if (endDate != null) {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), endDate));
             }
 
-            // Ordenamos por fecha de creacion descendente (los mas recientes primero)
+            // Order by creation date, descending (newest first)
             if (query != null) {
                 query.orderBy(criteriaBuilder.desc(root.get("createdAt")));
             }
 
-            // Combinamos todos los filtros activos mediante el operador logico AND
+            // Combine every active filter with a logical AND
             return criteriaBuilder.and(predicates.toArray(new Predicate[0]));
         };
     }

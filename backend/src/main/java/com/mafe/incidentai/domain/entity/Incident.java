@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-// Entidad central que representa un incidente tecnologico reportado en la organizacion
+// Core entity that represents a technology incident reported in the organization
 @Entity
 @Table(
     name = "incidents",
@@ -52,21 +52,21 @@ public class Incident {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // Fecha de resolucion del incidente (se registra cuando pasa a estado RESOLVED o CLOSED)
+    // Resolution date of the incident (set when it moves to RESOLVED or CLOSED)
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
 
-    // Dueno de la relacion N:1 con User (FetchType.LAZY evita el problema de consultas N+1)
+    // Owning side of the N:1 relationship with User (FetchType.LAZY avoids the N+1 query problem)
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // Dueno de la relacion N:1 con Category
+    // Owning side of the N:1 relationship with Category
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
 
-    // Lado inverso 1:N: Un incidente puede generar varias consultas hacia el agente de IA en n8n
+    // Inverse side 1:N: an incident can produce several queries to the AI agent in n8n
     @OneToMany(mappedBy = "incident", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AiQuery> aiQueries = new ArrayList<>();
 

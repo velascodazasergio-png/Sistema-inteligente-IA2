@@ -4,9 +4,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-// Articulo de la base de conocimiento con sus secciones, categoria, autor y estado.
-// problem, symptoms, cause y solution pueden ser nulos en articulos antiguos: en ese caso usar content.
-@Schema(description = "Articulo tecnico de la base de conocimiento")
+// Knowledge base article with its sections, category, author and status.
+// problem, symptoms, cause and solution can be null in older articles: use content in that case.
+@Schema(description = "Technical knowledge base article")
 public record KnowledgeArticleResponseDTO(
         Long id,
         String title,

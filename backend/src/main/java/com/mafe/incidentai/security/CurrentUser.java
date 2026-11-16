@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Optional;
 
-// Usuario que hace la peticion actual, leido del JWT (o de la base de datos si la sesion no viene de un JWT)
+// User making the current request, read from the JWT (or from the database if the session does not come from a JWT)
 @Component
 @RequiredArgsConstructor
 public class CurrentUser {
@@ -29,7 +29,7 @@ public class CurrentUser {
         return find().orElseThrow(() -> new AuthenticationCredentialsNotFoundException("Authentication required"));
     }
 
-    // Vacio si no hay usuario: peticion anonima o de un servicio (n8n con X-Callback-Token)
+    // Empty when there is no user: an anonymous request or a service (n8n with X-Callback-Token)
     public Optional<AuthUser> find() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth instanceof JwtAuthenticationToken jwtAuth) {

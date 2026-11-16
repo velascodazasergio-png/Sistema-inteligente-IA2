@@ -22,9 +22,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Inicio de sesion con JWT y permisos de los tres roles, con tokens reales emitidos por /auth/login.
-// Usuarios de data.sql: 1 Sarah (ADMIN), 2 Marcus (SUPPORT_TECHNICIAN), 5 Laura (EMPLOYEE).
-// Laura reporto el incidente 150 (OPEN); el incidente 2 es de otra persona.
+// JWT login and permissions of the three roles, with real tokens issued by /auth/login.
+// data.sql users: 1 Sarah (ADMIN), 2 Marcus (SUPPORT_TECHNICIAN), 5 Laura (EMPLOYEE).
+// Laura reported incident 150 (OPEN); incident 2 belongs to someone else.
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -60,7 +60,7 @@ class SecurityTest {
         return request.header("Authorization", "Bearer " + login(email));
     }
 
-    // ---------- Inicio de sesion ----------
+    // ---------- Login ----------
 
     @Test
     void loginReturnsTokenAndUserRole() throws Exception {
@@ -102,7 +102,7 @@ class SecurityTest {
                 .andExpect(jsonPath("$.role").value("EMPLOYEE"));
     }
 
-    // ---------- Sin sesion o token invalido ----------
+    // ---------- No session or invalid token ----------
 
     @Test
     void requestsWithoutTokenAre401() throws Exception {
@@ -125,7 +125,7 @@ class SecurityTest {
         mvc.perform(get("/api-docs")).andExpect(status().isOk());
     }
 
-    // ---------- Administrador ----------
+    // ---------- Administrator ----------
 
     @Test
     void adminCanVerifyArticles() throws Exception {
@@ -134,7 +134,7 @@ class SecurityTest {
                 .andExpect(status().isOk());
     }
 
-    // ---------- Tecnico ----------
+    // ---------- Technician ----------
 
     @Test
     void technicianManagesIncidentsAndSeesAnalytics() throws Exception {
@@ -153,7 +153,7 @@ class SecurityTest {
                 .andExpect(jsonPath("$.message").value("You do not have permission to perform this action"));
     }
 
-    // ---------- Empleado ----------
+    // ---------- Employee ----------
 
     @Test
     void employeeOnlyListsOwnIncidents() throws Exception {
@@ -223,7 +223,7 @@ class SecurityTest {
                 .andExpect(jsonPath("$[*].incidentId", not(org.hamcrest.Matchers.hasItem(2))));
     }
 
-    // ---------- n8n (token de servicio) ----------
+    // ---------- n8n (service token) ----------
 
     @Test
     void n8nReadsArticlesWithServiceTokenOnly() throws Exception {
@@ -233,7 +233,7 @@ class SecurityTest {
                 .andExpect(status().isOk());
         mvc.perform(get("/api/v1/knowledge-articles").header("X-Callback-Token", "wrong"))
                 .andExpect(status().isUnauthorized());
-        // El token de servicio no abre el resto de la API
+        // The service token does not open the rest of the API
         mvc.perform(get("/api/v1/incidents").header("X-Callback-Token", "service-secret"))
                 .andExpect(status().isForbidden());
     }

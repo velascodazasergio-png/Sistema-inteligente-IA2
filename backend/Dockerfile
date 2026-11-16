@@ -1,4 +1,4 @@
-# Imagen del backend Spring Boot: compila con Maven y ejecuta con un JRE liviano.
+# Spring Boot backend image: builds with Maven and runs on a lightweight JRE.
 FROM maven:3.9.9-eclipse-temurin-21 AS build
 WORKDIR /app
 COPY pom.xml .

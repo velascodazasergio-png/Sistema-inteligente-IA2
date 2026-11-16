@@ -3,16 +3,16 @@ package com.mafe.incidentai.dto;
 import com.mafe.incidentai.domain.enums.IncidentStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Contrato DTO para exponer la distribucion de incidentes agrupados por estado operativo (RF06)
-@Schema(description = "Metrica de incidentes agrupados por estado")
+// DTO with the distribution of incidents grouped by operational status (RF06)
+@Schema(description = "Incidents grouped by status")
 public record StatusMetricDTO(
-        @Schema(description = "Estado del incidente", example = "RESOLVED")
+        @Schema(description = "Incident status", example = "RESOLVED")
         IncidentStatus status,
 
-        @Schema(description = "Cantidad de incidentes en este estado", example = "63")
+        @Schema(description = "Number of incidents in this status", example = "63")
         Long incidentCount,
 
-        @Schema(description = "Porcentaje sobre el total de incidentes filtrados", example = "42.0")
+        @Schema(description = "Percentage of the filtered incidents", example = "42.0")
         Double percentageOfTotal
 ) {}
 

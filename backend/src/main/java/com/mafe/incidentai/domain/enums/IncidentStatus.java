@@ -1,6 +1,6 @@
 package com.mafe.incidentai.domain.enums;
 
-// Estados del ciclo de vida de un incidente tecnologico
+// Lifecycle statuses of a technology incident
 public enum IncidentStatus {
     OPEN,
     IN_AI_ANALYSIS,

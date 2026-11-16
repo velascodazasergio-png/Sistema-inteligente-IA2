@@ -5,7 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
 
-// Repositorio para consultar y administrar las categorias tecnicas
+// Repository to read and manage the technical categories
 public interface CategoryRepository extends JpaRepository<Category, Long> {
     List<Category> findByActiveTrue();
 }

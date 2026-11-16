@@ -18,7 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-// Servicio que orquesta la comunicacion con n8n, el guardado en cadena de respuestas IA, calificaciones e historial
+// Service that orchestrates the communication with n8n, saving AI responses, ratings and history
 @Service
 @RequiredArgsConstructor
 public class AiAssistanceService {
@@ -31,7 +31,7 @@ public class AiAssistanceService {
     private final UserRepository userRepository;
     private final N8nWebhookClient n8nWebhookClient;
 
-    // 1. Registra la consulta IA en estado PENDING, dispara el webhook de n8n y refleja COMMUNICATION_ERROR si falla
+    // 1. Records the AI query as PENDING, calls the n8n webhook and sets COMMUNICATION_ERROR if that fails
     @Transactional
     public Map<String, Object> requestAiAssistance(AiAssistanceRequestDTO request) {
         Incident incident = incidentRepository.findById(request.incidentId())
@@ -41,7 +41,7 @@ public class AiAssistanceService {
             throw new BusinessRuleException("Cannot request AI assistance for a CLOSED incident");
         }
 
-        // Construimos el prompt consolidado que queda registrado para auditoria en la tabla ai_queries
+        // Builds the consolidated prompt that is stored for auditing in the ai_queries table
         String consolidatedPrompt = String.format(
                 "[%s | Priority: %s] %s - %s. Additional Context: %s",
                 request.categoryName(),
@@ -56,20 +56,20 @@ public class AiAssistanceService {
         aiQuery.setSentPrompt(consolidatedPrompt);
         aiQuery.setQueryStatus(QueryStatus.PENDING);
 
-        // Guardamos primero la consulta en estado PENDING para obtener su ID autogenerado
+        // Save the query as PENDING first to get its generated ID
         AiQuery savedQuery = aiQueryRepository.save(aiQuery);
 
-        // Solo un incidente abierto pasa a IN_AI_ANALYSIS. Consultar a la IA sobre uno ya asignado o resuelto
-        // no lo reabre: si no, cada consulta bajaria el porcentaje de resolucion del dashboard.
+        // Only an open incident moves to IN_AI_ANALYSIS. Asking the AI about one that is already assigned or resolved
+        // does not reopen it; otherwise every query would lower the resolution rate on the dashboard.
         if (incident.getStatus() == IncidentStatus.OPEN) {
             incident.setStatus(IncidentStatus.IN_AI_ANALYSIS);
             incidentRepository.save(incident);
         }
 
-        // Disparamos la peticion HTTP hacia el webhook de n8n
+        // Send the HTTP request to the n8n webhook
         boolean deliveredToN8n = n8nWebhookClient.triggerIncidentAnalysis(savedQuery.getId(), request);
 
-        // Si hubo timeout o error de conexion con n8n, reflejamos el estado COMMUNICATION_ERROR en la base de datos
+        // If n8n timed out or the connection failed, store the COMMUNICATION_ERROR status in the database
         if (!deliveredToN8n) {
             savedQuery.setQueryStatus(QueryStatus.COMMUNICATION_ERROR);
             savedQuery.setFailureCode("N8N_UNREACHABLE");
@@ -88,13 +88,13 @@ public class AiAssistanceService {
         return response;
     }
 
-    // 2. Recibe y guarda en cadena (CascadeType.ALL) la respuesta de n8n: AiResponse, ResponseSource y similarityScore
+    // 2. Receives the n8n response and saves it in cascade (CascadeType.ALL): AiResponse, ResponseSource and similarityScore
     @Transactional
     public Map<String, Object> registerAiResponse(AiResponseDTO responseDto) {
         AiQuery aiQuery = aiQueryRepository.findById(responseDto.aiQueryId())
                 .orElseThrow(() -> new ResourceNotFoundException("AI Query not found with ID: " + responseDto.aiQueryId()));
 
-        // Validamos que esta consulta no tenga ya una respuesta registrada (relacion 1:1)
+        // Check that this query does not already have a response (1:1 relationship)
         if (aiResponseRepository.findByAiQueryId(aiQuery.getId()).isPresent()) {
             throw new BusinessRuleException("An AI response is already registered for AI Query ID: " + aiQuery.getId());
         }
@@ -106,7 +106,7 @@ public class AiAssistanceService {
         aiResponse.setConfidenceScore(responseDto.confidenceScore());
         aiResponse.setProcessingTimeMs(responseDto.processingTimeMs());
 
-        // Guardado en cadena de las fuentes documentales y sus puntajes de similitud (similarityScore)
+        // Cascade save of the source documents and their similarity scores (similarityScore)
         if (responseDto.sources() != null) {
             for (AiResponseDTO.SourceDTO sourceDto : responseDto.sources()) {
                 ResponseSource source = new ResponseSource();
@@ -115,7 +115,7 @@ public class AiAssistanceService {
                 source.setCitedSnippet(sourceDto.citedSnippet());
                 source.setSimilarityScore(sourceDto.similarityScore());
 
-                // Si n8n envio el ID de un KnowledgeArticle interno, validamos que exista y este ACTIVO y VERIFICADO (Restriccion RF02)
+                // If n8n sent the ID of an internal KnowledgeArticle, check that it exists and is ACTIVE and VERIFIED (RF02 rule)
                 if (sourceDto.knowledgeArticleId() != null) {
                     KnowledgeArticle article = knowledgeArticleRepository.findById(sourceDto.knowledgeArticleId())
                             .orElseThrow(() -> new ResourceNotFoundException(
@@ -128,18 +128,18 @@ public class AiAssistanceService {
                     source.setKnowledgeArticle(article);
                 }
 
-                // Sincroniza ambos lados de la relacion bidireccional 1:N
+                // Keeps both sides of the bidirectional 1:N relationship in sync
                 aiResponse.addSource(source);
             }
         }
 
-        // Persistimos AiResponse y en cascada todas sus ResponseSource
+        // Persist the AiResponse and, in cascade, all its ResponseSource entries
         AiResponse savedResponse = aiResponseRepository.save(aiResponse);
 
-        // Una respuesta valida reemplaza un error previo (p. ej. timeout del webhook)
+        // A valid response replaces a previous error (e.g. a webhook timeout)
         aiQuery.setFailureCode(null);
         aiQuery.setFailureMessage(null);
-        // COMPLETED si hubo fuentes; NO_RESULTS si n8n no encontro documentos relevantes
+        // COMPLETED when there were sources; NO_RESULTS when n8n found no relevant documents
         aiQuery.setQueryStatus(savedResponse.getSources().isEmpty() ? QueryStatus.NO_RESULTS : QueryStatus.COMPLETED);
         aiQueryRepository.save(aiQuery);
 
@@ -153,8 +153,8 @@ public class AiAssistanceService {
         return result;
     }
 
-    // Registra el fallo que reporta n8n: la consulta pasa a FAILED con su codigo y mensaje.
-    // Solo aplica a consultas sin respuesta; asi un fallo tardio no pisa una respuesta valida.
+    // Records the failure reported by n8n: the query moves to FAILED with its code and message.
+    // Only for queries without a response, so a late failure never overwrites a valid response.
     @Transactional
     public Map<String, Object> reportFailure(Long aiQueryId, AiFailureReportDTO report) {
         if (report.aiQueryId() != null && !report.aiQueryId().equals(aiQueryId)) {
@@ -170,7 +170,7 @@ public class AiAssistanceService {
 
         aiQuery.setQueryStatus(QueryStatus.FAILED);
         aiQuery.setFailureCode(report.errorCode().trim());
-        // Mensaje de n8n + indicacion de que revisar, deducida del detalle tecnico (que no se guarda)
+        // n8n message + a hint about what to check, derived from the technical detail (which is not stored)
         String hint = AiFailureHints.hint(report.errorCode(), report.technicalDetail());
         String message = hint == null ? report.message().trim() : report.message().trim() + " " + hint;
         aiQuery.setFailureMessage(message.length() > 500 ? message.substring(0, 500) : message);
@@ -184,7 +184,7 @@ public class AiAssistanceService {
         return result;
     }
 
-    // 3. Registra la calificacion (Rating) de un usuario/tecnico sobre una respuesta de la IA
+    // 3. Records the rating that a user/technician gives to an AI response
     @Transactional
     public RatingResponseDTO rateAiResponse(Long aiResponseId, CreateRatingRequestDTO request) {
         AiResponse aiResponse = aiResponseRepository.findById(aiResponseId)
@@ -218,7 +218,7 @@ public class AiAssistanceService {
         );
     }
 
-    // Incidente al que pertenece una respuesta de la IA (para validar quien puede calificarla)
+    // Incident that an AI response belongs to (to check who may rate it)
     @Transactional(readOnly = true)
     public Long findIncidentIdOfResponse(Long aiResponseId) {
         return aiResponseRepository.findById(aiResponseId)
@@ -226,7 +226,7 @@ public class AiAssistanceService {
                 .orElseThrow(() -> new ResourceNotFoundException("AI Response not found with ID: " + aiResponseId));
     }
 
-    // 4. Consulta el historial de interacciones con la IA (AiQuery) para un incidente especifico
+    // 4. Returns the history of AI interactions (AiQuery) for a specific incident
     @Transactional(readOnly = true)
     public List<AiQueryHistoryResponseDTO> getIncidentAiHistory(Long incidentId) {
         if (!incidentRepository.existsById(incidentId)) {
@@ -239,7 +239,7 @@ public class AiAssistanceService {
                 .toList();
     }
 
-    // 5. Historial global de consultas a la IA, con filtro opcional por estado
+    // 5. Global history of AI queries, with an optional status filter
     @Transactional(readOnly = true)
     public List<AiQueryHistoryResponseDTO> getAiHistory(QueryStatus status) {
         List<AiQuery> queries = status != null
@@ -248,7 +248,7 @@ public class AiAssistanceService {
         return queries.stream().map(this::mapToHistoryDTO).toList();
     }
 
-    // Transforma una entidad AiQuery y su arbol de relaciones (AiResponse -> ResponseSource / Rating) a DTO
+    // Maps an AiQuery entity and its relationship tree (AiResponse -> ResponseSource / Rating) to a DTO
     private AiQueryHistoryResponseDTO mapToHistoryDTO(AiQuery query) {
         AiResponse response = query.getAiResponse();
         AiQueryHistoryResponseDTO.AiResponseSummaryDTO responseSummary = null;

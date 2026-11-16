@@ -21,28 +21,28 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Controlador REST para registrar, consultar, actualizar informacion, cambiar estados y filtrar incidentes (RF01)
+// REST controller to register, read, update, change the status of and filter incidents (RF01)
 @RestController
 @RequestMapping("/api/v1/incidents")
 @RequiredArgsConstructor
-@Tag(name = "Incidents Management (RF01)", description = "Endpoints para crear, consultar, actualizar informacion, cambiar estado y filtrar incidentes tecnologicos")
+@Tag(name = "Incidents Management (RF01)", description = "Endpoints to create, read, update, change the status of and filter technology incidents")
 public class IncidentController {
 
     private final IncidentService incidentService;
     private final AccessPolicy accessPolicy;
 
-    // 1. Registra un nuevo incidente validando el DTO de entrada con @Valid
-    @Operation(summary = "Register a new technological incident", description = "El incidente nace en estado OPEN.")
+    // 1. Registers a new incident, validating the input DTO with @Valid
+    @Operation(summary = "Register a new technological incident", description = "The incident starts in the OPEN status.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Incidente registrado"),
-        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
-        @ApiResponse(responseCode = "404", description = "Usuario o categoria no encontrados"),
-        @ApiResponse(responseCode = "409", description = "La categoria esta inactiva")
+        @ApiResponse(responseCode = "201", description = "Incident registered"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "404", description = "User or category not found"),
+        @ApiResponse(responseCode = "409", description = "The category is inactive")
     })
     @PostMapping
     public ResponseEntity<IncidentResponseDTO> createIncident(
             @Valid @RequestBody CreateIncidentRequestDTO request) {
-        // Un empleado siempre reporta a su nombre, aunque envie otro userId
+        // An employee always reports in their own name, even if they send another userId
         if (accessPolicy.isEmployee()) {
             request = new CreateIncidentRequestDTO(request.title(), request.description(), request.priority(),
                     accessPolicy.user().id(), request.categoryId());
@@ -51,11 +51,11 @@ public class IncidentController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // 2. Devuelve el detalle de un incidente por su identificador
+    // 2. Returns the detail of an incident by its ID
     @Operation(summary = "Get an incident by ID")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Detalle del incidente"),
-        @ApiResponse(responseCode = "404", description = "Incidente no encontrado")
+        @ApiResponse(responseCode = "200", description = "Incident detail"),
+        @ApiResponse(responseCode = "404", description = "Incident not found")
     })
     @GetMapping("/{incidentId}")
     public ResponseEntity<IncidentResponseDTO> getIncident(@PathVariable Long incidentId) {
@@ -64,13 +64,13 @@ public class IncidentController {
         return ResponseEntity.ok(incident);
     }
 
-    // 3. Actualiza la informacion general de un incidente existente (titulo, descripcion, prioridad, categoria, usuario)
+    // 3. Updates the general information of an existing incident (title, description, priority, category, user)
     @Operation(summary = "Update an existing incident's information")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Informacion del incidente actualizada"),
-        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
-        @ApiResponse(responseCode = "404", description = "Incidente, usuario o categoria no encontrados"),
-        @ApiResponse(responseCode = "409", description = "El incidente ya esta cerrado (CLOSED) o la categoria esta inactiva")
+        @ApiResponse(responseCode = "200", description = "Incident information updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "404", description = "Incident, user or category not found"),
+        @ApiResponse(responseCode = "409", description = "The incident is already closed (CLOSED) or the category is inactive")
     })
     @PutMapping("/{incidentId}")
     public ResponseEntity<IncidentResponseDTO> updateIncident(
@@ -79,13 +79,13 @@ public class IncidentController {
         return ResponseEntity.ok(incidentService.updateIncident(incidentId, request));
     }
 
-    // 4. Actualiza el estado de un incidente existente
+    // 4. Updates the status of an existing incident
     @Operation(summary = "Update the status of an existing incident")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Estado actualizado"),
-        @ApiResponse(responseCode = "400", description = "Estado invalido o ausente"),
-        @ApiResponse(responseCode = "404", description = "Incidente no encontrado"),
-        @ApiResponse(responseCode = "409", description = "El incidente ya esta cerrado (CLOSED)")
+        @ApiResponse(responseCode = "200", description = "Status updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid or missing status"),
+        @ApiResponse(responseCode = "404", description = "Incident not found"),
+        @ApiResponse(responseCode = "409", description = "The incident is already closed (CLOSED)")
     })
     @PatchMapping("/{incidentId}/status")
     public ResponseEntity<IncidentResponseDTO> updateIncidentStatus(
@@ -95,12 +95,12 @@ public class IncidentController {
         return ResponseEntity.ok(response);
     }
 
-    // 5. Consulta incidentes aplicando filtros opcionales por categoria, prioridad, estado, usuario y fechas
+    // 5. Searches incidents with optional filters by category, priority, status, user and dates
     @Operation(summary = "Filter incidents dynamically by category, priority, status, user, and date range")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Incidentes que cumplen los filtros, del mas reciente al mas antiguo"),
-        @ApiResponse(responseCode = "400", description = "Prioridad, estado o fecha con formato invalido"),
-        @ApiResponse(responseCode = "409", description = "La fecha inicial es posterior a la final")
+        @ApiResponse(responseCode = "200", description = "Incidents that match the filters, newest first"),
+        @ApiResponse(responseCode = "400", description = "Priority, status or date with an invalid format"),
+        @ApiResponse(responseCode = "409", description = "The start date is after the end date")
     })
     @GetMapping
     public ResponseEntity<List<IncidentResponseDTO>> filterIncidents(
@@ -111,7 +111,7 @@ public class IncidentController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
 
-        // Un empleado solo ve sus propios incidentes
+        // An employee only sees their own incidents
         if (accessPolicy.isEmployee()) userId = accessPolicy.user().id();
         List<IncidentResponseDTO> results = incidentService.filterIncidents(
                 categoryId, priority, status, userId, startDate, endDate

@@ -29,14 +29,14 @@ import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 
-// Seguridad de la API: sesiones sin estado con JWT (HS256) y permisos por rol.
+// API security: stateless sessions with JWT (HS256) and role-based permissions.
 //
-// Roles (enum UserRole):
-//   ADMIN              -> todo, incluida la verificacion de articulos.
-//   SUPPORT_TECHNICIAN -> gestiona incidentes y articulos, dashboard y analitica.
-//   EMPLOYEE           -> solo sus propios incidentes, articulos publicados y su historial de IA.
-// La propiedad de los recursos del empleado se valida en AccessPolicy (controladores).
-// n8n no inicia sesion: se identifica con X-Callback-Token (ServiceTokenAuthenticationFilter).
+// Roles (UserRole enum):
+//   ADMIN              -> everything, including article verification.
+//   SUPPORT_TECHNICIAN -> manages incidents and articles, dashboard and analytics.
+//   EMPLOYEE           -> only their own incidents, published articles and their AI history.
+// Ownership of the employee's resources is checked in AccessPolicy (controllers).
+// n8n does not log in: it identifies itself with X-Callback-Token (ServiceTokenAuthenticationFilter).
 @Slf4j
 @Configuration
 @EnableWebSecurity
@@ -51,14 +51,14 @@ public class SecurityConfig {
     SecretKey jwtSigningKey(@Value("${app.jwt.secret:}") String secret) {
         byte[] bytes;
         if (secret == null || secret.isBlank()) {
-            // Sin JWT_SECRET: clave aleatoria. Funciona, pero las sesiones se pierden al reiniciar el backend.
+            // No JWT_SECRET: random key. It works, but sessions are lost when the backend restarts.
             bytes = new byte[32];
             new SecureRandom().nextBytes(bytes);
-            log.warn("JWT_SECRET no esta configurado: se usa una clave aleatoria y las sesiones se pierden al reiniciar.");
+            log.warn("JWT_SECRET is not set: using a random key, so sessions are lost on restart.");
         } else {
             bytes = secret.getBytes(StandardCharsets.UTF_8);
             if (bytes.length < 32) {
-                throw new IllegalStateException("JWT_SECRET debe tener al menos 32 caracteres (HS256).");
+                throw new IllegalStateException("JWT_SECRET must be at least 32 characters long (HS256).");
             }
         }
         return new SecretKeySpec(bytes, "HmacSHA256");
@@ -74,7 +74,7 @@ public class SecurityConfig {
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
-        // Valida expiracion (exp) y que el token lo haya emitido esta API (iss)
+        // Validates the expiration (exp) and that this API issued the token (iss)
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
                 JwtValidators.createDefaultWithIssuer(JwtService.ISSUER)));
         return decoder;
@@ -85,7 +85,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
-    // El claim "role" del token se convierte en la autoridad ROLE_<rol>
+    // The "role" claim of the token becomes the authority ROLE_<role>
     private JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter authorities = new JwtGrantedAuthoritiesConverter();
         authorities.setAuthoritiesClaimName(JwtService.ROLE_CLAIM);
@@ -102,7 +102,7 @@ public class SecurityConfig {
         boolean serviceTokenConfigured = callbackToken != null && !callbackToken.isBlank();
 
         http
-                // API sin estado: no hay cookies de sesion, por lo que CSRF no aplica
+                // Stateless API: there are no session cookies, so CSRF does not apply
                 .csrf(csrf -> csrf.disable())
                 .cors(Customizer.withDefaults())
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -115,39 +115,39 @@ public class SecurityConfig {
                 .exceptionHandling(e -> e.authenticationEntryPoint(errors).accessDeniedHandler(errors))
                 .authorizeHttpRequests(auth -> {
                     auth
-                            // Publicos: inicio de sesion, documentacion, consola H2 y preflight CORS
+                            // Public: login, documentation, H2 console and CORS preflight
                             .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                             .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                             .requestMatchers("/api-docs/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html",
                                     "/h2-console/**", "/error").permitAll()
-                            // Callbacks de n8n: los protege CallbackTokenFilter con X-Callback-Token
+                            // n8n callbacks: protected by CallbackTokenFilter with X-Callback-Token
                             .requestMatchers(HttpMethod.POST, "/api/v1/ai-assistance/responses",
                                     "/api/v1/ai-assistance/queries/*/failure").permitAll();
 
-                    // Lectura de articulos: n8n la usa para indexar y validar fuentes
+                    // Reading articles: n8n uses it to index and to validate sources
                     if (serviceTokenConfigured) {
                         auth.requestMatchers(HttpMethod.GET, "/api/v1/knowledge-articles", "/api/v1/knowledge-articles/*")
                                 .hasAnyRole(ADMIN, TECH, EMPLOYEE, SERVICE);
                     } else {
-                        // Sin CALLBACK_TOKEN (modo desarrollo) n8n no puede identificarse: la lectura queda abierta
-                        log.warn("CALLBACK_TOKEN vacio: la lectura de articulos queda abierta para que n8n pueda indexar.");
+                        // Without CALLBACK_TOKEN (development mode) n8n cannot identify itself: reading stays open
+                        log.warn("CALLBACK_TOKEN is empty: article reads stay open so n8n can index them.");
                         auth.requestMatchers(HttpMethod.GET, "/api/v1/knowledge-articles", "/api/v1/knowledge-articles/*")
                                 .permitAll();
                     }
 
                     auth
-                            // Base de conocimiento: crear y editar (admin, tecnico); verificar o activar (solo admin)
+                            // Knowledge base: create and edit (admin, technician); verify or activate (admin only)
                             .requestMatchers(HttpMethod.PATCH, "/api/v1/knowledge-articles/*/status").hasRole(ADMIN)
                             .requestMatchers("/api/v1/knowledge-articles/**").hasAnyRole(ADMIN, TECH)
-                            // Analitica y dashboard
+                            // Analytics and dashboard
                             .requestMatchers("/api/v1/analytics/**").hasAnyRole(ADMIN, TECH)
-                            // Directorio de usuarios (selectores de responsable, autor y evaluador)
+                            // User directory (selectors for reporter, author and evaluator)
                             .requestMatchers("/api/v1/users/**").hasAnyRole(ADMIN, TECH)
-                            // Editar un incidente o cambiar su estado: personal de soporte
+                            // Editing an incident or changing its status: support staff
                             .requestMatchers(HttpMethod.PUT, "/api/v1/incidents/*").hasAnyRole(ADMIN, TECH)
                             .requestMatchers(HttpMethod.PATCH, "/api/v1/incidents/*/status").hasAnyRole(ADMIN, TECH)
-                            // Incidentes, asistente IA, categorias y sesion: cualquier usuario con sesion.
-                            // El empleado solo ve lo suyo (AccessPolicy).
+                            // Incidents, AI assistant, categories and session: any logged-in user.
+                            // Employees only see their own data (AccessPolicy).
                             .requestMatchers("/api/v1/incidents/**", "/api/v1/ai-assistance/**", "/api/v1/categories/**",
                                     "/api/v1/auth/**").hasAnyRole(ADMIN, TECH, EMPLOYEE)
                             .anyRequest().authenticated();

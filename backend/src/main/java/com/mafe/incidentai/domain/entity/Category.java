@@ -8,7 +8,7 @@ import lombok.Setter;
 import java.util.ArrayList;
 import java.util.List;
 
-// Entidad catalogo para clasificar los incidentes tecnologicos y articulos de conocimiento
+// Catalog entity used to classify technology incidents and knowledge articles
 @Entity
 @Table(name = "categories")
 @Getter
@@ -29,7 +29,7 @@ public class Category {
     @Column(name = "is_active", nullable = false)
     private Boolean active = true;
 
-    // Lado inverso (1:N): Una categoria agrupa multiples incidentes
+    // Inverse side (1:N): a category groups many incidents
     @OneToMany(mappedBy = "category")
     private List<Incident> incidents = new ArrayList<>();
 }

@@ -11,14 +11,14 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.List;
 
-// Repositorio de incidentes con soporte para especificaciones dinamicas y las 10 consultas analiticas de RF06
+// Incident repository with support for dynamic specifications and the 10 RF06 analytics queries
 public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSpecificationExecutor<Incident> {
 
     List<Incident> findByStatus(IncidentStatus status);
     List<Incident> findByCategoryIdAndPriority(Long categoryId, Priority priority);
     List<Incident> findByUserIdOrderByCreatedAtDesc(Long userId);
 
-    // Filtros opcionales compartidos por las consultas analiticas: un parametro nulo no filtra
+    // Optional filters shared by the analytics queries: a null parameter does not filter
     String ANALYTICS_FILTERS = """
              (:categoryId IS NULL OR i.category.id = :categoryId)
              AND (:priority IS NULL OR i.priority = :priority)
@@ -37,28 +37,28 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
              com.mafe.incidentai.domain.enums.IncidentStatus.ASSIGNED_TO_TECH)
             """;
 
-    // 1. Total de incidentes registrados que cumplen los filtros
+    // 1. Total registered incidents that match the filters
     @Query("SELECT COUNT(i) FROM Incident i WHERE " + ANALYTICS_FILTERS)
     long countFiltered(@Param("categoryId") Long categoryId,
                        @Param("priority") Priority priority,
                        @Param("startDate") LocalDateTime startDate,
                        @Param("endDate") LocalDateTime endDate);
 
-    // 5. Incidentes resueltos o cerrados, base del porcentaje de incidentes resueltos
+    // 5. Resolved or closed incidents, the base of the resolution percentage
     @Query("SELECT COUNT(i) FROM Incident i WHERE i.status IN " + RESOLVED_STATUSES + " AND " + ANALYTICS_FILTERS)
     long countResolvedOrClosedFiltered(@Param("categoryId") Long categoryId,
                                        @Param("priority") Priority priority,
                                        @Param("startDate") LocalDateTime startDate,
                                        @Param("endDate") LocalDateTime endDate);
 
-    // 10a. Incidentes pendientes (en estado OPEN, IN_AI_ANALYSIS o ASSIGNED_TO_TECH)
+    // 10a. Pending incidents (status OPEN, IN_AI_ANALYSIS or ASSIGNED_TO_TECH)
     @Query("SELECT COUNT(i) FROM Incident i WHERE i.status IN " + PENDING_STATUSES + " AND " + ANALYTICS_FILTERS)
     long countPendingFiltered(@Param("categoryId") Long categoryId,
                               @Param("priority") Priority priority,
                               @Param("startDate") LocalDateTime startDate,
                               @Param("endDate") LocalDateTime endDate);
 
-    // 10b. Incidentes vencidos (pendientes cuya fecha de creacion es anterior al limite SLA)
+    // 10b. Overdue incidents (pending ones created before the SLA limit)
     @Query("SELECT COUNT(i) FROM Incident i WHERE i.status IN " + PENDING_STATUSES
             + " AND i.createdAt < :overdueThreshold AND " + ANALYTICS_FILTERS)
     long countOverdueFiltered(@Param("categoryId") Long categoryId,
@@ -67,7 +67,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                               @Param("endDate") LocalDateTime endDate,
                               @Param("overdueThreshold") LocalDateTime overdueThreshold);
 
-    // 6. Tiempo promedio de resolucion en segundos (updatedAt - createdAt) de los incidentes resueltos o cerrados
+    // 6. Average resolution time in seconds (updatedAt - createdAt) of resolved or closed incidents
     @Query("""
             SELECT AVG((i.updatedAt - i.createdAt) BY SECOND)
             FROM Incident i
@@ -79,7 +79,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                                             @Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate);
 
-    // 2 y 7. Incidentes por categoria ordenados de mayor a menor frecuencia de problemas
+    // 2 and 7. Incidents per category, from most to least frequent
     @Query("""
             SELECT i.category.id, i.category.name, COUNT(i)
             FROM Incident i
@@ -93,7 +93,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                                              @Param("startDate") LocalDateTime startDate,
                                              @Param("endDate") LocalDateTime endDate);
 
-    // 3. Incidentes agrupados por nivel de prioridad
+    // 3. Incidents grouped by priority level
     @Query("""
             SELECT i.priority, COUNT(i)
             FROM Incident i
@@ -107,7 +107,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                                                    @Param("startDate") LocalDateTime startDate,
                                                    @Param("endDate") LocalDateTime endDate);
 
-    // 4. Incidentes agrupados por estado actual
+    // 4. Incidents grouped by current status
     @Query("""
             SELECT i.status, COUNT(i)
             FROM Incident i
@@ -121,7 +121,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                                                  @Param("startDate") LocalDateTime startDate,
                                                  @Param("endDate") LocalDateTime endDate);
 
-    // 8. Evolucion semanal: incidentes reportados y resueltos por anio y semana ISO
+    // 8. Weekly trend: reported and resolved incidents per year and ISO week
     @Query("""
             SELECT EXTRACT(YEAR FROM i.createdAt), EXTRACT(WEEK FROM i.createdAt), COUNT(i),
                    SUM(CASE WHEN i.status IN
@@ -138,7 +138,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSp
                                             @Param("startDate") LocalDateTime startDate,
                                             @Param("endDate") LocalDateTime endDate);
 
-    // 9. Evolucion mensual: incidentes reportados y resueltos agrupados por anio y mes
+    // 9. Monthly trend: reported and resolved incidents grouped by year and month
     @Query("""
             SELECT EXTRACT(YEAR FROM i.createdAt), EXTRACT(MONTH FROM i.createdAt), COUNT(i),
                    SUM(CASE WHEN i.status IN

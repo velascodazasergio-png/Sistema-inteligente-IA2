@@ -15,23 +15,23 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-// Controlador REST de catalogos: categorias y usuarios para formularios y filtros
+// REST controller for catalogs: categories and users for forms and filters
 @RestController
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
-@Tag(name = "Catalogs", description = "Categorias tecnicas y usuarios para formularios y filtros")
+@Tag(name = "Catalogs", description = "Technical categories and users for forms and filters")
 public class CatalogController {
 
     private final CatalogService catalogService;
 
-    @Operation(summary = "List technical categories", description = "Con activeOnly=true devuelve solo las categorias activas.")
+    @Operation(summary = "List technical categories", description = "With activeOnly=true it returns only the active categories.")
     @GetMapping("/categories")
     public ResponseEntity<List<CategoryResponseDTO>> listCategories(
             @RequestParam(defaultValue = "false") boolean activeOnly) {
         return ResponseEntity.ok(catalogService.listCategories(activeOnly));
     }
 
-    @Operation(summary = "List system users", description = "Filtro opcional por rol: EMPLOYEE, SUPPORT_TECHNICIAN o ADMIN.")
+    @Operation(summary = "List system users", description = "Optional filter by role: EMPLOYEE, SUPPORT_TECHNICIAN or ADMIN.")
     @GetMapping("/users")
     public ResponseEntity<List<UserSummaryDTO>> listUsers(@RequestParam(required = false) UserRole role) {
         return ResponseEntity.ok(catalogService.listUsers(role));

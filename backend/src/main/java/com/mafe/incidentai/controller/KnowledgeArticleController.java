@@ -25,20 +25,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
 
-// Controlador REST de la base de conocimiento (RF02)
+// REST controller for the knowledge base (RF02)
 @RestController
 @RequestMapping("/api/v1/knowledge-articles")
 @RequiredArgsConstructor
-@Tag(name = "Knowledge Base (RF02)", description = "Articulos tecnicos. Solo los activos y verificados se usan como fuentes del asistente IA.")
+@Tag(name = "Knowledge Base (RF02)", description = "Technical articles. Only active and verified ones are used as sources by the AI assistant.")
 public class KnowledgeArticleController {
 
     private final KnowledgeArticleService knowledgeArticleService;
     private final AccessPolicy accessPolicy;
 
-    @Operation(summary = "Search knowledge articles", description = "Filtros opcionales: q (texto en titulo o contenido), categoryId, active y verified.")
+    @Operation(summary = "Search knowledge articles", description = "Optional filters: q (text in the title or content), categoryId, active and verified.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Articulos que cumplen los filtros, del mas reciente al mas antiguo"),
-        @ApiResponse(responseCode = "400", description = "Filtro con formato invalido")
+        @ApiResponse(responseCode = "200", description = "Articles that match the filters, newest first"),
+        @ApiResponse(responseCode = "400", description = "Filter with an invalid format")
     })
     @GetMapping
     public ResponseEntity<List<KnowledgeArticleResponseDTO>> searchArticles(
@@ -46,7 +46,7 @@ public class KnowledgeArticleController {
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Boolean active,
             @RequestParam(required = false) Boolean verified) {
-        // Un empleado solo ve los articulos publicados (activos y verificados). n8n (sin usuario) no se filtra.
+        // An employee only sees published articles (active and verified). n8n (no user) is not filtered.
         if (accessPolicy.isAuthenticatedUser() && accessPolicy.isEmployee()) {
             active = true;
             verified = true;
@@ -56,8 +56,8 @@ public class KnowledgeArticleController {
 
     @Operation(summary = "Get a knowledge article by ID")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Detalle del articulo"),
-        @ApiResponse(responseCode = "404", description = "Articulo no encontrado")
+        @ApiResponse(responseCode = "200", description = "Article detail"),
+        @ApiResponse(responseCode = "404", description = "Article not found")
     })
     @GetMapping("/{articleId}")
     public ResponseEntity<KnowledgeArticleResponseDTO> getArticle(@PathVariable Long articleId) {
@@ -66,24 +66,24 @@ public class KnowledgeArticleController {
         return ResponseEntity.ok(article);
     }
 
-    @Operation(summary = "Create a knowledge article", description = "El articulo nace activo y sin verificar.")
+    @Operation(summary = "Create a knowledge article", description = "The article starts active and unverified.")
     @ApiResponses({
-        @ApiResponse(responseCode = "201", description = "Articulo creado"),
-        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
-        @ApiResponse(responseCode = "404", description = "Categoria o autor no encontrados"),
-        @ApiResponse(responseCode = "409", description = "La categoria esta inactiva")
+        @ApiResponse(responseCode = "201", description = "Article created"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "404", description = "Category or author not found"),
+        @ApiResponse(responseCode = "409", description = "The category is inactive")
     })
     @PostMapping
     public ResponseEntity<KnowledgeArticleResponseDTO> createArticle(@Valid @RequestBody KnowledgeArticleRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(knowledgeArticleService.createArticle(request));
     }
 
-    @Operation(summary = "Update a knowledge article", description = "Si cambia el titulo o el contenido, el articulo vuelve a quedar sin verificar.")
+    @Operation(summary = "Update a knowledge article", description = "If the title or the content changes, the article becomes unverified again.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Articulo actualizado"),
-        @ApiResponse(responseCode = "400", description = "Datos de entrada invalidos"),
-        @ApiResponse(responseCode = "404", description = "Articulo, categoria o autor no encontrados"),
-        @ApiResponse(responseCode = "409", description = "La nueva categoria esta inactiva")
+        @ApiResponse(responseCode = "200", description = "Article updated"),
+        @ApiResponse(responseCode = "400", description = "Invalid input"),
+        @ApiResponse(responseCode = "404", description = "Article, category or author not found"),
+        @ApiResponse(responseCode = "409", description = "The new category is inactive")
     })
     @PutMapping("/{articleId}")
     public ResponseEntity<KnowledgeArticleResponseDTO> updateArticle(
@@ -92,11 +92,11 @@ public class KnowledgeArticleController {
         return ResponseEntity.ok(knowledgeArticleService.updateArticle(articleId, request));
     }
 
-    @Operation(summary = "Activate, deactivate or verify a knowledge article", description = "Los campos omitidos no cambian.")
+    @Operation(summary = "Activate, deactivate or verify a knowledge article", description = "Omitted fields do not change.")
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Estado actualizado"),
-        @ApiResponse(responseCode = "404", description = "Articulo no encontrado"),
-        @ApiResponse(responseCode = "409", description = "No se envio active ni verified")
+        @ApiResponse(responseCode = "200", description = "Status updated"),
+        @ApiResponse(responseCode = "404", description = "Article not found"),
+        @ApiResponse(responseCode = "409", description = "Neither active nor verified was sent")
     })
     @PatchMapping("/{articleId}/status")
     public ResponseEntity<KnowledgeArticleResponseDTO> updateStatus(

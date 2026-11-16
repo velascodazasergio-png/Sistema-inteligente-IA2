@@ -22,7 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-// Servicio de la base de conocimiento (RF02): solo los articulos activos y verificados alimentan al RAG
+// Knowledge base service (RF02): only active and verified articles feed the RAG
 @Service
 @RequiredArgsConstructor
 public class KnowledgeArticleService {
@@ -32,7 +32,7 @@ public class KnowledgeArticleService {
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
 
-    // Lista articulos con filtros opcionales: texto en titulo o contenido, categoria, activo y verificado
+    // Lists articles with optional filters: text in the title or content, category, active and verified
     @Transactional(readOnly = true)
     public List<KnowledgeArticleResponseDTO> searchArticles(String q, Long categoryId, Boolean active, Boolean verified) {
         Specification<KnowledgeArticle> spec = (root, query, cb) -> {
@@ -66,7 +66,7 @@ public class KnowledgeArticleService {
         return toDTO(findArticle(articleId));
     }
 
-    // Crea un articulo. Nace activo y sin verificar: un especialista debe validarlo antes de que lo use la IA.
+    // Creates an article. It starts active and unverified: a specialist must check it before the AI uses it.
     @Transactional
     public KnowledgeArticleResponseDTO createArticle(KnowledgeArticleRequestDTO request) {
         KnowledgeArticle article = new KnowledgeArticle();
@@ -76,7 +76,7 @@ public class KnowledgeArticleService {
         return toDTO(knowledgeArticleRepository.save(article));
     }
 
-    // Edita un articulo. Si cambia el titulo o el contenido, vuelve a quedar sin verificar.
+    // Edits an article. If the title or the content changes, it becomes unverified again.
     @Transactional
     public KnowledgeArticleResponseDTO updateArticle(Long articleId, KnowledgeArticleRequestDTO request) {
         KnowledgeArticle article = findArticle(articleId);
@@ -87,12 +87,12 @@ public class KnowledgeArticleService {
             article.setVerified(false);
         }
         KnowledgeArticle saved = knowledgeArticleRepository.save(article);
-        // Reindexa (o borra el vector si quedo sin verificar) cuando la transaccion se confirme
+        // Reindexes (or deletes the vector if it became unverified) once the transaction commits
         eventPublisher.publishEvent(new KnowledgeArticleChangedEvent(saved.getId()));
         return toDTO(saved);
     }
 
-    // Activa/desactiva o verifica un articulo
+    // Activates/deactivates or verifies an article
     @Transactional
     public KnowledgeArticleResponseDTO updateStatus(Long articleId, UpdateKnowledgeArticleStatusDTO request) {
         if (request.active() == null && request.verified() == null) {
@@ -106,7 +106,7 @@ public class KnowledgeArticleService {
             article.setVerified(request.verified());
         }
         KnowledgeArticle saved = knowledgeArticleRepository.save(article);
-        // Indexa al verificar/activar y borra el vector al desactivar
+        // Indexes on verify/activate and deletes the vector on deactivate
         eventPublisher.publishEvent(new KnowledgeArticleChangedEvent(saved.getId()));
         return toDTO(saved);
     }
@@ -115,7 +115,7 @@ public class KnowledgeArticleService {
         Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.categoryId()));
         boolean categoryChanged = article.getCategory() == null || !category.getId().equals(article.getCategory().getId());
-        // Regla de negocio: no se asignan articulos a una categoria inactiva
+        // Business rule: articles cannot be assigned to an inactive category
         if (categoryChanged && Boolean.FALSE.equals(category.getActive())) {
             throw new BusinessRuleException("Cannot assign an article to an inactive category: " + category.getName());
         }
@@ -136,18 +136,18 @@ public class KnowledgeArticleService {
         article.setCategory(category);
     }
 
-    // Arma el texto completo que indexa el flujo RAG a partir de las secciones del articulo
+    // Builds the full text that the RAG workflow indexes from the article sections
     static String composeContent(KnowledgeArticleRequestDTO request) {
-        StringBuilder text = new StringBuilder("Problema: ").append(request.problem().trim());
+        StringBuilder text = new StringBuilder("Problem: ").append(request.problem().trim());
         String symptoms = blankToNull(request.symptoms());
         String cause = blankToNull(request.cause());
         if (symptoms != null) {
-            text.append("\nSintomas: ").append(symptoms);
+            text.append("\nSymptoms: ").append(symptoms);
         }
         if (cause != null) {
-            text.append("\nCausa: ").append(cause);
+            text.append("\nCause: ").append(cause);
         }
-        return text.append("\nSolucion: ").append(request.solution().trim()).toString();
+        return text.append("\nSolution: ").append(request.solution().trim()).toString();
     }
 
     private static String blankToNull(String value) {

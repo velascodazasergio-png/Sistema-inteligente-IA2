@@ -4,8 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-// Contrato DTO de salida con el detalle de la calificacion registrada sobre una respuesta de IA
-@Schema(description = "Respuesta con los datos de la calificacion registrada")
+// Output DTO with the detail of the rating recorded for an AI response
+@Schema(description = "Response with the data of the recorded rating")
 public record RatingResponseDTO(
         Long id,
         Long aiResponseId,

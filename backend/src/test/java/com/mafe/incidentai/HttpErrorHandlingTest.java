@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-// Peticiones invalidas que antes respondian 500: cada una debe devolver su codigo HTTP correcto
+// Invalid requests that used to return 500: each one must return its correct HTTP status
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -25,7 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.jpa.show-sql=false",
         "spring.datasource.url=jdbc:h2:mem:http_errors_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL"
 })
-// Las pruebas de la API usan una sesion de administrador; los permisos por rol se prueban en SecurityTest
+// API tests use an administrator session; role permissions are tested in SecurityTest
 @WithMockUser(username = "sarah.jenkins@enterprise.io", roles = "ADMIN")
 class HttpErrorHandlingTest {
 

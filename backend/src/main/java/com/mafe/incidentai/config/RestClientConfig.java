@@ -10,7 +10,7 @@ import org.springframework.web.client.RestTemplate;
 import java.net.http.HttpClient;
 import java.time.Duration;
 
-// Configuracion del cliente HTTP RestTemplate con tiempos maximos de espera (timeouts) hacia n8n
+// RestTemplate HTTP client with maximum wait times (timeouts) towards n8n
 @Configuration
 public class RestClientConfig {
 
@@ -22,14 +22,14 @@ public class RestClientConfig {
 
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
-        // HTTP/1.1 explicito: el HttpClient del JDK usa HTTP/2 por defecto y en texto plano intenta
-        // "Upgrade: h2c"; n8n trata esa peticion como un upgrade de websocket y nunca responde.
+        // Explicit HTTP/1.1: the JDK HttpClient defaults to HTTP/2 and, over plain text, it tries
+        // "Upgrade: h2c"; n8n treats that request as a websocket upgrade and never answers.
         HttpClient httpClient = HttpClient.newBuilder()
                 .version(HttpClient.Version.HTTP_1_1)
                 .connectTimeout(Duration.ofMillis(connectTimeoutMs))
                 .build();
         JdkClientHttpRequestFactory requestFactory = new JdkClientHttpRequestFactory(httpClient);
-        // readTimeout (15s) evita que Tomcat se bloquee si n8n tarda demasiado
+        // readTimeout (15s) keeps Tomcat from blocking if n8n takes too long
         requestFactory.setReadTimeout(Duration.ofMillis(readTimeoutMs));
         return builder.requestFactory(() -> requestFactory).build();
     }

@@ -5,8 +5,8 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-// Credenciales para iniciar sesion
-@Schema(description = "Correo y contrasena del usuario")
+// Credentials to log in
+@Schema(description = "User email and password")
 public record LoginRequestDTO(
         @Schema(example = "sarah.jenkins@enterprise.io")
         @NotBlank(message = "Email is required")

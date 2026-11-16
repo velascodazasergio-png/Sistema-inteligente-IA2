@@ -9,16 +9,16 @@ import org.springframework.data.repository.query.Param;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-// Repositorio para consultar las calificaciones de utilidad sobre las respuestas de la IA
+// Repository to read the usefulness ratings of AI responses
 public interface RatingRepository extends JpaRepository<Rating, Long> {
 
     Optional<Rating> findByAiResponseId(Long aiResponseId);
 
-    // Calcula el promedio real de calificacion (1 a 5) otorgado a las respuestas de la IA
+    // Computes the real average rating (1 to 5) given to AI responses
     @Query("SELECT COALESCE(AVG(r.score), 0.0) FROM Rating r")
     Double calculateAverageRatingScore();
 
-    // Promedio de calificacion de la IA sobre los incidentes que cumplen los filtros analiticos
+    // Average AI rating over the incidents that match the analytics filters
     @Query("""
             SELECT AVG(r.score)
             FROM Rating r

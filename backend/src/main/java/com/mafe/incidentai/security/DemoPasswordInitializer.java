@@ -12,9 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
-// Al arrancar, asigna la contrasena de demostracion (DEMO_PASSWORD) a los usuarios que aun no tienen.
-// Asi los usuarios semilla de data.sql, y los de una base PostgreSQL ya existente, pueden iniciar sesion.
-// No cambia contrasenas ya asignadas. Con DEMO_PASSWORD vacio no hace nada.
+// On startup, assigns the demo password (DEMO_PASSWORD) to the users that do not have one yet.
+// This lets the seed users of data.sql, and those of an existing PostgreSQL database, log in.
+// Passwords already set are never changed. With an empty DEMO_PASSWORD it does nothing.
 @Slf4j
 @Component
 public class DemoPasswordInitializer implements ApplicationRunner {
@@ -38,10 +38,10 @@ public class DemoPasswordInitializer implements ApplicationRunner {
                 .filter(u -> u.getPasswordHash() == null || u.getPasswordHash().isBlank())
                 .toList();
         if (withoutPassword.isEmpty()) return;
-        // Un solo hash BCrypt (con su sal) para todos: calcularlo es lento a proposito
+        // A single BCrypt hash (with its salt) for everyone: computing it is slow on purpose
         String hash = passwordEncoder.encode(demoPassword);
         withoutPassword.forEach(u -> u.setPasswordHash(hash));
         userRepository.saveAll(withoutPassword);
-        log.info("Contrasena de demostracion asignada a {} usuario(s) sin contrasena.", withoutPassword.size());
+        log.info("Demo password assigned to {} user(s) without a password.", withoutPassword.size());
     }
 }

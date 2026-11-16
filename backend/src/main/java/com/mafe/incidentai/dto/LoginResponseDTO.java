@@ -4,8 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.Instant;
 
-// Sesion iniciada: token JWT para el encabezado Authorization y datos del usuario
-@Schema(description = "Token de acceso y usuario autenticado")
+// Session started: JWT for the Authorization header and the user data
+@Schema(description = "Access token and authenticated user")
 public record LoginResponseDTO(
         String accessToken,
         String tokenType,

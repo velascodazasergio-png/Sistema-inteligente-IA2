@@ -2,12 +2,12 @@ package com.mafe.incidentai.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-// Cambio parcial de los indicadores de un articulo. Los campos nulos no se modifican.
-@Schema(description = "Activa/desactiva o verifica un articulo. Los campos omitidos no cambian.")
+// Partial change of the flags of an article. Null fields are left unchanged.
+@Schema(description = "Activates/deactivates or verifies an article. Omitted fields do not change.")
 public record UpdateKnowledgeArticleStatusDTO(
-        @Schema(description = "true para activar, false para desactivar", example = "true")
+        @Schema(description = "true to activate, false to deactivate", example = "true")
         Boolean active,
 
-        @Schema(description = "true para marcar como verificado", example = "true")
+        @Schema(description = "true to mark it as verified", example = "true")
         Boolean verified
 ) {}
