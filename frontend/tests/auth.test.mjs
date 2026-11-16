@@ -1,5 +1,5 @@
-// Pruebas de la sesión (JWT) y de las secciones que ve cada rol.
-// Ejecutar desde la raíz del repositorio:  node --test "frontend/tests/*.test.mjs"
+// Tests for the session (JWT) and for the sections each role can see.
+// Run from the repository root:  node --test "frontend/tests/*.test.mjs"
 
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -8,8 +8,11 @@ import { isExpired, canAccess, homeFor, setSession, clearSession, getSession, cu
 import { routes, resolveRoute, visibleRoutes } from '../js/routes.js';
 import { request } from '../js/api.js';
 
+// Expiration date one hour from now
 const inOneHour = () => new Date(Date.now() + 3600_000).toISOString();
+// Route definition by path
 const route = (path) => routes.find((r) => r.path === path);
+// Sections a role can open
 const pathsFor = (role) => routes.filter((r) => !r.public && canAccess(r, role)).map((r) => r.path);
 
 describe('sesión', () => {
@@ -89,6 +92,7 @@ describe('cliente HTTP con sesión', () => {
     clearSession({ silent: true });
   });
 
+  // Fake fetch that records the call and answers with the given status and JSON
   const reply = (status, body) => async (url, init) => {
     calls.push({ url: String(url), init });
     return new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });

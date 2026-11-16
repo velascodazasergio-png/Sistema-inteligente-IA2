@@ -1,5 +1,5 @@
-# Entorno completo: PostgreSQL, backend Spring Boot, frontend estático, n8n y Qdrant.
-# Uso: cp .env.example .env  (y completar las claves)  →  docker compose up -d --build
+# Full environment: PostgreSQL, Spring Boot backend, static frontend, n8n and Qdrant.
+# Usage: cp .env.example .env  (and fill in the keys)  →  docker compose up -d --build
 name: incidentes-ia
 
 services:
@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
     volumes:
       - postgres-data:/var/lib/postgresql/data
-    # Solo accesible desde este equipo
+    # Only reachable from this machine
     ports:
       - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -39,7 +39,7 @@ services:
       N8N_WEBHOOK_AUTH_HEADER: ${N8N_WEBHOOK_AUTH_HEADER:-X-N8N-Token}
       N8N_WEBHOOK_AUTH_VALUE: ${N8N_WEBHOOK_AUTH_VALUE:-}
       CALLBACK_TOKEN: ${CALLBACK_TOKEN:-}
-      # Sesiones con JWT: clave de firma, duracion y contrasena inicial de los usuarios de data.sql
+      # JWT sessions: signing key, session length and initial password of the data.sql users
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_EXPIRATION_MINUTES: ${JWT_EXPIRATION_MINUTES:-480}
       DEMO_PASSWORD: ${DEMO_PASSWORD:-Soporte2026*}
@@ -53,8 +53,8 @@ services:
       retries: 12
       start_period: 30s
 
-  # Crea un certificado autofirmado para localhost la primera vez (si ./certs no tiene uno).
-  # Con un certificado real, copia fullchain.pem y privkey.pem en ./certs y este paso no hace nada.
+  # Creates a self-signed certificate for localhost the first time (if ./certs does not have one).
+  # With a real certificate, copy fullchain.pem and privkey.pem into ./certs and this step does nothing.
   certs:
     image: alpine:3.20
     volumes:
@@ -97,7 +97,7 @@ services:
     ports:
       - "127.0.0.1:${QDRANT_PORT:-6333}:6333"
     healthcheck:
-      # La imagen no trae curl ni wget: se consulta /readyz con bash
+      # The image has neither curl nor wget: /readyz is queried with bash
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333 && printf \"GET /readyz HTTP/1.0\r\n\r\n\" >&3 && grep -q \"200 OK\" <&3'"]
       interval: 10s
       timeout: 5s
@@ -105,9 +105,9 @@ services:
 
   n8n:
     image: n8nio/n8n:1.80.0
-    # Antes de "n8n start", n8n/setup.sh crea las credenciales con los valores del .env, importa el flujo
-    # combinado y lo activa: n8n queda listo en cualquier equipo, sin pasos manuales.
-    # tr quita los \r que deja Git en Windows (core.autocrlf) y que romperían el script.
+    # Before "n8n start", n8n/setup.sh creates the credentials from the .env values, imports the combined
+    # workflow and activates it: n8n is ready on any machine, with no manual steps.
+    # tr removes the \r that Git leaves on Windows (core.autocrlf), which would break the script.
     entrypoint: ["tini", "--", "/bin/sh", "-c"]
     command: ["tr -d '\\r' < /setup.sh > /tmp/setup.sh && sh /tmp/setup.sh && exec /docker-entrypoint.sh"]
     depends_on:
@@ -118,7 +118,7 @@ services:
     environment:
       GENERIC_TIMEZONE: ${TZ:-America/Bogota}
       TZ: ${TZ:-America/Bogota}
-      # Los flujos leen su configuración con $env.*
+      # The workflows read their configuration through $env.*
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       SPRING_BASE_URL: http://backend:8080
       QDRANT_URL: http://qdrant:6333
@@ -132,7 +132,7 @@ services:
       RAG_TOP_K: ${RAG_TOP_K:-5}
       MIN_CHARS_DESCRIPCION: ${MIN_CHARS_DESCRIPCION:-20}
       CALLBACK_TOKEN: ${CALLBACK_TOKEN:-}
-      # Para n8n/setup.sh: credencial del webhook (la misma que envía el backend)
+      # For n8n/setup.sh: webhook credential (the same one the backend sends)
       N8N_AUTO_SETUP: ${N8N_AUTO_SETUP:-true}
       N8N_WEBHOOK_AUTH_HEADER: ${N8N_WEBHOOK_AUTH_HEADER:-X-N8N-Token}
       N8N_WEBHOOK_AUTH_VALUE: ${N8N_WEBHOOK_AUTH_VALUE:-}
@@ -143,7 +143,7 @@ services:
     ports:
       - "127.0.0.1:${N8N_PORT:-5678}:5678"
     healthcheck:
-      # 127.0.0.1 y no localhost: en la imagen localhost resuelve a IPv6 y n8n escucha en IPv4
+      # 127.0.0.1 and not localhost: in the image localhost resolves to IPv6 and n8n listens on IPv4
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:5678/healthz > /dev/null || exit 1"]
       interval: 10s
       timeout: 5s

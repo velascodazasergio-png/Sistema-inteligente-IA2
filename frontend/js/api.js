@@ -1,6 +1,6 @@
-// Cliente HTTP único hacia Spring Boot.
-// Regla de negocio: el frontend NUNCA llama a n8n, Qdrant ni OpenRouter;
-// todas las peticiones pasan por aquí y van a la API REST del backend.
+// Single HTTP client towards Spring Boot.
+// Business rule: the frontend NEVER calls n8n, Qdrant or OpenRouter;
+// every request goes through here to the backend REST API.
 
 import { getApiBaseUrl, normalizeBaseUrl } from './config.js';
 import { translateApiMessage } from './api-messages.js';
@@ -24,20 +24,24 @@ const STATUS_MESSAGES = {
   504: 'El servidor tardó demasiado en responder.',
 };
 
+// HTTP error with status, code, details and per-field errors, ready to show in the UI
 export class ApiError extends Error {
+  // Builds the error with its message and HTTP details
   constructor(message, { status = 0, code = 'HTTP_ERROR', details = null, fieldErrors = {}, cause } = {}) {
     super(message, { cause });
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
     this.details = details;
-    // Errores de validación por campo, ya traducidos: { title: 'El título es obligatorio.' }
+    // Per-field validation errors, already translated: { title: 'El título es obligatorio.' }
     this.fieldErrors = fieldErrors;
   }
 }
 
+// true if the request was cancelled (not a real error)
 export const isAbortError = (error) => error?.name === 'AbortError';
 
+// Full API URL with the query string (empty values are skipped)
 function buildUrl(path, query) {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   const url = new URL(`${getApiBaseUrl()}${cleanPath}`);
@@ -51,6 +55,7 @@ function buildUrl(path, query) {
   return url;
 }
 
+// Reads the response body as JSON, text or nothing (204)
 async function parseBody(response) {
   if (response.status === 204) return null;
   const type = response.headers.get('content-type') || '';
@@ -59,16 +64,16 @@ async function parseBody(response) {
   return text || null;
 }
 
-// Errores de validación por campo ({ details: { campo: mensaje } } del GlobalExceptionHandler), traducidos.
+// Per-field validation errors ({ details: { field: message } } from GlobalExceptionHandler), translated.
 function fieldErrorsFrom(body) {
   if (!body || typeof body !== 'object' || !body.details || typeof body.details !== 'object') return {};
   return Object.fromEntries(Object.entries(body.details).map(([field, message]) => [field, translateApiMessage(message) ?? message]));
 }
 
-// Mensaje legible y en español para una respuesta de error de Spring Boot.
-// - 400 de validación: los mensajes de cada campo.
-// - 400/404/409 con mensaje propio del backend: su traducción (o el original si no se reconoce).
-// - 405, 415, 5xx y demás: un mensaje genérico según el código, sin detalles técnicos en inglés.
+// Readable Spanish message for a Spring Boot error response.
+// - 400 validation: the message of each field.
+// - 400/404/409 with a backend message: its translation (or the original if unknown).
+// - 405, 415, 5xx and others: a generic message for the code, without English technical details.
 function messageFrom(status, body, fieldErrors) {
   const fields = Object.values(fieldErrors);
   if (fields.length) return fields.join(' · ');
@@ -81,6 +86,7 @@ function messageFrom(status, body, fieldErrors) {
   return STATUS_MESSAGES[status] ?? `Error inesperado (HTTP ${status}).`;
 }
 
+// Sends a request to the backend with JWT, timeout and cancellation; throws ApiError on failure
 export async function request(path, {
   method = 'GET',
   body,
@@ -92,10 +98,11 @@ export async function request(path, {
 } = {}) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeout);
+  // Cancels this request when the caller's signal is aborted
   const forwardAbort = () => controller.abort();
   signal?.addEventListener('abort', forwardAbort, { once: true });
 
-  // Con sesión, cada petición lleva el JWT. El login (auth: false) no lo necesita.
+  // With a session, every request carries the JWT. Login (auth: false) does not need it.
   const token = auth ? getToken() : null;
 
   let response;
@@ -112,7 +119,7 @@ export async function request(path, {
       signal: controller.signal,
     });
   } catch (error) {
-    // Cancelada por quien llamó (p. ej. el usuario cambió de sección).
+    // Cancelled by the caller (e.g. the user moved to another section).
     if (signal?.aborted) throw error;
     if (controller.signal.aborted) {
       throw new ApiError('El servidor tardó demasiado en responder.', { code: 'TIMEOUT', cause: error });
@@ -128,7 +135,7 @@ export async function request(path, {
 
   const data = await parseBody(response).catch(() => null);
   if (!response.ok) {
-    // Token vencido o inválido: se cierra la sesión y la aplicación vuelve al inicio de sesión
+    // Expired or invalid token: the session is closed and the app goes back to the login screen
     if (response.status === 401 && token) {
       clearSession();
       if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('auth:expired'));
@@ -147,9 +154,9 @@ export const api = {
   delete: (path, options) => request(path, { ...options, method: 'DELETE' }),
 };
 
-// Comprueba si el backend responde. Usa /api-docs (springdoc), que ya existe.
-// mode 'no-cors' permite saber si el servidor está levantado aunque aún no
-// tenga CORS configurado; no sirve para leer datos.
+// Checks whether the backend answers. Uses /api-docs (springdoc), which always exists.
+// mode 'no-cors' tells whether the server is up even if CORS is not
+// configured yet; it cannot be used to read data.
 export async function checkHealth(baseUrl = getApiBaseUrl(), timeout = 4000) {
   try {
     await fetch(`${normalizeBaseUrl(baseUrl)}/api-docs`, {

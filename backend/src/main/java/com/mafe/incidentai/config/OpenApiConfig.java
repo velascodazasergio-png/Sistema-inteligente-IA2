@@ -15,6 +15,7 @@ public class OpenApiConfig {
 
     private static final String BEARER = "bearerAuth";
 
+    // API title, description and Bearer (JWT) security scheme shown in Swagger
     @Bean
     public OpenAPI customOpenAPI() {
         return new OpenAPI()

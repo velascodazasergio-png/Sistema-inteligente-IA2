@@ -106,7 +106,7 @@
   text-transform: uppercase;
 }
 
-/* Icono de cada sección dentro de un pequeño mosaico */
+/* Icon of each section inside a small tile */
 .nav-link__icon {
   display: grid;
   flex-shrink: 0;
@@ -134,7 +134,7 @@
   box-shadow: 0 6px 16px -8px rgba(99, 102, 241, 0.9);
 }
 
-/* Estado de la API en el pie de la sidebar */
+/* API status at the bottom of the sidebar */
 .sidebar-status {
   display: flex;
   align-items: center;
@@ -206,7 +206,7 @@
   transform: scale(1.08);
 }
 
-/* Estado activo: fondo tenue + barra luminosa a la izquierda */
+/* Active state: faint background + glowing bar on the left */
 .nav-link[aria-current="page"] {
   background: linear-gradient(90deg, rgba(59, 130, 246, 0.16), rgba(139, 92, 246, 0.06));
   color: var(--text);
@@ -253,7 +253,7 @@
   transition: transform var(--dur) var(--ease-out);
 }
 
-/* Sidebar contraída: solo en escritorio/tablet */
+/* Collapsed sidebar: desktop/tablet only */
 @media (min-width: 768px) {
   .app[data-sidebar="collapsed"] {
     grid-template-columns: var(--sidebar-w-collapsed) minmax(0, 1fr);
@@ -285,7 +285,7 @@
     transform: scaleX(-1);
   }
 
-  /* Tooltip con el nombre de la sección */
+  /* Tooltip with the section name */
   .app[data-sidebar="collapsed"] .nav-link::after {
     content: attr(data-label);
     position: absolute;
@@ -367,7 +367,7 @@
   gap: var(--space-3);
 }
 
-/* ---------- Vista (contenido de cada sección) ---------- */
+/* ---------- View (content of each section) ---------- */
 .view {
   flex: 1;
   width: 100%;

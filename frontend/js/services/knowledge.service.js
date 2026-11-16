@@ -1,10 +1,11 @@
-// Servicio de la base de conocimiento (RF02).
-// Contrato: backend/src/main/java/com/mafe/incidentai/controller/KnowledgeArticleController.java
+// Knowledge base service (RF02).
+// Contract: backend/src/main/java/com/mafe/incidentai/controller/KnowledgeArticleController.java
 
 import { api } from '../api.js';
 
 const BASE = '/api/v1/knowledge-articles';
 
+// Empty filter → not sent
 const flag = (value) => (value === '' || value == null ? undefined : value);
 
 /**
@@ -21,9 +22,10 @@ export const searchArticles = (filters = {}, options) => api.get(BASE, {
   },
 });
 
+// GET /{id} — one article
 export const getArticle = (id, options) => api.get(`${BASE}/${id}`, options);
 
-// El backend arma "content" (lo que indexa n8n) a partir de estas secciones.
+// The backend builds "content" (what n8n indexes) from these sections.
 const body = ({ title, problem, symptoms, cause, solution, referenceUrl, categoryId, authorUserId }) => ({
   title: title.trim(),
   problem: problem.trim(),
@@ -35,10 +37,10 @@ const body = ({ title, problem, symptoms, cause, solution, referenceUrl, categor
   authorUserId: authorUserId ? Number(authorUserId) : null,
 });
 
-/** POST — el artículo nace activo y sin verificar. */
+/** POST — the article starts active and unverified. */
 export const createArticle = (data, options) => api.post(BASE, body(data), options);
 
-/** PUT — si cambia el título o el contenido, el backend lo deja sin verificar. */
+/** PUT — if the title or the content changes, the backend marks it as unverified. */
 export const updateArticle = (id, data, options) => api.put(`${BASE}/${id}`, body(data), options);
 
 /** PATCH /{id}/status — { active?, verified? } */

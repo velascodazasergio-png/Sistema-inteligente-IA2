@@ -24,6 +24,7 @@ public class AccessPolicy {
     private final CurrentUser currentUser;
     private final IncidentService incidentService;
 
+    // User of the current request
     public CurrentUser.AuthUser user() {
         return currentUser.get();
     }
@@ -33,10 +34,12 @@ public class AccessPolicy {
         return currentUser.find().isPresent();
     }
 
+    // true if the current user is an employee
     public boolean isEmployee() {
         return user().is(UserRole.EMPLOYEE);
     }
 
+    // true if the current user is an administrator
     public boolean isAdmin() {
         return user().is(UserRole.ADMIN);
     }
@@ -49,6 +52,7 @@ public class AccessPolicy {
         }
     }
 
+    // Throws 403 if an employee asks for someone else's incident (by ID)
     public void checkIncident(Long incidentId) {
         if (isEmployee()) checkIncident(incidentService.getIncident(incidentId));
     }

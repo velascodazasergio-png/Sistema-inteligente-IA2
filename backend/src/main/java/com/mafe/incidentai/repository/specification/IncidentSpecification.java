@@ -13,10 +13,12 @@ import java.util.List;
 // Utility class that builds dynamic JPA predicates from the filters sent by the user
 public final class IncidentSpecification {
 
+    // Utility class: not meant to be instantiated
     private IncidentSpecification() {
         // Private constructor: utility class, not meant to be instantiated
     }
 
+    // Builds the incident query from the filters that were sent (null = not filtered)
     public static Specification<Incident> withDynamicFilters(
             Long categoryId,
             Priority priority,

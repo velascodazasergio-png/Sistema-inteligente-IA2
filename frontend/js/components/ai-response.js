@@ -1,7 +1,7 @@
-// Tarjeta de una consulta a la IA (AiQueryHistoryResponseDTO): estado,
-// diagnóstico, solución, pasos, fuentes con similitud y calificación (RF05 / RF08).
-// La usan el Asistente y el Historial. Solo muestra lo que devolvió el backend:
-// si no hay respuesta, no se simula ninguna.
+// Card for an AI query (AiQueryHistoryResponseDTO): status,
+// diagnosis, solution, steps, sources with similarity and rating (RF05 / RF08).
+// Used by the Assistant and the History. It only shows what the backend returned:
+// if there is no response, none is faked.
 
 import { icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { currentUser } from '../auth.js';
@@ -12,15 +12,16 @@ import { rateResponse } from '../services/ai-assistance.service.js';
 import { showServerFieldErrors } from './form-errors.js';
 import { translateFailureMessage } from '../api-messages.js';
 
-// Mensajes del backend por código de fallo, en el idioma de la interfaz.
+// Backend messages per failure code, in the language of the UI.
 const FAILURE_MESSAGES = {
   N8N_UNREACHABLE: 'El servicio de IA (n8n) no aceptó la solicitud o no respondió a tiempo.',
 };
+// Text to show for a failed query (translated to Spanish)
 const failureText = (query) => FAILURE_MESSAGES[query.failureCode] ?? translateFailureMessage(query.failureMessage);
 
 const decimal = new Intl.NumberFormat('es-CO', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
 
-// Solo enlaces http(s): una URL "javascript:" de una fuente no debe ejecutarse.
+// Only http(s) links: a "javascript:" URL in a source must never run.
 const safeUrl = (value) => {
   try {
     const url = new URL(value);
@@ -31,10 +32,10 @@ const safeUrl = (value) => {
 };
 
 /**
- * Separa el texto del flujo RAG en secciones. n8n envía:
+ * Splits the RAG workflow text into sections. n8n sends:
  *   suggestedDiagnosis: "Solución sugerida: …\n\nExplicación del problema: …"
  *   solutionSteps:      "1. …\n2. …\n\nAdvertencias:\n- …"
- * Si el texto no sigue ese formato se muestra completo como diagnóstico.
+ * If the text does not follow that format, it is shown in full as the diagnosis.
  */
 export function parseResponse(response) {
   const diagnosis = response?.suggestedDiagnosis?.trim() ?? '';
@@ -51,19 +52,21 @@ export function parseResponse(response) {
   };
 }
 
-// Pasos: uno por línea; si todo viene en una línea, se separa por "1. … 2. …".
-// Solo números de 1 o 2 dígitos marcan un paso, para no cortar "evento 4740." o "versión 2.3".
+// Steps: one per line; if everything comes in one line, it is split at "1. … 2. …".
+// Only 1- or 2-digit numbers mark a step, so "evento 4740." or "versión 2.3" are not cut.
 function splitSteps(text) {
   const parts = /\n/.test(text.trim()) ? text.split(/\n+/) : text.split(/\s+(?=\d{1,2}[.)]\s)/);
   return parts.map((s) => s.replace(/^\s*\d{1,2}[.)]\s+/, '').trim()).filter(Boolean);
 }
 
+// Small bar with a percentage (confidence or similarity)
 const meter = (value, label) => `
   <span class="meter" role="img" aria-label="${escapeHtml(label)}: ${formatRatio(value)}">
     <span class="meter__bar"><span style="width: ${Math.max(0, Math.min(1, value ?? 0)) * 100}%"></span></span>
     <span class="meter__value">${formatRatio(value)}</span>
   </span>`;
 
+// List of the sources used by the AI, most similar first
 function sourcesHtml(sources) {
   const sorted = [...sources].sort((a, b) => (b.similarityScore ?? 0) - (a.similarityScore ?? 0));
   return `
@@ -90,6 +93,7 @@ function sourcesHtml(sources) {
     </ul>`;
 }
 
+// Summary of a rating that was already given
 function ratingSummaryHtml(rating) {
   return `
     <div class="ai-rating ai-rating--done">
@@ -102,8 +106,8 @@ function ratingSummaryHtml(rating) {
     </div>`;
 }
 
-// Animación mientras n8n busca en la base de conocimiento y genera la respuesta.
-// Describe el proceso; no inventa progreso: termina cuando llega la respuesta real.
+// Animation while n8n searches the knowledge base and writes the response.
+// It describes the process without faking progress: it ends when the real response arrives.
 export const searchingHtml = () => `
   <div class="ai-search" role="status">
     <div class="ai-search__orb" aria-hidden="true"><span></span><span></span><span></span>${icon('i-sparkles')}</div>
@@ -119,8 +123,8 @@ export const searchingHtml = () => `
 
 let uid = 0;
 
-// Formulario de calificación. users: [{id, name}] para elegir al evaluador (solo administrador).
-// Con users = null califica el usuario de la sesión (el backend usa siempre su id).
+// Rating form. users: [{id, name}] to pick the evaluator (administrator only).
+// With users = null the logged-in user rates (the backend always uses their id).
 function mountRatingForm(slot, aiResponseId, users, onRated) {
   const id = `rate-${++uid}`;
   const me = currentUser();
@@ -197,17 +201,20 @@ function mountRatingForm(slot, aiResponseId, users, onRated) {
   });
 }
 
+// Numbered section of the response (diagnosis, solution, steps)
 const section = (n, title, body) => `
   <section class="ai-section">
     <h4 class="ai-section__title"><span class="ai-section__n" aria-hidden="true">${n}</span>${title}</h4>
     ${body}
   </section>`;
 
+// Assistant warnings, if there are any
 const warningsHtml = (warnings) => (warnings.length ? `
   <div class="note note--warning ai-warnings">${icon('i-alert')}
     <div><strong>Advertencias del asistente</strong><ul>${warnings.map((w) => `<li>${escapeHtml(w)}</li>`).join('')}</ul></div>
   </div>` : '');
 
+// Body of the card according to the query status
 function contentHtml(query, status) {
   const response = query.aiResponse;
   if (status === 'PENDING') return searchingHtml();
@@ -246,7 +253,7 @@ function contentHtml(query, status) {
 }
 
 /**
- * Pinta una consulta en `container`.
+ * Renders a query into `container`.
  * @param {object} query AiQueryHistoryResponseDTO
  * @param {{users?:Array<{id,name}>, onRated?:Function, heading?:string}} options
  */
@@ -280,7 +287,7 @@ export function renderAiQuery(container, query, { users = [], onRated, heading }
   else if (response?.aiResponseId) mountRatingForm(slot, response.aiResponseId, users, onRated);
 }
 
-// Texto corto de la respuesta para listados.
+// Short text of the response for lists.
 export function responseSummary(query) {
   const status = estadoConsulta(query);
   if (status === 'PENDING') return 'Esperando respuesta…';

@@ -1,20 +1,20 @@
 #!/bin/sh
-# Configura n8n antes de que arranque (ver el servicio n8n en docker-compose.yml):
-#   1. crea o actualiza las credenciales "Webhook entrante (Spring Boot)" y "Qdrant API Key" con los valores del .env;
-#   2. importa n8n/workflows/03-flujos-combinados.json con esas credenciales ya asignadas;
-#   3. desactiva cualquier otro flujo (dos webhooks con la misma ruta impiden activar) y activa el combinado.
-# Lo ejecuta el contenedor n8n en cada arranque, antes de "n8n start": el repositorio es la fuente de verdad de los flujos.
-# Para conservar cambios hechos a mano en la interfaz de n8n: N8N_AUTO_SETUP=false en el .env.
+# Configures n8n before it starts (see the n8n service in docker-compose.yml):
+#   1. creates or updates the "Webhook entrante (Spring Boot)" and "Qdrant API Key" credentials with the .env values;
+#   2. imports n8n/workflows/03-flujos-combinados.json with those credentials already assigned;
+#   3. deactivates any other workflow (two webhooks with the same path block activation) and activates the combined one.
+# The n8n container runs it on every start, before "n8n start": the repository is the source of truth for the workflows.
+# To keep changes made by hand in the n8n editor: N8N_AUTO_SETUP=false in the .env file.
 set -eu
 
 if [ "${N8N_AUTO_SETUP:-true}" = "false" ]; then
-  echo "[n8n-setup] N8N_AUTO_SETUP=false: no se modifica n8n."
+  echo "[n8n-setup] N8N_AUTO_SETUP=false: n8n is left unchanged."
   exit 0
 fi
 
 if [ -z "${N8N_WEBHOOK_AUTH_VALUE:-}" ]; then
-  echo "[n8n-setup] ERROR: falta N8N_WEBHOOK_AUTH_VALUE en el .env."
-  echo "[n8n-setup] Es el token con el que el backend llama a n8n. Copia .env.example como .env y complétalo."
+  echo "[n8n-setup] ERROR: N8N_WEBHOOK_AUTH_VALUE is missing in the .env file."
+  echo "[n8n-setup] It is the token the backend uses to call n8n. Copy .env.example to .env and fill it in."
   exit 1
 fi
 
@@ -22,7 +22,7 @@ WORKFLOW_FILE=/workflows/03-flujos-combinados.json
 WORKFLOW_ID=flujoCombinado001
 TMP=$(mktemp -d)
 
-# Los JSON se arman con Node (viene en la imagen de n8n) para no romperlos con caracteres especiales
+# The JSON files are built with Node (included in the n8n image) so special characters cannot break them
 node - "$WORKFLOW_FILE" "$TMP" "$WORKFLOW_ID" <<'NODE'
 const fs = require('fs');
 const [file, out, workflowId] = process.argv.slice(2);
@@ -39,7 +39,7 @@ const credentials = [
     id: 'credQdrantApiKey',
     name: 'Qdrant API Key',
     type: 'httpHeaderAuth',
-    // Qdrant no tiene clave en docker-compose; el valor solo debe existir
+    // Qdrant has no key in docker-compose; the value only has to exist
     data: { name: 'api-key', value: env.QDRANT_API_KEY || 'sin-clave' },
   },
 ];
@@ -57,15 +57,15 @@ for (const node of workflow.nodes) {
 fs.writeFileSync(`${out}/workflows.json`, JSON.stringify([workflow]));
 NODE
 
-echo "[n8n-setup] Credenciales..."
+echo "[n8n-setup] Credentials..."
 n8n import:credentials --input="$TMP/credentials.json"
 
-echo "[n8n-setup] Flujo $WORKFLOW_FILE..."
+echo "[n8n-setup] Workflow $WORKFLOW_FILE..."
 n8n import:workflow --input="$TMP/workflows.json"
 
-echo "[n8n-setup] Activando solo el flujo combinado..."
+echo "[n8n-setup] Activating only the combined workflow..."
 n8n update:workflow --all --active=false
 n8n update:workflow --id="$WORKFLOW_ID" --active=true
 
 rm -rf "$TMP"
-echo "[n8n-setup] Listo."
+echo "[n8n-setup] Done."

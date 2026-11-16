@@ -38,6 +38,7 @@ class KnowledgeIndexingTest {
     private static final BlockingQueue<String> RECEIVED = new LinkedBlockingQueue<>();
     private static final HttpServer N8N = startFakeN8n();
 
+    // Local HTTP server that plays the n8n indexing webhook and records each call
     private static HttpServer startFakeN8n() {
         try {
             HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0);
@@ -54,6 +55,7 @@ class KnowledgeIndexingTest {
         }
     }
 
+    // Points the backend at the fake n8n webhook
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("n8n.webhook.index-url",
@@ -63,6 +65,7 @@ class KnowledgeIndexingTest {
         registry.add("spring.datasource.url", () -> "jdbc:h2:mem:indexing_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL");
     }
 
+    // Stops the fake n8n server after the tests
     @AfterAll
     static void stopFakeN8n() {
         N8N.stop(0);

@@ -1,11 +1,11 @@
-// Errores de validación que devuelve el backend (400), mostrados junto a cada campo
-// con el mismo aspecto que la validación del navegador.
+// Validation errors returned by the backend (400), shown next to each field
+// with the same look as the browser validation.
 
 /**
  * @param {HTMLFormElement} form
- * @param {{ fieldErrors?: Record<string, string> }} error  ApiError del cliente HTTP.
- * @param {(field: string) => string} errorIdFor  id del <p class="field__error"> de cada campo.
- * @returns {boolean} true si algún error quedó junto a su campo.
+ * @param {{ fieldErrors?: Record<string, string> }} error  ApiError from the HTTP client.
+ * @param {(field: string) => string} errorIdFor  id of the <p class="field__error"> of each field.
+ * @returns {boolean} true if at least one error was placed next to its field.
  */
 export function showServerFieldErrors(form, error, errorIdFor) {
   let first = null;
@@ -23,9 +23,10 @@ export function showServerFieldErrors(form, error, errorIdFor) {
   return Boolean(first);
 }
 
-/** Contador "n/máx" para un campo con maxlength. */
+/** "n/max" counter for a field with maxlength. */
 export function attachCounter(field, output) {
   const max = Number(field.getAttribute('maxlength'));
+  // Refreshes the "n/max" counter
   const update = () => { output.textContent = `${field.value.length}/${max}`; };
   field.addEventListener('input', update);
   update();

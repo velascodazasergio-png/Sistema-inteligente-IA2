@@ -86,7 +86,7 @@ docker compose logs n8n | grep -E "n8n-setup|Started"
 # PowerShell:  docker compose logs n8n | Select-String "n8n-setup|Started"
 ```
 
-Debe mostrar `[n8n-setup] Listo.` y el flujo `Flujos 01 + 02 combinados …` como `Started`.
+Debe mostrar `[n8n-setup] Done.` y el flujo `Flujos 01 + 02 combinados …` como `Started`.
 
 ### 1.4 Indexar la base de conocimiento (una sola vez)
 
@@ -548,7 +548,7 @@ Lo primero es revisar `docker compose ps` y los logs del servicio que falla (`do
 | `port is already allocated` | Otro programa usa ese puerto (por ejemplo, otro n8n en el 5678). Cámbialo en el `.env` (`N8N_PORT`, `BACKEND_PORT`, …) y ejecuta `docker compose up -d` |
 | `permission denied ... docker.sock` (Linux) | Falta el grupo `docker`: ejecuta `sudo usermod -aG docker $USER` y vuelve a iniciar sesión |
 | `error during connect` / `cannot find the file specified` (Windows) | Docker Desktop no está abierto |
-| n8n se reinicia y el log dice `falta N8N_WEBHOOK_AUTH_VALUE` | Completa el token en el `.env` (paso 1.2) y ejecuta `docker compose up -d` |
+| n8n se reinicia y el log dice `N8N_WEBHOOK_AUTH_VALUE is missing` | Completa el token en el `.env` (paso 1.2) y ejecuta `docker compose up -d` |
 | El log de n8n muestra `\r` o `not found` | Copia antigua del repositorio con fin de línea de Windows. Ejecuta `git pull` y `docker compose up -d` |
 | El webhook de n8n responde `403 Authorization data is wrong!` | El token no coincide. Revisa `N8N_WEBHOOK_AUTH_VALUE` y ejecuta `docker compose up -d backend n8n` |
 | El webhook de n8n responde `404` | El flujo no está activo. Mira `docker compose logs n8n` y ejecuta `docker compose restart n8n` |

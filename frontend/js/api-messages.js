@@ -1,9 +1,9 @@
-// Traduce al español los mensajes que devuelve el backend (validaciones de los DTO,
-// reglas de negocio y recursos inexistentes). Lo que no se reconoce devuelve null y
-// el cliente HTTP usa un mensaje genérico según el código de estado.
+// Translates into Spanish the messages returned by the backend (DTO validations,
+// business rules and missing resources). Unknown messages return null and
+// the HTTP client falls back to a generic message for the status code.
 
 const EXACT = {
-  // Validaciones de los formularios (DTO)
+  // Form validations (DTO)
   'Title is required': 'El título es obligatorio.',
   'Title must be between 5 and 150 characters': 'El título debe tener entre 5 y 150 caracteres.',
   'Title must be between 5 and 180 characters': 'El título debe tener entre 5 y 180 caracteres.',
@@ -33,7 +33,7 @@ const EXACT = {
   'Maximum score is 5': 'La calificación máxima es 5 estrellas.',
   'Helpful indicator is required': 'Indica si la respuesta fue útil.',
   'Feedback comment cannot exceed 500 characters': 'El comentario no puede superar 500 caracteres.',
-  // Sesión y permisos (401 / 403)
+  // Session and permissions (401 / 403)
   'Invalid email or password': 'Correo o contraseña incorrectos.',
   'Authentication required': 'Inicia sesión para continuar.',
   'Invalid or expired token': 'Tu sesión expiró. Inicia sesión de nuevo.',
@@ -43,14 +43,14 @@ const EXACT = {
   'Email is required': 'Escribe tu correo.',
   'Email must be a valid address': 'Escribe un correo válido.',
   'Password is required': 'Escribe tu contraseña.',
-  // Reglas de negocio (409)
+  // Business rules (409)
   'Cannot change the status of an already CLOSED incident': 'El incidente está cerrado: ya no se puede cambiar su estado.',
   'Cannot modify an already CLOSED incident': 'El incidente está cerrado: ya no se puede modificar.',
   'Cannot request AI assistance for a CLOSED incident': 'No se puede consultar a la IA sobre un incidente cerrado.',
   'Send at least one field to update: active or verified': 'Indica qué quieres cambiar: activo o verificado.',
   'Start date cannot be after end date': 'La fecha inicial no puede ser posterior a la final.',
   'This AI response has already been rated': 'Esta respuesta ya fue calificada.',
-  // Errores de formato (400)
+  // Format errors (400)
   'Malformed request body or invalid field value': 'La solicitud tiene un formato inválido o un valor no permitido.',
 };
 
@@ -68,12 +68,13 @@ const PATTERNS = [
   [/^Invalid value '(.*)'/, (value) => `El valor "${value}" no es válido.`],
 ];
 
-// Indicaciones que el backend añade al mensaje de fallo de una consulta a la IA
-// (backend/.../service/AiFailureHints.java). Van en inglés y pueden estar al final del mensaje de n8n.
+// Hints that the backend appends to the failure message of an AI query
+// (backend/.../service/AiFailureHints.java). They come in English, possibly after the n8n message.
 const SERVICE_NAMES = {
   'OpenRouter (embedding model)': 'OpenRouter (modelo de embeddings)',
   'OpenRouter (chat model)': 'OpenRouter (modelo de chat)',
 };
+// Spanish name of the service mentioned in a hint
 const service = (name) => SERVICE_NAMES[name] ?? name;
 const SERVICE = '(Qdrant|OpenRouter \\((?:embedding|chat) model\\))';
 
@@ -100,7 +101,7 @@ const FAILURE_HINTS = [
     (s) => `n8n no pudo conectarse con ${service(s)}: revisa la red o la URL configurada.`],
 ];
 
-/** Traduce la indicación en inglés que el backend agrega al mensaje de fallo de una consulta a la IA. */
+/** Translates the English hint that the backend appends to the failure message of an AI query. */
 export function translateFailureMessage(message) {
   if (typeof message !== 'string') return message;
   for (const [regex, build] of FAILURE_HINTS) {
@@ -110,6 +111,7 @@ export function translateFailureMessage(message) {
   return message;
 }
 
+// Spanish text for a backend message, or null if it is not recognized
 export function translateApiMessage(message) {
   if (typeof message !== 'string' || !message.trim()) return null;
   const text = message.trim();

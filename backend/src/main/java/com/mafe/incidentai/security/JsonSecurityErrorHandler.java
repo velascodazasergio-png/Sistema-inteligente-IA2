@@ -23,6 +23,7 @@ public class JsonSecurityErrorHandler implements AuthenticationEntryPoint, Acces
     public static final String INVALID_TOKEN = "Invalid or expired token";
     public static final String ACCESS_DENIED = "You do not have permission to perform this action";
 
+    // 401: no token, or an invalid/expired token
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException ex)
             throws IOException {
@@ -33,12 +34,14 @@ public class JsonSecurityErrorHandler implements AuthenticationEntryPoint, Acces
         write(response, HttpStatus.UNAUTHORIZED, badToken ? INVALID_TOKEN : AUTH_REQUIRED);
     }
 
+    // 403: the role is not allowed to perform the action
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response, AccessDeniedException ex)
             throws IOException {
         write(response, HttpStatus.FORBIDDEN, ACCESS_DENIED);
     }
 
+    // Writes the error as JSON
     private void write(HttpServletResponse response, HttpStatus status, String message) throws IOException {
         response.setStatus(status.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);

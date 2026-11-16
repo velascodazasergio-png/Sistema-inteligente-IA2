@@ -1,5 +1,5 @@
-// Router basado en hash (#/seccion): navegación sin recargar la página
-// y compatible con cualquier servidor estático.
+// Hash-based router (#/section): navigation without reloading the page
+// that works with any static server.
 
 import { routes, resolveRoute } from './routes.js';
 import { pageHeader, toast } from './ui.js';
@@ -12,34 +12,36 @@ const eyebrowEl = document.getElementById('topbar-eyebrow');
 let controller = null;
 let isFirstRender = true;
 
+// Goes to a section (re-renders if it is already open)
 export function navigate(path) {
   const hash = `#/${path}`;
   if (location.hash === hash) render();
   else location.hash = hash;
 }
 
-// Parámetros de la ruta actual: #/asistente?incidente=12 → URLSearchParams
+// Parameters of the current route: #/asistente?incidente=12 → URLSearchParams
 export function routeParams() {
   return new URLSearchParams(location.hash.split('?')[1] ?? '');
 }
 
-// Sin sección en la URL: el inicio del rol (o el login si no hay sesión)
+// No section in the URL: the role's home (or the login screen without a session)
 function currentPath() {
   return location.hash.replace(/^#\/?/, '').split(/[?/]/)[0] || homeFor(currentUser()?.role);
 }
 
+// Replaces the URL without adding to the history and renders it
 const redirect = (path) => {
   history.replaceState(null, '', `#/${path}`);
   return render();
 };
 
-// Decide qué sección mostrar según la sesión y el rol.
-// Devuelve la ruta a dibujar o, si hay que redirigir, la promesa del nuevo render.
+// Decides which section to show based on the session and the role.
+// Returns the route to render or, when redirecting, the promise of the new render.
 function guard(route) {
   const session = getSession();
   if (!route) return redirect(homeFor(session?.user?.role));
   if (!route.public && !session) {
-    // Sin sesión: al login, recordando a dónde quería ir
+    // No session: go to the login screen, remembering where the user wanted to go
     const next = location.hash.replace(/^#\/?/, '');
     history.replaceState(null, '', `#/login${next && !next.startsWith('login') ? `?next=${encodeURIComponent(next)}` : ''}`);
     return render();
@@ -52,32 +54,34 @@ function guard(route) {
   return resolveRoute(route);
 }
 
+// Marks the active menu item and updates the title and accent color
 function updateChrome(route) {
   document.querySelectorAll('.nav-link[data-route]').forEach((link) => {
     if (link.dataset.route === route.path) link.setAttribute('aria-current', 'page');
     else link.removeAttribute('aria-current');
   });
-  // Cada módulo tiene su propio color de acento (css/color.css)
+  // Each module has its own accent color (css/color.css)
   document.documentElement.dataset.module = route.path;
   titleEl.textContent = route.title;
   eyebrowEl.textContent = route.rf ?? 'Sistema';
   document.title = `${route.title} · Incidentes IA`;
 }
 
+// Renders the current section (cancels the previous one, loads the view module)
 async function render() {
   const route = guard(routes.find((r) => r.path === currentPath()));
   if (route instanceof Promise) return route;
-  // La pantalla de login ocupa toda la ventana (sin barra lateral ni superior)
+  // The login screen takes the whole window (no side or top bar)
   document.getElementById('app').dataset.layout = route.layout ?? 'app';
 
-  // Cancela las peticiones de la vista anterior.
+  // Cancels the requests of the previous view.
   controller?.abort();
   controller = new AbortController();
   const { signal } = controller;
 
   updateChrome(route);
-  // Una ventana abierta (detalle, formulario) pertenece a la sección anterior: se cierra al navegar.
-  // Se hace antes de dibujar la nueva, que puede abrir la suya (p. ej. #/incidentes?id=12).
+  // An open dialog (detail, form) belongs to the previous section: it is closed when navigating.
+  // This runs before rendering the new section, which may open its own (e.g. #/incidentes?id=12).
   document.querySelectorAll('dialog[open]').forEach((dialog) => dialog.close());
 
   try {
@@ -86,7 +90,7 @@ async function render() {
 
     view.replaceChildren();
     view.classList.remove('view--enter');
-    void view.offsetWidth; // reinicia la animación de entrada
+    void view.offsetWidth; // restarts the entry animation
     view.classList.add('view--enter');
 
     await module.render(view, { route, signal });
@@ -97,7 +101,7 @@ async function render() {
     toast('No se pudo cargar la sección. Recarga la página.', { type: 'error' });
   }
 
-  // Al navegar, el foco va al título para lectores de pantalla y teclado.
+  // After navigating, focus moves to the title for screen readers and keyboard users.
   if (!isFirstRender) {
     window.scrollTo({ top: 0 });
     view.querySelector('.page-title')?.focus({ preventScroll: true });
@@ -107,6 +111,7 @@ async function render() {
   window.dispatchEvent(new CustomEvent('route:change', { detail: { route } }));
 }
 
+// Starts listening to URL changes and renders the first section
 export function startRouter() {
   window.addEventListener('hashchange', render);
   render();

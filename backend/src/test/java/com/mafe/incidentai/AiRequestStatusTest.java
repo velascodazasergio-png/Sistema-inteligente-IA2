@@ -31,6 +31,7 @@ class AiRequestStatusTest {
     @Autowired
     private MockMvc mvc;
 
+    // JSON body of an AI request for the given incident
     private String request(long incidentId) {
         return """
                 {"incidentId": %d, "incidentTitle": "Incident", "detailedDescription": "%s",

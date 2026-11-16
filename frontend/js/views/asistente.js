@@ -1,7 +1,7 @@
-// Asistente IA (RF05): orientación técnica para un incidente.
-// El backend registra la consulta y la envía a n8n (RAG con Qdrant + LLM).
-// Cuando n8n devuelve la respuesta, el backend la guarda; aquí se consulta
-// el historial del incidente hasta que aparezca.
+// AI assistant (RF05): technical guidance for an incident.
+// The backend records the query and sends it to n8n (RAG with Qdrant + LLM).
+// When n8n returns the response, the backend stores it; this view polls
+// the incident history until it shows up.
 // Endpoints: POST /api/v1/ai-assistance/request, GET /api/v1/ai-assistance/incidents/{id}/history
 
 import { pageHeader, icon, escapeHtml, toast, setBusy } from '../ui.js';
@@ -19,18 +19,20 @@ import { routeParams } from '../router.js';
 const POLL_INTERVAL_MS = 3000;
 const POLL_LIMIT_MS = 90000;
 
+// Waits ms milliseconds; stops if the view is left
 const wait = (ms, signal) => new Promise((resolve, reject) => {
   const timer = setTimeout(resolve, ms);
   signal.addEventListener('abort', () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); }, { once: true });
 });
 
-// El backend guarda el prompt como "[cat | Priority] título - descripción. Additional Context: …".
+// The backend stores the prompt as "[cat | Priority] title - description. Additional Context: …".
 const contextOf = (prompt) => {
   const match = /Additional Context:\s*([\s\S]*)$/.exec(prompt ?? '');
   const text = match?.[1]?.trim();
   return text && text !== 'None' ? text : '';
 };
 
+// User bubble with the incident and the extra context
 const userTurnHtml = (incident, context, date) => `
   <div class="chat-turn chat-turn--user">
     <div class="chat-bubble">
@@ -40,8 +42,10 @@ const userTurnHtml = (incident, context, date) => `
     <span class="chat-avatar" aria-hidden="true">Tú</span>
   </div>`;
 
+// Message shown before choosing an incident
 const EMPTY_THREAD = () => emptyHtml('Elige un incidente', 'Verás aquí cada consulta con su diagnóstico, solución, pasos y las fuentes que la respaldan.', 'i-sparkles');
 
+// Assistant view: incident picker, question form and conversation
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     ${pageHeader(route)}
@@ -52,7 +56,7 @@ export async function render(container, { route, signal }) {
   let users;
   try {
     [incidents, users] = await Promise.all([listIncidents({}, { signal }), isAdmin() ? listUsers({}, { signal }) : null]);
-    // Solo el administrador califica en nombre de otra persona; el resto califica con su sesión
+    // Only the administrator rates on behalf of someone else; everyone else rates with their own session
     users = users ? toOptions(users) : null;
   } catch (error) {
     if (signal.aborted) return;
@@ -61,7 +65,7 @@ export async function render(container, { route, signal }) {
   }
   if (signal.aborted) return;
 
-  // Regla del backend: no se puede consultar a la IA sobre un incidente cerrado.
+  // Backend rule: the AI cannot be asked about a closed incident.
   const available = incidents.filter((i) => i.status !== 'CLOSED').sort((a, b) => b.id - a.id);
 
   root.innerHTML = `
@@ -120,9 +124,10 @@ export async function render(container, { route, signal }) {
   const errorEl = root.querySelector('#ai-incident-error');
   let busy = false;
 
+  // Incident selected in the picker
   const current = () => available.find((i) => String(i.id) === select.value);
 
-  // Un turno = pregunta del usuario + tarjeta de la IA. Devuelve el contenedor de la tarjeta.
+  // One turn = the user's question + the AI card. Returns the card container.
   function appendTurn(incident, query) {
     const turn = document.createElement('div');
     turn.className = 'chat-exchange';
@@ -133,6 +138,7 @@ export async function render(container, { route, signal }) {
     return slot;
   }
 
+  // Summary of the selected incident
   function renderSummary(incident) {
     const short = incident.description.trim().length < MIN_DESCRIPTION;
     summary.innerHTML = `
@@ -144,6 +150,7 @@ export async function render(container, { route, signal }) {
       </div>`;
   }
 
+  // Loads the previous queries of the incident
   async function loadThread(incident) {
     thread.innerHTML = skeletonLines(4);
     subtitle.textContent = `Incidente #${incident.id} · ${incident.title}`;
@@ -156,7 +163,7 @@ export async function render(container, { route, signal }) {
         return;
       }
       history.forEach((q) => appendTurn(incident, q));
-      // Se muestra el inicio de la última consulta, no el final, para leer la respuesta desde el diagnóstico
+      // Scrolls to the start of the last query, not the end, so the response is read from the diagnosis
       const last = thread.lastElementChild;
       if (last) thread.scrollTop = last.offsetTop - thread.offsetTop;
     } catch (error) {
@@ -165,6 +172,7 @@ export async function render(container, { route, signal }) {
     }
   }
 
+  // Reacts to a new incident in the picker
   function selectIncident() {
     const incident = current();
     errorEl.textContent = '';
@@ -185,7 +193,7 @@ export async function render(container, { route, signal }) {
     if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) form.requestSubmit();
   });
 
-  // Consulta el historial hasta que la respuesta llegue, falle o se agote el tiempo.
+  // Polls the history until the response arrives, fails or the time runs out.
   async function waitForResponse(incident, aiQueryId) {
     const started = Date.now();
     while (Date.now() - started < POLL_LIMIT_MS) {
@@ -214,7 +222,7 @@ export async function render(container, { route, signal }) {
     const context = contextField.value.trim();
     try {
       const sent = await requestAssistance(incident, context, { signal });
-      if (incident.status === 'OPEN') incident.status = 'IN_AI_ANALYSIS'; // igual que el backend
+      if (incident.status === 'OPEN') incident.status = 'IN_AI_ANALYSIS'; // same as the backend
       renderSummary(incident);
       contextField.value = '';
       form.querySelector('[data-count]').textContent = '0';
@@ -253,7 +261,7 @@ export async function render(container, { route, signal }) {
     }
   });
 
-  // #/asistente?incidente=12 llega desde el detalle de un incidente.
+  // #/asistente?incidente=12 comes from the detail of an incident.
   const preselected = routeParams().get('incidente');
   if (preselected) {
     select.value = preselected;

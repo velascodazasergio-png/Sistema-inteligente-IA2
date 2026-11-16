@@ -8,9 +8,11 @@ import java.util.Locale;
 // (frontend/js/api-messages.js), so their wording is part of the API contract.
 public final class AiFailureHints {
 
+    // Utility class: not meant to be instantiated
     private AiFailureHints() {
     }
 
+    // Hint about what to check for an n8n failure, or null if the detail says nothing useful
     public static String hint(String errorCode, String technicalDetail) {
         String code = errorCode == null ? "" : errorCode.toUpperCase(Locale.ROOT);
         String detail = technicalDetail == null ? "" : technicalDetail.toLowerCase(Locale.ROOT);

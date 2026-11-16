@@ -23,13 +23,16 @@ public class JwtService {
     private final JwtEncoder encoder;
     private final Duration lifetime;
 
+    // Injects the JWT encoder and the session length
     public JwtService(JwtEncoder encoder, @Value("${app.jwt.expiration-minutes:480}") long expirationMinutes) {
         this.encoder = encoder;
         this.lifetime = Duration.ofMinutes(expirationMinutes);
     }
 
+    // Signed token and its expiration time
     public record IssuedToken(String value, Instant expiresAt) {}
 
+    // Issues a signed JWT for the user (email, id, role and name as claims)
     public IssuedToken issue(User user) {
         Instant now = Instant.now();
         Instant expiresAt = now.plus(lifetime);

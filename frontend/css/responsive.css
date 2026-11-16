@@ -1,9 +1,9 @@
 /* ==========================================================
-   Responsive: portátil, tablet y móvil
+   Responsive: laptop, tablet and mobile
    ========================================================== */
 
-/* Controles del panel móvil: ocultos desde tablet en adelante.
-   Va en este archivo porque se carga después de components.css (.icon-btn). */
+/* Mobile drawer controls: hidden from tablet size up.
+   They live in this file because it loads after components.css (.icon-btn). */
 @media (min-width: 768px) {
   .sidebar__close,
   .topbar__menu {
@@ -11,7 +11,7 @@
   }
 }
 
-/* Visualmente oculto pero accesible (mantiene el nombre del control) */
+/* Visually hidden but accessible (keeps the control's name) */
 @media (max-width: 1023px) {
   .topbar__eyebrow {
     display: none;
@@ -47,7 +47,7 @@
   }
 }
 
-/* Móvil: la sidebar pasa a ser un panel deslizable */
+/* Mobile: the sidebar becomes a sliding drawer */
 @media (max-width: 767px) {
   .app {
     grid-template-columns: minmax(0, 1fr);
@@ -144,24 +144,24 @@
   }
 }
 
-/* ---------- Ajustes de ancho en todas las pantallas ---------- */
+/* ---------- Width fixes for every screen ---------- */
 
-/* Un <select> mide lo que su opción más larga ("Cloud Infrastructure & DevOps"):
-   sin esto, en pantallas angostas ensancha la tarjeta de filtros. */
+/* A <select> is as wide as its longest option ("Cloud Infrastructure & DevOps"):
+   without this, it widens the filter card on narrow screens. */
 .input,
 .field {
   min-width: 0;
   max-width: 100%;
 }
 
-/* Las pilas de secciones (.stack) son grids: con minmax(0, 1fr) sus tarjetas pueden encogerse
-   por debajo del ancho mínimo de su contenido (el origen de los desbordes en móvil). */
+/* Section stacks (.stack) are grids: with minmax(0, 1fr) their cards can shrink
+   below the minimum width of their content (the cause of the overflows on mobile). */
 .stack {
   grid-template-columns: minmax(0, 1fr);
 }
 
-/* Mismo caso en la lista de recientes y en las tarjetas de la base de conocimiento:
-   los títulos con "…" medían todo su texto y ensanchaban la página en móvil. */
+/* Same case in the recent list and in the knowledge base cards:
+   titles with "…" measured their full text and widened the page on mobile. */
 .recent-list,
 .recent-item__main,
 .kb-grid > li {
@@ -173,7 +173,7 @@
   min-width: 0;
 }
 
-/* Línea secundaria (#id · categoría · fecha): sin recorte su texto salía de la fila */
+/* Secondary line (#id · category · date): without clipping, its text overflowed the row */
 .recent-item__main .cell-muted {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -189,8 +189,8 @@
   white-space: normal;
 }
 
-/* Tabla de datos para lectores de pantalla: las tablas ignoran width: 1px y, con nowrap,
-   medían todo su texto en una línea. Ajustando el texto y anclada a la izquierda no ensancha la página. */
+/* Data table for screen readers: tables ignore width: 1px and, with nowrap,
+   measured all their text in one line. Wrapping the text and anchoring it left keeps the page width. */
 table.sr-only {
   left: 0;
   top: 0;
@@ -198,7 +198,7 @@ table.sr-only {
 }
 
 @media (max-width: 767px) {
-  /* El título de la barra superior se recorta con "…" en vez de mandar los botones a otro renglón */
+  /* The top bar title is cut with "…" instead of pushing the buttons to another line */
   .topbar__heading {
     flex: 1 1 0;
   }
@@ -207,7 +207,7 @@ table.sr-only {
     flex-shrink: 0;
   }
 
-  /* Resumen del dashboard: una columna que puede encogerse; chips y botones se acomodan */
+  /* Dashboard summary: a single column that can shrink; chips and buttons wrap */
   .hero {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -222,20 +222,20 @@ table.sr-only {
   }
 }
 
-/* Las etiquetas de estado ("Error en la IA") no se parten en varios renglones */
+/* Status badges ("Error en la IA") do not break into several lines */
 .badge {
   flex-shrink: 0;
   white-space: nowrap;
 }
 
-/* Portátil con el menú abierto (1024–1279 px): el contenido queda en ~750 px */
+/* Laptop with the menu open (1024–1279 px): the content is ~750 px wide */
 @media (min-width: 1024px) and (max-width: 1279px) {
-  /* Buscador más angosto para que el título de la barra superior se lea completo */
+  /* Narrower search box so the top bar title can be read in full */
   .search {
     width: min(240px, 100%);
   }
 
-  /* Asistente en una columna: formulario arriba y conversación debajo */
+  /* Assistant in one column: form on top and conversation below */
   .app:not([data-sidebar="collapsed"]) .assistant {
     grid-template-columns: minmax(0, 1fr);
   }

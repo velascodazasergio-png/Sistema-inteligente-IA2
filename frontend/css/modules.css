@@ -1,6 +1,6 @@
 /* ==========================================================
-   Módulos (Etapa 3): dashboard, incidentes, asistente,
-   historial y analítica
+   Modules (Stage 3): dashboard, incidents, assistant,
+   history and analytics
    ========================================================== */
 
 /* ---------- Estructura ---------- */
@@ -39,7 +39,7 @@
   justify-content: center;
 }
 
-/* Seis indicadores: 3 + 3 en vez de 5 + 1 */
+/* Six indicators: 3 + 3 instead of 5 + 1 */
 @media (min-width: 1024px) {
   .kpi-grid:has(> :nth-child(6):last-child) {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -140,7 +140,7 @@ input[type="date"].input {
   accent-color: var(--primary);
 }
 
-/* ---------- Dashboard: resumen del periodo ---------- */
+/* ---------- Dashboard: period summary ---------- */
 .hero {
   position: relative;
   display: grid;
@@ -159,7 +159,7 @@ input[type="date"].input {
   isolation: isolate;
 }
 
-/* Patrón de puntos decorativo */
+/* Decorative dot pattern */
 .hero::after {
   content: "";
   position: absolute;
@@ -235,7 +235,7 @@ input[type="date"].input {
   gap: var(--space-3);
 }
 
-/* Indicador circular del porcentaje de resolución */
+/* Circular indicator of the resolution rate */
 .hero__gauge {
   position: relative;
   width: 168px;
@@ -345,7 +345,7 @@ input[type="date"].input {
   gap: var(--space-2);
 }
 
-/* ---------- Detalle de incidente ---------- */
+/* ---------- Incident detail ---------- */
 .detail-title {
   margin-bottom: var(--space-3);
   color: var(--text);
@@ -390,7 +390,7 @@ input[type="date"].input {
   flex: 1 1 240px;
 }
 
-/* Alineado con el selector: misma altura (44 px) y desplazado lo que ocupa la etiqueta */
+/* Aligned with the selector: same height (44 px), shifted by the space the label takes */
 .status-form .btn {
   min-height: 44px;
   margin-top: calc(var(--fs-sm) * 1.55 + var(--space-2));
@@ -498,7 +498,7 @@ input[type="date"].input {
   margin-top: var(--space-4);
 }
 
-/* ---------- Tarjeta de respuesta IA ---------- */
+/* ---------- AI response card ---------- */
 .ai-card {
   display: grid;
   gap: var(--space-2);
@@ -726,7 +726,7 @@ input[type="date"].input {
   overflow-wrap: anywhere;
 }
 
-/* ---------- Asistente: identidad y conversación ---------- */
+/* ---------- Assistant: identity and conversation ---------- */
 .ai-avatar {
   display: grid;
   flex: none;
@@ -832,7 +832,7 @@ input[type="date"].input {
   box-shadow: none;
 }
 
-/* ---------- Asistente: animación de búsqueda ---------- */
+/* ---------- Assistant: search animation ---------- */
 .ai-search {
   display: flex;
   align-items: center;
@@ -909,7 +909,7 @@ input[type="date"].input {
   15%, 30% { color: var(--text); }
 }
 
-/* ---------- Respuesta por secciones ---------- */
+/* ---------- Response split into sections ---------- */
 .ai-section {
   display: grid;
   gap: var(--space-2);
@@ -1032,7 +1032,7 @@ input[type="date"].input {
   list-style: none;
 }
 
-/* ---------- Base de conocimiento ---------- */
+/* ---------- Knowledge base ---------- */
 .kb-usable {
   display: inline-grid;
   place-items: center;
@@ -1065,7 +1065,7 @@ input[type="date"].input {
   margin: 0 0 var(--space-4);
 }
 
-/* ---------- Acciones por fila ---------- */
+/* ---------- Row actions ---------- */
 .row-actions {
   display: inline-flex;
   gap: var(--space-1);
@@ -1118,7 +1118,7 @@ input[type="date"].input {
   -webkit-box-orient: vertical;
 }
 
-/* ---------- Base de conocimiento: tarjetas ---------- */
+/* ---------- Knowledge base: cards ---------- */
 .kb-toolbar {
   display: flex;
   flex-wrap: wrap;

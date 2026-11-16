@@ -1,6 +1,6 @@
-// Pruebas unitarias de la lógica del frontend (sin navegador ni dependencias).
-// Ejecutar desde la raíz del repositorio:  node --test "frontend/tests/*.test.mjs"
-// Cubren cálculos, formato, interpretación de respuestas de la IA, catálogos y el cliente HTTP.
+// Unit tests of the frontend logic (no browser, no dependencies).
+// Run from the repository root:  node --test "frontend/tests/*.test.mjs"
+// They cover calculations, formatting, parsing of AI responses, catalogs and the HTTP client.
 
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -154,6 +154,7 @@ describe('api.js · cliente HTTP', () => {
   const realFetch = globalThis.fetch;
   let calls;
 
+  // Fake fetch that records the call and answers with the given status and JSON
   const reply = (status, body) => async (url, init) => {
     calls.push({ url: String(url), init });
     return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });

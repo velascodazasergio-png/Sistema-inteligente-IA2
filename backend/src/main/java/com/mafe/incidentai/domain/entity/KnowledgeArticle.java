@@ -73,12 +73,14 @@ public class KnowledgeArticle {
     @JoinColumn(name = "author_user_id")
     private User authorUser;
 
+    // Sets the creation and update dates before the first insert
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
 
+    // Refreshes the update date on every change
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();

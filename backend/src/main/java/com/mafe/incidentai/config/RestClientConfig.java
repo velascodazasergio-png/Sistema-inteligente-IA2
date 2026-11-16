@@ -20,6 +20,7 @@ public class RestClientConfig {
     @Value("${n8n.webhook.read-timeout-ms:15000}")
     private long readTimeoutMs;
 
+    // HTTP client used to call n8n, with connect and read timeouts
     @Bean
     public RestTemplate restTemplate(RestTemplateBuilder builder) {
         // Explicit HTTP/1.1: the JDK HttpClient defaults to HTTP/2 and, over plain text, it tries

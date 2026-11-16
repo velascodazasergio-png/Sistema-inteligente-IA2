@@ -1,4 +1,4 @@
-// Vista de configuración: URL base de la API y comprobación de conexión.
+// Configuration view: API base URL and connection check.
 
 import { pageHeader, icon, toast, escapeHtml, setBusy } from '../ui.js';
 import {
@@ -10,6 +10,7 @@ import {
 } from '../config.js';
 import { checkHealth } from '../api.js';
 
+// Error message for an invalid URL, or empty if it is valid
 function validateUrl(value) {
   if (!value) return 'Escribe la URL base de la API.';
   try {
@@ -21,6 +22,7 @@ function validateUrl(value) {
   return '';
 }
 
+// Configuration view: API URL, connection test and reset
 export function render(container, { signal }) {
   container.innerHTML = `
     ${pageHeader({
@@ -77,9 +79,11 @@ export function render(container, { signal }) {
   const input = container.querySelector('#api-url');
   const errorEl = container.querySelector('#api-url-error');
   const testButton = container.querySelector('[data-action="test"]');
+  // Element of the connection result by name
   const field = (name) => container.querySelector(`[data-field="${name}"]`);
   let touched = false;
 
+  // Validates the URL field and shows the error
   const validate = () => {
     const message = validateUrl(input.value.trim());
     errorEl.textContent = message;
@@ -87,6 +91,7 @@ export function render(container, { signal }) {
     return !message;
   };
 
+  // Tells the app that the API URL changed
   const notifyChange = () => window.dispatchEvent(new CustomEvent('api:config-changed'));
 
   const runCheck = async (url = getApiBaseUrl(), { silent = false } = {}) => {
@@ -109,7 +114,7 @@ export function render(container, { signal }) {
     }
   };
 
-  // Validación en tiempo real (después del primer contacto con el campo).
+  // Live validation (after the first interaction with the field).
   input.addEventListener('input', () => { if (touched) validate(); });
   input.addEventListener('blur', () => { touched = true; validate(); });
 

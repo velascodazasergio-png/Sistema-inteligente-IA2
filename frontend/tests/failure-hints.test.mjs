@@ -1,6 +1,6 @@
-// Las indicaciones de fallo de la IA llegan del backend en inglés (AiFailureHints.java)
-// y la interfaz las muestra en español. Si cambia un texto en el backend, esta prueba falla.
-// Ejecutar desde la raíz del repositorio:  node --test "frontend/tests/*.test.mjs"
+// AI failure hints come from the backend in English (AiFailureHints.java)
+// and the UI shows them in Spanish. If a backend text changes, this test fails.
+// Run from the repository root:  node --test "frontend/tests/*.test.mjs"
 
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
@@ -9,7 +9,7 @@ import { translateFailureMessage } from '../js/api-messages.js';
 
 const N8N = 'No se pudo generar el embedding de la consulta.';
 
-// Texto exacto que devuelve AiFailureHints.hint(...) en cada caso → traducción esperada
+// Exact text returned by AiFailureHints.hint(...) in each case → expected translation
 const CASES = [
   ['The embedding model dimension does not match EMBEDDING_DIM: check the .env file.',
     'La dimensión del modelo de embeddings no coincide con EMBEDDING_DIM: revisa el .env.'],

@@ -1,13 +1,14 @@
-// Tabla de datos con búsqueda instantánea, ordenamiento y paginación.
-// Trabaja en el cliente con las filas que recibe. Si el backend pagina
-// (Spring Data Page), se puede reemplazar por paginación del servidor
-// manteniendo la misma interfaz visual.
+// Data table with instant search, sorting and pagination.
+// It works on the client with the rows it receives. If the backend paginates
+// (Spring Data Page), it can be switched to server-side pagination
+// keeping the same look.
 
 import { icon, escapeHtml, normalizeText } from '../ui.js';
 
 let uid = 0;
 const collator = new Intl.Collator('es', { sensitivity: 'base', numeric: true });
 
+// Sort comparison: empty values last; numbers and dates by value, text alphabetically (Spanish rules)
 function compare(a, b) {
   if (a == null && b == null) return 0;
   if (a == null) return 1;
@@ -17,7 +18,7 @@ function compare(a, b) {
   return collator.compare(String(a), String(b));
 }
 
-// Números de página compactos: 1 … 4 5 6 … 12
+// Compact page numbers: 1 … 4 5 6 … 12
 function pageList(page, pages) {
   if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
   const set = [...new Set([1, pages, page - 1, page, page + 1])]
@@ -31,10 +32,10 @@ function pageList(page, pages) {
  * @param {object} o
  * @param {Array<{key:string,label:string,sortable?:boolean,searchable?:boolean,align?:'right',
  *   render?:(row)=>string, text?:(row)=>string, sortValue?:(row)=>any}>} o.columns
- *   render devuelve HTML: escapa con escapeHtml todo dato que venga del backend.
+ *   render returns HTML: escape every backend value with escapeHtml.
  * @param {Array<object>} [o.rows]
  * @param {number} [o.pageSize]
- * @param {string} o.caption Descripción de la tabla para lectores de pantalla.
+ * @param {string} o.caption Table description for screen readers.
  * @param {(row)=>void} [o.onRowClick]
  * @param {{key:string, dir:'asc'|'desc'}} [o.initialSort]
  */
@@ -88,9 +89,12 @@ export function createDataTable(container, {
   const rangeEl = container.querySelector('.data-table__range');
   const nav = container.querySelector('.pagination');
 
+  // Value used to sort a column
   const valueOf = (col, row) => (col.sortValue ? col.sortValue(row) : row[col.key]);
+  // Text used to search a column
   const textOf = (col, row) => (col.text ? col.text(row) : row[col.key]);
 
+  // Rows that match the search, sorted
   function filtered() {
     const query = normalizeText(state.query);
     const list = query
@@ -105,6 +109,7 @@ export function createDataTable(container, {
     return list;
   }
 
+  // Header with the sort buttons
   function renderHead() {
     headRow.innerHTML = columns.map((col) => {
       const sorted = state.sortKey === col.key;
@@ -118,6 +123,7 @@ export function createDataTable(container, {
     }).join('');
   }
 
+  // Rows of the current page (or skeleton/empty state)
   function renderBody() {
     if (state.loading) {
       tbody.innerHTML = Array.from({ length: 5 }, () => `
@@ -156,6 +162,7 @@ export function createDataTable(container, {
       <button class="page-btn" type="button" data-nav="next" aria-label="Página siguiente" ${state.page === pages ? 'disabled' : ''}>${icon('i-chevron-right')}</button>` : '';
   }
 
+  // Redraws the header and the body
   function render() {
     renderHead();
     renderBody();
@@ -189,12 +196,13 @@ export function createDataTable(container, {
     else if (button.dataset.nav === 'next') state.page = Math.min(pages, state.page + 1);
     else state.page = Number(button.dataset.page);
     renderBody();
-    // Mantiene el foco en la paginación después de redibujar.
+    // Keeps the focus on the pagination after redrawing.
     const again = button.dataset.nav ? nav.querySelector(`[data-nav="${button.dataset.nav}"]:not(:disabled)`) : null;
     (again ?? nav.querySelector('[aria-current="page"]'))?.focus();
   });
 
   if (onRowClick) {
+    // Row click: opens the row (ignores clicks on buttons, links and fields)
     const activate = (event) => {
       if (event.target.closest('button, a, input, select, textarea')) return;
       const tr = event.target.closest('tr[data-index]');
@@ -214,12 +222,14 @@ export function createDataTable(container, {
   render();
 
   return {
+    // Replaces the rows and goes back to page 1
     setRows(next) {
       state.rows = next ?? [];
       state.loading = false;
       state.page = 1;
       render();
     },
+    // Shows or hides the loading state
     setLoading(loading) {
       state.loading = loading;
       renderBody();

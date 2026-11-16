@@ -1,11 +1,12 @@
-// Calificación de 1 a 5 estrellas (RF08).
-// Usa radios nativos: funciona con teclado (flechas) y lectores de pantalla
-// sin código extra. El envío al backend lo hace la vista que lo use.
+// 1 to 5 star rating (RF08).
+// Uses native radios: works with the keyboard (arrows) and screen readers
+// with no extra code. Sending it to the backend is up to the view that uses it.
 
 import { icon, escapeHtml } from '../ui.js';
 
 let uid = 0;
 
+// Interactive 1–5 star control; returns its current value and setDisabled
 export function createStarRating(container, { value = 0, label = 'Calificación', onChange, readonly = false } = {}) {
   const name = `rating-${++uid}`;
   container.innerHTML = `
@@ -25,13 +26,14 @@ export function createStarRating(container, { value = 0, label = 'Calificación'
     get value() {
       return Number(fieldset.querySelector('input:checked')?.value ?? 0);
     },
+    // Enables or disables the stars
     setDisabled(disabled) {
       fieldset.disabled = disabled;
     },
   };
 }
 
-// Versión de solo lectura para tablas y listados.
+// Read-only version for tables and lists.
 export function starsHtml(value) {
   const rounded = Math.round(value ?? 0);
   return `

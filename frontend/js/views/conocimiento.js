@@ -1,11 +1,11 @@
-// Base de conocimiento (RF02): artículos técnicos que alimentan al asistente.
-// Solo los artículos activos y verificados se usan como fuentes del RAG.
+// Knowledge base (RF02): technical articles that feed the assistant.
+// Only active and verified articles are used as RAG sources.
 // Endpoints: GET/POST /api/v1/knowledge-articles, GET/PUT /{id}, PATCH /{id}/status
 //
-// Según el rol:
-// - Administrador: crea, edita, verifica y activa o desactiva artículos.
-// - Técnico: crea y edita; la verificación la hace un administrador.
-// - Usuario (EMPLOYEE): solo lee los artículos publicados (activos y verificados).
+// By role:
+// - Administrator: creates, edits, verifies and activates or deactivates articles.
+// - Technician: creates and edits; an administrator does the verification.
+// - User (EMPLOYEE): only reads published articles (active and verified).
 
 import { pageHeader, icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
@@ -20,20 +20,22 @@ import { isAdmin, isEmployee } from '../auth.js';
 
 const VIEW_KEY = 'incidentes-ia:kb-view';
 
-// Estado visual de un artículo: usable por la IA, pendiente de verificación o inactivo.
+// Visual state of an article: usable by the AI, pending verification or inactive.
 function stateOf(a) {
   if (!a.active) return { key: 'inactive', label: 'Inactivo', tone: 'neutral' };
   if (!a.verified) return { key: 'pending', label: 'Pendiente de verificación', tone: 'warning' };
   return { key: 'ok', label: 'Activo y verificado', tone: 'success' };
 }
+// Colored badge with the article state
 const stateBadge = (a) => {
   const s = stateOf(a);
   return `<span class="badge badge--${s.tone}"><i class="badge__dot" aria-hidden="true"></i>${s.label}</span>`;
 };
 
-// Artículos anteriores a las secciones solo tienen "content".
+// Articles older than the sections only have "content".
 const hasSections = (a) => Boolean(a.problem || a.solution);
 
+// Only http(s) URLs; anything else returns null
 const safeUrl = (value) => {
   try {
     const url = new URL(value);
@@ -43,7 +45,7 @@ const safeUrl = (value) => {
   }
 };
 
-// Reglas de KnowledgeArticleRequestDTO, validadas también aquí.
+// KnowledgeArticleRequestDTO rules, also validated here.
 const RULES = {
   title: (v) => (!v ? 'El título es obligatorio.' : v.length < 5 || v.length > 180 ? 'Debe tener entre 5 y 180 caracteres.' : ''),
   categoryId: (v) => (v ? '' : 'Elige una categoría.'),
@@ -61,16 +63,20 @@ const SECTIONS = [
   { name: 'solution', label: 'Solución', rows: 5, required: true, max: 8000, placeholder: 'Pasos para resolverlo, uno por línea' },
 ];
 
+// <option> list with a first empty option
 const options = (items, placeholder, selected) =>
   `<option value="">${escapeHtml(placeholder)}</option>${items.map((i) => `<option value="${i.id}" ${String(i.id) === String(selected ?? '') ? 'selected' : ''}>${escapeHtml(i.name)}</option>`).join('')}`;
 
+// Saved view mode (cards or table)
 const readView = () => {
   try { return localStorage.getItem(VIEW_KEY) === 'table' ? 'table' : 'cards'; } catch { return 'cards'; }
 };
+// Saves the view mode in this browser
 const saveView = (view) => {
-  try { localStorage.setItem(VIEW_KEY, view); } catch { /* sin almacenamiento: se usa el valor por defecto */ }
+  try { localStorage.setItem(VIEW_KEY, view); } catch { /* no storage: the default value is used */ }
 };
 
+// Article card for the cards view
 function cardHtml(a, { canEdit }) {
   const s = stateOf(a);
   const summary = a.problem || a.content;
@@ -95,10 +101,11 @@ function cardHtml(a, { canEdit }) {
     </li>`;
 }
 
+// Knowledge base view: filters, cards/table, detail and editor (by role)
 export async function render(container, { route, signal }) {
-  const reader = isEmployee();      // solo lectura de artículos publicados
-  const canEdit = !reader;          // administrador y técnico redactan
-  const canPublish = isAdmin();     // verificar y activar: solo administrador
+  const reader = isEmployee();      // read-only access to published articles
+  const canEdit = !reader;          // administrators and technicians write articles
+  const canPublish = isAdmin();     // verify and activate: administrator only
 
   container.innerHTML = `
     <div class="page-header-row">
@@ -175,7 +182,9 @@ export async function render(container, { route, signal }) {
     onRowClick: (article) => openDetail(article),
   });
 
+  // Counters at the top (available, pending, inactive)
   const showStats = () => {
+    // Number of articles in a given state
     const count = (key) => articles.filter((a) => stateOf(a).key === key).length;
     if (reader) {
       stats.innerHTML = `<dl class="history-stats"><div><dt>Guías disponibles</dt><dd>${articles.length}</dd></div></dl>`;
@@ -190,6 +199,7 @@ export async function render(container, { route, signal }) {
       </dl>`;
   };
 
+  // Shows the articles as cards or as a table
   const showResults = () => {
     container.querySelectorAll('[data-view]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === view)));
     tableCard.hidden = view !== 'table';
@@ -205,6 +215,7 @@ export async function render(container, { route, signal }) {
     showStats();
   };
 
+  // Puts an edited or new article in the list
   const replace = (updated) => {
     articles = articles.some((a) => a.id === updated.id)
       ? articles.map((a) => (a.id === updated.id ? updated : a))
@@ -212,6 +223,7 @@ export async function render(container, { route, signal }) {
     showResults();
   };
 
+  // Loads the articles with the current filters
   async function load() {
     if (view === 'table') table.setLoading(true);
     else cardsEl.innerHTML = skeletonLines(4);
@@ -246,10 +258,10 @@ export async function render(container, { route, signal }) {
   });
 
   try {
-    // El directorio de usuarios (autores) solo lo necesita quien redacta
+    // Only users who write articles need the user directory (authors)
     const [cats, users] = await Promise.all([listCategories({}, { signal }), canEdit ? listUsers({}, { signal }) : []]);
     categories = cats;
-    // Redactan artículos los técnicos y administradores.
+    // Technicians and administrators write articles.
     authors = users.filter((u) => u.role !== 'EMPLOYEE').map((u) => ({ id: u.id, name: u.fullName }));
   } catch (error) {
     if (signal.aborted) return;
@@ -264,6 +276,7 @@ export async function render(container, { route, signal }) {
   /* ---------- Detalle ---------- */
   function openDetail(article) {
     const url = safeUrl(article.referenceUrl);
+    // One section of the article detail, if it has text
     const section = (label, text) => (text ? `<h4 class="detail-label">${label}</h4><p class="detail-text kb-content">${escapeHtml(text)}</p>` : '');
     const modal = openModal({
       title: `Artículo #${article.id}`,
@@ -290,6 +303,7 @@ export async function render(container, { route, signal }) {
         </div>` : ''}`,
     });
 
+    // Changes the article state (verify, activate…) and refreshes the list
     const run = async (button, changes, message) => {
       setBusy(button, true, 'Guardando…');
       try {
@@ -330,9 +344,9 @@ export async function render(container, { route, signal }) {
   function openEditor(article = null) {
     const editing = Boolean(article);
     const legacy = editing && !hasSections(article);
-    // Al crear solo se ofrecen categorías activas; al editar se conserva la actual.
+    // When creating, only active categories are offered; when editing, the current one is kept.
     const categoryOptions = categories.filter((c) => c.active || c.id === article?.categoryId);
-    // Un artículo antiguo trae todo en "content": se precarga como problema para reorganizarlo.
+    // An older article has everything in "content": it is preloaded as the problem so it can be reorganized.
     const initial = (name) => (legacy && name === 'problem' ? article.content : article?.[name] ?? '');
 
     const modal = openModal({
@@ -384,6 +398,7 @@ export async function render(container, { route, signal }) {
     const editor = modal.body.querySelector('#kb-form');
     const initialData = JSON.stringify(Object.fromEntries(new FormData(editor)));
     const touched = new Set();
+    // Validates one editor field and shows its error
     const validateField = (name) => {
       const field = editor.elements[name];
       const message = RULES[name](field.value.trim());

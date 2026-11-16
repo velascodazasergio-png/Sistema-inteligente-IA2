@@ -51,6 +51,7 @@ public class GlobalExceptionHandler {
         return simple(HttpStatus.FORBIDDEN, "Forbidden", message);
     }
 
+    // Builds the standard JSON error body for the given status
     private ResponseEntity<Map<String, Object>> simple(HttpStatus status, String error, String message) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());
@@ -105,6 +106,7 @@ public class GlobalExceptionHandler {
         return badRequest("Malformed request body or invalid field value");
     }
 
+    // Builds a 400 Bad Request JSON body with the given message
     private ResponseEntity<Map<String, Object>> badRequest(String message) {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("timestamp", LocalDateTime.now().toString());

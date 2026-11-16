@@ -52,6 +52,7 @@ public class AiQuery {
     @OneToOne(mappedBy = "aiQuery", cascade = CascadeType.ALL, orphanRemoval = true)
     private AiResponse aiResponse;
 
+    // Sets the query date and the PENDING status before the first insert
     @PrePersist
     protected void onCreate() {
         this.queriedAt = LocalDateTime.now();

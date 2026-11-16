@@ -27,6 +27,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
 
+    // Injects the user repository, the password encoder and the JWT issuer
     public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtService jwtService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -34,6 +35,7 @@ public class AuthService {
         this.dummyHash = passwordEncoder.encode("no-user-" + System.nanoTime());
     }
 
+    // Validates email and password and returns a signed JWT with the user data
     @Transactional(readOnly = true)
     public LoginResponseDTO login(LoginRequestDTO request) {
         String email = request.email().trim().toLowerCase(Locale.ROOT);
@@ -47,6 +49,7 @@ public class AuthService {
         return new LoginResponseDTO(token.value(), "Bearer", token.expiresAt(), toSummary(user));
     }
 
+    // Public profile of a user
     @Transactional(readOnly = true)
     public UserSummaryDTO profile(Long userId) {
         return userRepository.findById(userId)
@@ -54,6 +57,7 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with ID: " + userId));
     }
 
+    // Maps a User entity to its public summary
     private static UserSummaryDTO toSummary(User u) {
         return new UserSummaryDTO(u.getId(), u.getFullName(), u.getEmail(), u.getRole());
     }

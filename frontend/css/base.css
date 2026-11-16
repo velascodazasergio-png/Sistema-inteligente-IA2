@@ -1,5 +1,5 @@
 /* ==========================================================
-   Base: reset, tipografía, foco y accesibilidad global
+   Base: reset, typography, focus and global accessibility
    ========================================================== */
 *,
 *::before,
@@ -28,7 +28,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* Retícula muy tenue de fondo, desvanecida hacia los bordes */
+/* Very faint background grid, fading towards the edges */
 body::before {
   content: "";
   position: fixed;
@@ -42,7 +42,7 @@ body::before {
   mask-image: radial-gradient(ellipse 80% 60% at 60% 0%, #000 30%, transparent 75%);
 }
 
-/* Cifras alineadas en columnas e indicadores */
+/* Figures aligned in columns and indicators */
 .kpi__value,
 .meter__value,
 .cell-id,
@@ -94,7 +94,7 @@ code {
   color: var(--text);
 }
 
-/* Foco visible solo con teclado */
+/* Visible focus only for keyboard users */
 :focus-visible {
   outline: 2px solid var(--focus-color);
   outline-offset: 2px;
@@ -104,7 +104,7 @@ code {
   background: rgba(59, 130, 246, 0.35);
 }
 
-/* Iconos: heredan color y trazo del texto */
+/* Icons inherit the text color and stroke */
 .icon {
   width: 20px;
   height: 20px;
@@ -156,7 +156,7 @@ code {
   text-align: center;
 }
 
-/* Respeta la preferencia de movimiento reducido */
+/* Honors the reduced-motion preference */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

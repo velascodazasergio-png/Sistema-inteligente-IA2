@@ -61,6 +61,7 @@ public class KnowledgeArticleService {
         return knowledgeArticleRepository.findAll(spec).stream().map(this::toDTO).toList();
     }
 
+    // One article by ID, or 404
     @Transactional(readOnly = true)
     public KnowledgeArticleResponseDTO getArticle(Long articleId) {
         return toDTO(findArticle(articleId));
@@ -111,6 +112,7 @@ public class KnowledgeArticleService {
         return toDTO(saved);
     }
 
+    // Copies the request fields into the article and rebuilds its full content
     private void apply(KnowledgeArticle article, KnowledgeArticleRequestDTO request) {
         Category category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found with ID: " + request.categoryId()));
@@ -150,15 +152,18 @@ public class KnowledgeArticleService {
         return text.append("\nSolution: ").append(request.solution().trim()).toString();
     }
 
+    // Trims the text; blank becomes null
     private static String blankToNull(String value) {
         return value == null || value.isBlank() ? null : value.trim();
     }
 
+    // Loads an article or throws 404
     private KnowledgeArticle findArticle(Long articleId) {
         return knowledgeArticleRepository.findById(articleId)
                 .orElseThrow(() -> new ResourceNotFoundException("Knowledge article not found with ID: " + articleId));
     }
 
+    // Maps an article entity to its response DTO
     private KnowledgeArticleResponseDTO toDTO(KnowledgeArticle a) {
         User author = a.getAuthorUser();
         return new KnowledgeArticleResponseDTO(

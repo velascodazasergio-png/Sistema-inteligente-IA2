@@ -1,25 +1,28 @@
-// Buscador de la topbar: salta a cualquier sección (Ctrl+K o "/").
-// Implementa el patrón combobox de ARIA para que funcione con teclado
-// y lectores de pantalla.
+// Top bar search box: jumps to any section (Ctrl+K or "/").
+// Implements the ARIA combobox pattern so it works with the keyboard
+// and screen readers.
 
 import { visibleRoutes } from './routes.js';
 import { navigate } from './router.js';
 import { icon, escapeHtml, normalizeText as normalize } from './ui.js';
 
-// Solo las secciones que el rol del usuario puede abrir (se recalcula al iniciar o cerrar sesión)
+// Only the sections the user's role can open (recomputed on login and logout)
 const buildIndex = () => visibleRoutes().map((route) => ({
   route,
   haystack: normalize([route.title, route.rf, route.description, ...(route.keywords ?? [])].join(' ')),
 }));
 
+// Top bar search box: filter, keyboard navigation and selection
 export function initSearch() {
   const input = document.getElementById('global-search');
   const list = document.getElementById('search-results');
   let matches = [];
   let active = -1;
 
+  // DOM id of a result option
   const optionId = (route) => `search-opt-${route.path}`;
 
+  // Paints the result list
   function renderList() {
     list.innerHTML = matches.length
       ? matches.map((route, i) => `
@@ -34,6 +37,7 @@ export function initSearch() {
     else input.removeAttribute('aria-activedescendant');
   }
 
+  // Filters the sections with the typed text and opens the list
   function open() {
     const query = normalize(input.value);
     const index = buildIndex();
@@ -44,12 +48,14 @@ export function initSearch() {
     input.setAttribute('aria-expanded', 'true');
   }
 
+  // Closes the result list
   function close() {
     list.hidden = true;
     input.setAttribute('aria-expanded', 'false');
     input.removeAttribute('aria-activedescendant');
   }
 
+  // Opens the chosen section
   function select(path) {
     input.value = '';
     close();
@@ -79,7 +85,7 @@ export function initSearch() {
     }
   });
 
-  // mousedown + preventDefault: el input no pierde el foco antes del clic.
+  // mousedown + preventDefault: the input keeps the focus until the click.
   list.addEventListener('mousedown', (event) => {
     event.preventDefault();
     const option = event.target.closest('[data-path]');

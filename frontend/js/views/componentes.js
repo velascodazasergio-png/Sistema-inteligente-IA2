@@ -1,6 +1,6 @@
-// Catálogo de componentes (Etapa 2).
-// ⚠ DATOS DE DEMOSTRACIÓN: todo lo que se muestra aquí es ficticio y solo
-// sirve para revisar el diseño. Ningún módulo real importa estos datos.
+// Component catalog (Stage 2).
+// ⚠ DEMO DATA: everything shown here is fictitious and only
+// serves to review the design. No real module imports this data.
 
 import { pageHeader, icon, toast, escapeHtml } from '../ui.js';
 import { kpiCard, animateCounters } from '../components/kpi-card.js';
@@ -24,6 +24,7 @@ const DEMO_TITULOS = [
 ];
 const DEMO_RESPONSABLES = ['Ana Ruiz', 'Carlos Díaz', 'Laura Gómez', 'Andrés Pérez'];
 
+// Fake incidents for the table demo
 function demoIncidentes() {
   const estados = Object.keys(ESTADO_INCIDENTE);
   const prioridades = Object.keys(PRIORIDAD);
@@ -39,8 +40,10 @@ function demoIncidentes() {
 }
 
 const dateFormat = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
+// Random series for the chart demos
 const randomSeries = (n, base) => Array.from({ length: n }, () => Math.round(base * (0.5 + Math.random())));
 
+// Empty card that will hold a chart
 const chartCard = (id, title, subtitle) => `
   <section class="card chart-card" aria-labelledby="${id}-title">
     <div class="chart-card__head">
@@ -53,6 +56,7 @@ const chartCard = (id, title, subtitle) => `
     <div id="${id}"></div>
   </section>`;
 
+// Component catalog view (demo data only)
 export function render(container, { signal }) {
   container.innerHTML = `
     ${pageHeader({
@@ -138,7 +142,7 @@ export function render(container, { signal }) {
 
   animateCounters(container.querySelector('#demo-kpis'));
 
-  // Gráficos
+  // Charts
   const counts = [412, 318, 205, 164, 121, 64];
   barChart(container.querySelector('#demo-bar'), {
     title: 'Incidentes por categoría (demostración)',
@@ -214,7 +218,7 @@ export function render(container, { signal }) {
   table.setLoading(true);
   setTimeout(() => !signal.aborted && table.setRows(demoIncidentes()), 700);
 
-  // Calificación
+  // Rating
   const valueEl = container.querySelector('#demo-rating-value');
   createStarRating(container.querySelector('#demo-rating'), {
     label: 'Utilidad de la respuesta',
@@ -223,8 +227,9 @@ export function render(container, { signal }) {
     },
   });
 
-  // Acciones de la página
+  // Page actions
   const incidentes = demoIncidentes();
+  // Detail dialog of a demo row
   function openDetail(row) {
     openModal({
       title: `Incidente #${row.id}`,

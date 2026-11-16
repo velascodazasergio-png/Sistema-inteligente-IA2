@@ -7,6 +7,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class IncidentAiApplication {
 
+    // Entry point: starts the Spring Boot application
     public static void main(String[] args) {
         SpringApplication.run(IncidentAiApplication.class, args);
     }

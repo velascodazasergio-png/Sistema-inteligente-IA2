@@ -1,5 +1,5 @@
-// Punto de entrada: construye la navegación, controla la sidebar,
-// vigila el estado de la API y arranca el router.
+// Entry point: builds the navigation, controls the sidebar,
+// watches the API status and starts the router.
 
 import { visibleRoutes } from './routes.js';
 import { startRouter, navigate } from './router.js';
@@ -14,7 +14,7 @@ const app = document.getElementById('app');
 const SIDEBAR_KEY = 'incidentes-ia:sidebar';
 const STATUS_INTERVAL_MS = 30000;
 
-/* ---------- Navegación lateral (agrupada por sección, solo lo que el rol puede abrir) ---------- */
+/* ---------- Side navigation (grouped by section, only what the role can open) ---------- */
 function renderNav() {
   const groups = new Map();
   visibleRoutes().filter((route) => route.nav !== false).forEach((route) => {
@@ -40,6 +40,7 @@ function renderNav() {
     </li>`).join('');
 }
 
+// Saved sidebar state (expanded/collapsed), or null
 function readSidebarPref() {
   try {
     return localStorage.getItem(SIDEBAR_KEY);
@@ -48,20 +49,23 @@ function readSidebarPref() {
   }
 }
 
+// Saves the sidebar state in this browser
 function saveSidebarPref(value) {
   try {
     localStorage.setItem(SIDEBAR_KEY, value);
   } catch {
-    // Sin almacenamiento: la preferencia dura solo esta sesión.
+    // No storage available: the preference only lasts for this session.
   }
 }
 
+// Sidebar behaviour: collapse button, mobile drawer and responsive default
 function initSidebar() {
   const toggle = document.getElementById('sidebar-toggle');
   const toggleLabel = toggle.querySelector('.label');
   const menuButton = document.getElementById('menu-open');
   const sidebar = document.getElementById('sidebar');
 
+  // Collapses or expands the sidebar and updates the toggle button
   const setCollapsed = (collapsed) => {
     app.dataset.sidebar = collapsed ? 'collapsed' : 'expanded';
     const text = collapsed ? 'Expandir menú' : 'Contraer menú';
@@ -71,8 +75,8 @@ function initSidebar() {
     toggleLabel.textContent = text;
   };
 
-  // Sin preferencia guardada: contraída en pantallas medianas, y sigue el tamaño de la ventana
-  // (abrir la página en una ventana pequeña y maximizarla expande el menú).
+  // No saved preference: collapsed on medium screens, and it follows the window size
+  // (opening the page in a small window and maximizing it expands the menu).
   const mediumScreen = window.matchMedia('(max-width: 1023px)');
   const saved = readSidebarPref();
   setCollapsed(saved ? saved === 'collapsed' : mediumScreen.matches);
@@ -86,13 +90,14 @@ function initSidebar() {
     saveSidebarPref(collapsed ? 'collapsed' : 'expanded');
   });
 
-  // Panel móvil
+  // Mobile drawer
   const openNav = () => {
     app.setAttribute('data-nav-open', '');
     menuButton.setAttribute('aria-expanded', 'true');
     sidebar.querySelector('.nav-link')?.focus();
   };
 
+  // Closes the mobile drawer and returns the focus to the menu button
   const closeNav = () => {
     if (!app.hasAttribute('data-nav-open')) return;
     const focusWasInside = sidebar.contains(document.activeElement);
@@ -111,22 +116,24 @@ function initSidebar() {
   window.matchMedia('(max-width: 767px)').addEventListener('change', closeNav);
 }
 
-/* ---------- Estado de la API ---------- */
+/* ---------- API status ---------- */
 const STATUS_TEXT = {
   checking: 'Comprobando API…',
   online: 'API conectada',
   offline: 'API sin conexión',
 };
 
+// Shows whether the API is online and checks it periodically
 function initStatusMonitor() {
   const statusEl = document.getElementById('api-status');
   const textEl = statusEl.querySelector('.status__text');
 
-  // Tarjeta de estado en el pie de la sidebar (misma información, más detalle)
+  // Status card at the bottom of the sidebar (same information, more detail)
   const cardEl = document.getElementById('sidebar-status');
   const cardText = cardEl?.querySelector('[data-status-text]');
   const cardHost = cardEl?.querySelector('[data-status-host]');
 
+  // Paints the API status (checking, online, offline)
   const setState = (state) => {
     statusEl.dataset.state = state;
     textEl.textContent = STATUS_TEXT[state];
@@ -138,6 +145,7 @@ function initStatusMonitor() {
     }
   };
 
+  // Checks the API now and updates the status
   const refresh = async ({ showChecking = false } = {}) => {
     if (showChecking) setState('checking');
     setState((await checkHealth()) ? 'online' : 'offline');
@@ -153,7 +161,7 @@ function initStatusMonitor() {
   window.addEventListener('api:config-changed', () => refresh({ showChecking: true }));
 }
 
-/* ---------- Usuario de la sesión ---------- */
+/* ---------- Logged-in user ---------- */
 function renderUser() {
   const user = currentUser();
   const chip = document.getElementById('user-chip');
@@ -165,25 +173,26 @@ function renderUser() {
     chip.querySelector('[data-user-role]').textContent = ROLE_LABEL[user.role] ?? user.role;
     chip.title = `${user.fullName} · ${user.email}`;
   }
-  // El estado de la API enlaza a Configuración solo para quien puede abrirla
+  // The API status links to Configuration only for users who can open it
   document.querySelectorAll('#api-status, #sidebar-status').forEach((link) => {
     if (isAdmin()) link.setAttribute('href', '#/configuracion');
     else link.removeAttribute('href');
   });
 }
 
+// Logout button, user chip in the top bar and reaction to session changes
 function initSession() {
   document.getElementById('logout').addEventListener('click', () => {
     logout();
     toast('Cerraste sesión.', { type: 'info' });
     navigate('login');
   });
-  // Al iniciar o cerrar sesión cambian el menú y el usuario de la barra superior
+  // Logging in or out changes the menu and the user shown in the top bar
   window.addEventListener('auth:changed', () => {
     renderNav();
     renderUser();
   });
-  // El backend rechazó el token (vencido o inválido): de vuelta al login
+  // The backend rejected the token (expired or invalid): back to the login screen
   window.addEventListener('auth:expired', () => {
     toast('Tu sesión expiró. Inicia sesión de nuevo.', { type: 'error' });
     navigate('login');

@@ -1,12 +1,12 @@
-// Mapa de secciones de la aplicación.
-// - load: módulo de la vista. Si no existe, se muestra la vista "pendiente",
-//   que lista los datos que la sección necesita del backend.
-// - group: sección de la barra lateral. navLabel: nombre corto en la barra (opcional).
-// - needs / available: solo para secciones pendientes; sirven para coordinar
-//   los contratos con backend.
-// - roles: roles que pueden abrir la sección (sin "roles": cualquier usuario con sesión).
-//   Es solo la interfaz: el backend vuelve a comprobar cada permiso.
-// - byRole: título o descripción distintos según el rol (p. ej. "Mis incidentes").
+// Map of the application sections.
+// - load: module of the view. If missing, the "pending" view is shown,
+//   listing the data the section needs from the backend.
+// - group: sidebar section. navLabel: short name in the sidebar (optional).
+// - needs / available: only for pending sections; used to agree on
+//   the contracts with the backend.
+// - roles: roles allowed to open the section (no "roles": any logged-in user).
+//   This is UI only: the backend checks every permission again.
+// - byRole: different title or description per role (e.g. "Mis incidentes").
 
 import { ROLE, currentUser, canAccess } from './auth.js';
 
@@ -105,8 +105,8 @@ export const routes = [
     load: () => import('./views/configuracion.js'),
   },
   {
-    // Catálogo de componentes con datos de demostración. No aparece en la
-    // sidebar; se abre en #/componentes o desde el buscador.
+    // Component catalog with demo data. It is not shown in the
+    // sidebar; it opens at #/componentes or from the search box.
     path: 'componentes',
     group: 'Sistema',
     title: 'Componentes',
@@ -118,7 +118,7 @@ export const routes = [
     load: () => import('./views/componentes.js'),
   },
   {
-    // Pantalla de inicio de sesión: sin barra lateral ni barra superior
+    // Login screen: no side bar and no top bar
     path: 'login',
     title: 'Iniciar sesión',
     icon: 'i-logo',
@@ -129,13 +129,13 @@ export const routes = [
   },
 ];
 
-/** La ruta con el título y la descripción que corresponden al rol. */
+/** The route with the title and description for the role. */
 export function resolveRoute(route, role = currentUser()?.role) {
   const override = route.byRole?.[role];
   return override ? { ...route, ...override, navLabel: override.title ?? route.navLabel } : route;
 }
 
-/** Secciones que puede abrir el usuario actual (menú lateral y buscador). */
+/** Sections the current user can open (side menu and search box). */
 export function visibleRoutes() {
   const role = currentUser()?.role;
   return routes.filter((route) => !route.public && canAccess(route, role)).map((route) => resolveRoute(route, role));

@@ -51,6 +51,7 @@ public class AiResponse {
     @OneToOne(mappedBy = "aiResponse", cascade = CascadeType.ALL, orphanRemoval = true)
     private Rating rating;
 
+    // Sets the response date before the first insert
     @PrePersist
     protected void onCreate() {
         this.respondedAt = LocalDateTime.now();

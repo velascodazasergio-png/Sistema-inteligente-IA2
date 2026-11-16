@@ -1,6 +1,6 @@
-// Sesión del usuario: el JWT que entrega POST /api/v1/auth/login y los datos de quien inició sesión.
-// Se guarda en este navegador (localStorage) hasta que vence o se cierra la sesión.
-// La interfaz se adapta al rol, pero quien decide los permisos es siempre el backend.
+// User session: the JWT returned by POST /api/v1/auth/login and the data of the logged-in user.
+// It is kept in this browser (localStorage) until it expires or the user logs out.
+// The UI adapts to the role, but the backend always has the final word on permissions.
 
 const STORAGE_KEY = 'incidentes-ia:session';
 
@@ -16,7 +16,7 @@ export const ROLE_LABEL = {
   EMPLOYEE: 'Usuario',
 };
 
-// Sección de inicio de cada rol
+// Home section of each role
 const HOME = {
   ADMIN: 'dashboard',
   SUPPORT_TECHNICIAN: 'dashboard',
@@ -25,10 +25,12 @@ const HOME = {
 
 let cached;
 
+// Notifies the app that the logged-in user changed
 const emit = (user) => {
   if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('auth:changed', { detail: { user } }));
 };
 
+// Session stored in this browser, or null
 function read() {
   try {
     return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
@@ -37,39 +39,42 @@ function read() {
   }
 }
 
+// true if the session has no token or its expiration date has passed
 export function isExpired(session, now = Date.now()) {
   const expiresAt = Date.parse(session?.expiresAt ?? '');
   return !session?.token || Number.isNaN(expiresAt) || expiresAt <= now;
 }
 
-/** Sesión vigente o null (una sesión vencida se borra). */
+/** Current session, or null (an expired session is deleted). */
 export function getSession() {
   if (cached === undefined) cached = read();
   if (cached && isExpired(cached)) clearSession({ silent: true });
   return cached;
 }
 
+// Stores the session returned by the login (memory + localStorage)
 export function setSession({ accessToken, expiresAt, user }) {
   cached = { token: accessToken, expiresAt, user };
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(cached));
   } catch {
-    // Almacenamiento bloqueado: la sesión dura hasta recargar la página.
+    // Storage blocked: the session lasts until the page is reloaded.
   }
   emit(user);
 }
 
+// Deletes the session (silent: without notifying the app)
 export function clearSession({ silent = false } = {}) {
   cached = null;
   try {
     localStorage.removeItem(STORAGE_KEY);
   } catch {
-    // Sin almacenamiento: no hay nada que borrar.
+    // No storage: nothing to delete.
   }
   if (!silent) emit(null);
 }
 
-// Otra pestaña inició o cerró sesión: esta se pone al día (el evento storage solo llega a las demás pestañas)
+// Another tab logged in or out: this tab catches up (the storage event only reaches the other tabs)
 if (typeof window !== 'undefined') {
   window.addEventListener('storage', (event) => {
     if (event.key !== STORAGE_KEY && event.key !== null) return;
@@ -78,16 +83,23 @@ if (typeof window !== 'undefined') {
   });
 }
 
+// JWT of the current session, or null
 export const getToken = () => getSession()?.token ?? null;
+// User of the current session, or null
 export const currentUser = () => getSession()?.user ?? null;
+// true if the current user has one of the given roles
 export const hasRole = (...roles) => roles.includes(currentUser()?.role);
+// true for administrators
 export const isAdmin = () => hasRole(ROLE.ADMIN);
+// true for employees (the "Usuario" role)
 export const isEmployee = () => hasRole(ROLE.EMPLOYEE);
+// true for support staff (administrator or technician)
 export const isStaff = () => hasRole(ROLE.ADMIN, ROLE.TECH);
 
+// Home section of a role (login when there is no role)
 export const homeFor = (role) => HOME[role] ?? 'login';
 
-/** ¿Puede el rol abrir esta sección? Las rutas sin "roles" son para cualquier sesión. */
+/** Can the role open this section? Routes without "roles" are open to any session. */
 export function canAccess(route, role = currentUser()?.role) {
   if (route.public) return true;
   if (!role) return false;

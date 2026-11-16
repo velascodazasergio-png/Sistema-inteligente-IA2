@@ -1,8 +1,8 @@
 /* ==========================================================
-   Sesión: pantalla de inicio de sesión y usuario en la barra superior
+   Session: login screen and user in the top bar
    ========================================================== */
 
-/* La pantalla de login ocupa toda la ventana: sin barra lateral ni superior */
+/* The login screen takes the whole window: no side or top bar */
 .app[data-layout="auth"] {
   grid-template-columns: minmax(0, 1fr);
 }
@@ -75,7 +75,7 @@
   list-style: none;
 }
 
-/* Cuenta de demostración: un botón por rol, con su color */
+/* Demo account: one button per role, with its color */
 .auth-role {
   --role: var(--primary);
   display: grid;
@@ -159,7 +159,7 @@
   display: none;
 }
 
-/* Campo con un botón dentro (mostrar u ocultar la contraseña) */
+/* Field with a button inside (show or hide the password) */
 .input-group {
   position: relative;
 }
@@ -180,7 +180,7 @@
   color: var(--primary-text);
 }
 
-/* ---------- Usuario de la sesión en la barra superior ---------- */
+/* ---------- Logged-in user in the top bar ---------- */
 .user-chip {
   display: flex;
   align-items: center;
@@ -217,14 +217,14 @@
 .user-chip[data-role="SUPPORT_TECHNICIAN"] .user-chip__role { color: var(--primary-text); }
 .user-chip[data-role="EMPLOYEE"] .user-chip__role { color: var(--success-text); }
 
-/* Sin enlace a Configuración (roles que no la ven): el estado de la API es solo informativo */
+/* No link to Configuration (roles that cannot see it): the API status is informative only */
 .status:not([href]),
 .sidebar-status:not([href]) {
   cursor: default;
 }
 
-/* Hasta 1279 px la barra superior comparte espacio con el menú lateral: del usuario queda solo el avatar
-   (el nombre y el rol siguen en la descripción emergente) */
+/* Up to 1279 px the top bar shares space with the side menu: only the user avatar is kept
+   (the name and role remain in the tooltip) */
 @media (max-width: 1279px) {
   .user-chip__text {
     display: none;
@@ -249,7 +249,7 @@
     padding: var(--space-4);
   }
 
-  /* En móvil el formulario va primero: es lo que se viene a hacer */
+  /* On mobile the form comes first: it is what the user came to do */
   .auth__card {
     order: -1;
     padding: var(--space-5);

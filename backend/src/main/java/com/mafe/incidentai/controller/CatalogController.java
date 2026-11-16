@@ -24,6 +24,7 @@ public class CatalogController {
 
     private final CatalogService catalogService;
 
+    // GET /categories: all categories, or only the active ones
     @Operation(summary = "List technical categories", description = "With activeOnly=true it returns only the active categories.")
     @GetMapping("/categories")
     public ResponseEntity<List<CategoryResponseDTO>> listCategories(
@@ -31,6 +32,7 @@ public class CatalogController {
         return ResponseEntity.ok(catalogService.listCategories(activeOnly));
     }
 
+    // GET /users: system users, optionally filtered by role
     @Operation(summary = "List system users", description = "Optional filter by role: EMPLOYEE, SUPPORT_TECHNICIAN or ADMIN.")
     @GetMapping("/users")
     public ResponseEntity<List<UserSummaryDTO>> listUsers(@RequestParam(required = false) UserRole role) {

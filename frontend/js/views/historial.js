@@ -1,5 +1,5 @@
-// Historial de consultas (RF08): todas las consultas a la IA con su estado,
-// respuesta, fuentes, similitud y calificación.
+// Query history (RF08): every AI query with its status,
+// response, sources, similarity and rating.
 // Endpoints: GET /api/v1/ai-assistance/history,
 //            POST /api/v1/ai-assistance/responses/{id}/ratings
 
@@ -17,6 +17,7 @@ import { ESTADO_CONSULTA, badge, estadoConsulta, labelOf, optionsHtml } from '..
 import { formatDate, formatDateTime, parseDate } from '../format.js';
 import { routeParams } from '../router.js';
 
+// Counters per status and average rating
 function statsHtml(entries) {
   const ratings = entries.map((q) => q.aiResponse?.rating?.score).filter(Number.isFinite);
   const average = ratings.length ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
@@ -31,6 +32,7 @@ function statsHtml(entries) {
     </dl>`;
 }
 
+// History view: filters, counters, table and detail
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     ${pageHeader(route)}
@@ -41,7 +43,7 @@ export async function render(container, { route, signal }) {
   let users;
   try {
     [entries, users] = await Promise.all([getAiHistory({}, { signal }), isAdmin() ? listUsers({}, { signal }) : null]);
-    // Solo el administrador califica en nombre de otra persona; el resto califica con su sesión
+    // Only the administrator rates on behalf of someone else; everyone else rates with their own session
     users = users ? toOptions(users) : null;
   } catch (error) {
     if (signal.aborted) return;
@@ -50,7 +52,7 @@ export async function render(container, { route, signal }) {
   }
   if (signal.aborted) return;
 
-  // Incidentes que tienen al menos una consulta, para el filtro.
+  // Incidents with at least one query, for the filter.
   const incidents = [...new Map(entries.map((q) => [q.incidentId, q.incidentTitle])).entries()]
     .sort((a, b) => b[0] - a[0]);
 
@@ -112,11 +114,13 @@ export async function render(container, { route, signal }) {
     onRowClick: (query) => openDetail(query),
   });
 
+  // Queries that match the filters
   const filtered = () => {
     const { status, incidentId } = Object.fromEntries(new FormData(form));
     return entries.filter((q) => (!status || estadoConsulta(q) === status) && (!incidentId || String(q.incidentId) === incidentId));
   };
 
+  // Repaints the table and the counters
   const refresh = () => {
     const rows = filtered();
     table.setRows(rows);
@@ -126,6 +130,7 @@ export async function render(container, { route, signal }) {
   form.addEventListener('change', refresh);
   form.addEventListener('submit', (event) => event.preventDefault());
 
+  // Dialog with the full query and its rating form
   function openDetail(query) {
     const modal = openModal({ title: `Consulta #${query.aiQueryId}`, size: 'lg', body: '<div data-query></div>' });
     const slot = modal.body.querySelector('[data-query]');
@@ -145,7 +150,7 @@ export async function render(container, { route, signal }) {
     });
   }
 
-  // #/historial?incidente=12 llega desde el detalle de un incidente.
+  // #/historial?incidente=12 comes from the detail of an incident.
   const preselected = routeParams().get('incidente');
   if (preselected) form.elements.incidentId.value = incidents.some(([id]) => String(id) === preselected) ? preselected : '';
   refresh();

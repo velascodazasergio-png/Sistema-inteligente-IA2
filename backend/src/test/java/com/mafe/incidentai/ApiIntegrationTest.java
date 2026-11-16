@@ -48,14 +48,17 @@ class ApiIntegrationTest {
     @Autowired
     private ObjectMapper mapper;
 
+    // Sends a JSON POST request
     private ResultActions postJson(String url, String body) throws Exception {
         return mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(body));
     }
 
+    // Parses the response body as JSON
     private JsonNode json(ResultActions result) throws Exception {
         return mapper.readTree(result.andReturn().getResponse().getContentAsString());
     }
 
+    // Incident registration, filters and status rules
     @Nested
     @DisplayName("Incidents (RF01)")
     class Incidents {
@@ -113,6 +116,7 @@ class ApiIntegrationTest {
         }
     }
 
+    // Analytics indicators and their filters
     @Nested
     @DisplayName("Analitica (RF06)")
     class Analytics {
@@ -143,6 +147,7 @@ class ApiIntegrationTest {
         }
     }
 
+    // Knowledge base: creation, editing and verification
     @Nested
     @DisplayName("Knowledge base (RF02)")
     class Knowledge {
@@ -183,6 +188,7 @@ class ApiIntegrationTest {
         }
     }
 
+    // AI requests, n8n callbacks, failures and ratings
     @Nested
     @DisplayName("AI assistance (RF04, RF05, RF08)")
     class AiAssistance {
@@ -191,6 +197,7 @@ class ApiIntegrationTest {
                 {"incidentId":150,"incidentTitle":"PostgreSQL pool exhausted","categoryName":"Database & Storage",
                  "detailedDescription":"HikariPool timeouts on node 2 every ten minutes","priority":"CRITICAL"}""";
 
+        // Creates an AI query for incident 150 and returns its ID
         private long requestQuery() throws Exception {
             return json(postJson("/api/v1/ai-assistance/request", REQUEST).andExpect(status().isAccepted())).get("aiQueryId").asLong();
         }

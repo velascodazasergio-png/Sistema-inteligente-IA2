@@ -1,4 +1,4 @@
-// Cálculos compartidos por el Dashboard y Analítica sobre datos reales del backend.
+// Calculations shared by the Dashboard and Analytics views, on real backend data.
 
 import { ESTADO_INCIDENTE, PRIORIDAD, ESTADOS_FINALES } from './catalogs.js';
 import { parseDate } from './format.js';
@@ -15,15 +15,16 @@ export const TIME_BUCKETS = [
   { label: '> 3 d', max: Infinity },
 ];
 
-// Misma regla que el backend: tiempo de atención = updatedAt − createdAt.
+// Same rule as the backend: handling time = updatedAt − createdAt.
 export const resolutionHours = (i) => {
   const start = parseDate(i.createdAt);
   const end = parseDate(i.updatedAt);
   return start && end && end >= start ? (end - start) / HOUR : null;
 };
 
-// Distribuciones que el backend no agrega: estado, prioridad y tiempos de resolución.
+// Distributions the backend does not aggregate: status, priority and resolution times.
 export function distributions(incidents) {
+  // true while the incident is still being worked on
   const open = (i) => !ESTADOS_FINALES.includes(i.status);
   const hours = incidents.filter((i) => !open(i)).map(resolutionHours).filter((h) => h != null);
   return {
@@ -40,16 +41,17 @@ export function distributions(incidents) {
 
 // AAAA-MM-DD ↔ Date local
 const toDate = (iso) => new Date(`${iso}T00:00:00`);
+// Date → YYYY-MM-DD (local time)
 export const toIso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 
-// Rango de "últimos N días" terminando hoy.
+// Range of the "last N days", ending today.
 export function lastDays(days) {
   const end = new Date();
   const start = new Date(end.getTime() - (days - 1) * DAY);
   return { startDate: toIso(start), endDate: toIso(end) };
 }
 
-// Periodo anterior de la misma duración: 1–30 nov → 2–31 oct.
+// Previous period of the same length: Nov 1–30 → Oct 2–31.
 export function previousPeriod(startDate, endDate) {
   if (!startDate || !endDate) return null;
   const start = toDate(startDate);
@@ -60,12 +62,13 @@ export function previousPeriod(startDate, endDate) {
   return { startDate: toIso(prevStart), endDate: toIso(prevEnd), days };
 }
 
-// Variación porcentual; null si no hay base de comparación.
+// Percentage change; null when there is no base to compare with.
 export const pctChange = (current, previous) =>
   (Number.isFinite(current) && Number.isFinite(previous) && previous !== 0 ? ((current - previous) / previous) * 100 : null);
 
 // "2026-10" → "oct 2026"
 const monthFmt = new Intl.DateTimeFormat('es-CO', { month: 'short', year: 'numeric' });
+// "2026-10" → month name and year, for chart labels
 export const formatYearMonth = (value) => {
   const [y, m] = String(value ?? '').split('-').map(Number);
   return y && m ? monthFmt.format(new Date(y, m - 1, 1)) : (value ?? '—');

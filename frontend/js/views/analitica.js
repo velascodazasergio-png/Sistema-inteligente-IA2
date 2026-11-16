@@ -1,9 +1,9 @@
-// Analítica (RF06): indicadores y distribuciones filtrables por fecha,
-// categoría y prioridad.
-// - KPI, ranking de categorías y tendencia semanal: GET /api/v1/analytics/dashboard
-//   (calculados con consultas en la base de datos, con los mismos filtros).
-// - Distribución por estado, prioridad y tiempos: GET /api/v1/incidents con los
-//   mismos filtros, contados en el cliente.
+// Analytics (RF06): indicators and distributions filtered by date,
+// category and priority.
+// - KPIs, category ranking and weekly trend: GET /api/v1/analytics/dashboard
+//   (computed with database queries, with the same filters).
+// - Distribution by status, priority and times: GET /api/v1/incidents with the
+//   same filters, counted on the client.
 
 import { pageHeader, icon, escapeHtml } from '../ui.js';
 import { kpiCard, animateCounters } from '../components/kpi-card.js';
@@ -17,6 +17,7 @@ import { PRIORIDAD, optionsHtml } from '../catalogs.js';
 import { formatYearWeek } from '../format.js';
 import { distributions } from '../analytics-utils.js';
 
+// Empty card that will hold a chart
 const chartCard = (id, title, subtitle, wide = false) => `
   <section class="card chart-card${wide ? ' chart-card--wide' : ''}" aria-labelledby="${id}-title">
     <div class="chart-card__head"><div>
@@ -26,6 +27,7 @@ const chartCard = (id, title, subtitle, wide = false) => `
     <div id="${id}">${skeletonChart(220)}</div>
   </section>`;
 
+// Analytics view: filters, KPIs and charts
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     ${pageHeader(route)}
@@ -63,6 +65,7 @@ export async function render(container, { route, signal }) {
   const kpis = container.querySelector('#a-kpis');
   let charts = null;
 
+  // Paints the KPIs and every chart with the loaded data
   function draw(dashboard, dist) {
     kpis.innerHTML = `
       <div class="kpi-grid">
@@ -103,6 +106,7 @@ export async function render(container, { route, signal }) {
     };
   }
 
+  // Loads the indicators and incidents with the current filters
   async function load() {
     const filters = Object.fromEntries(new FormData(form));
     if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
@@ -137,7 +141,7 @@ export async function render(container, { route, signal }) {
       form.elements.categoryId.insertAdjacentHTML('beforeend', categories
         .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''));
     })
-    .catch(() => {}); // Si falla, el filtro queda en "Todas"; el error principal lo muestra load().
+    .catch(() => {}); // If it fails, the filter stays at "Todas"; load() shows the main error.
 
   await load();
 }

@@ -79,6 +79,7 @@ public class AnalyticsService {
         return getTopCategories(f, incidentRepository.countFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate()));
     }
 
+    // Incidents per category with their percentage of the total
     private List<CategoryMetricDTO> getTopCategories(AnalyticsFilterRequest f, long totalIncidents) {
         return incidentRepository.findTopCategoriesFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate())
                 .stream()
@@ -101,6 +102,7 @@ public class AnalyticsService {
         return getIncidentsByPriority(f, incidentRepository.countFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate()));
     }
 
+    // Incidents per priority with their percentage of the total
     private List<PriorityMetricDTO> getIncidentsByPriority(AnalyticsFilterRequest f, long totalIncidents) {
         return incidentRepository.findIncidentsByPriorityFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate())
                 .stream()
@@ -122,6 +124,7 @@ public class AnalyticsService {
         return getIncidentsByStatus(f, incidentRepository.countFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate()));
     }
 
+    // Incidents per status with their percentage of the total
     private List<StatusMetricDTO> getIncidentsByStatus(AnalyticsFilterRequest f, long totalIncidents) {
         return incidentRepository.findIncidentsByStatusFiltered(f.categoryId(), f.priority(), f.startDate(), f.endDate())
                 .stream()

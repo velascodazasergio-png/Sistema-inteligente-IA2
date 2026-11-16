@@ -1,23 +1,24 @@
-// Utilidades de interfaz compartidas: iconos, escape de HTML,
-// encabezados de página y notificaciones toast.
+// Shared UI utilities: icons, HTML escaping,
+// page headers and toast notifications.
 
+// SVG icon from the sprite in index.html
 export const icon = (name, className = '') =>
   `<svg class="icon ${className}" aria-hidden="true" focusable="false"><use href="#${name}"></use></svg>`;
 
 const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 
-// Todo texto que venga del backend o del usuario debe pasar por aquí
-// antes de insertarse con innerHTML.
+// Every text coming from the backend or the user must go through here
+// before being inserted with innerHTML.
 export function escapeHtml(value) {
   return String(value ?? '').replace(/[&<>"']/g, (char) => HTML_ESCAPES[char]);
 }
 
-// Minúsculas y sin tildes: para búsquedas que ignoren acentos.
+// Lowercase and without accents: for accent-insensitive searches.
 export const normalizeText = (text) =>
   String(text ?? '').normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().trim();
 
-// Encabezado de página. Acepta la ruta completa ({ rf, title, description, icon })
-// o los campos sueltos ({ eyebrow, title, description, icon }).
+// Page header. Accepts the full route ({ rf, title, description, icon })
+// or the loose fields ({ eyebrow, title, description, icon }).
 export function pageHeader({ eyebrow, rf, title, description, icon: iconName }) {
   const tag = eyebrow ?? rf;
   return `
@@ -34,7 +35,7 @@ export function pageHeader({ eyebrow, rf, title, description, icon: iconName }) 
     </header>`;
 }
 
-// Avatar con iniciales y un color estable derivado del nombre.
+// Avatar with initials and a stable color derived from the name.
 export function avatar(name, size = 'sm') {
   const clean = String(name ?? '').trim();
   const initials = clean.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?';
@@ -43,7 +44,7 @@ export function avatar(name, size = 'sm') {
   return `<span class="avatar avatar--${size}" style="--avatar-hue: ${hash}" aria-hidden="true">${escapeHtml(initials)}</span>`;
 }
 
-// Marca un botón como ocupado mientras dura una operación asíncrona.
+// Marks a button as busy while an async operation runs.
 export function setBusy(button, busy, busyLabel = 'Procesando…') {
   if (busy) {
     button.dataset.originalHtml = button.innerHTML;
@@ -58,6 +59,7 @@ export function setBusy(button, busy, busyLabel = 'Procesando…') {
 
 const TOAST_ICONS = { info: 'i-info', success: 'i-check', warning: 'i-alert', error: 'i-alert' };
 
+// Shows a temporary notification (info, success, warning, error)
 export function toast(message, { type = 'info', duration = 4500 } = {}) {
   const region = document.getElementById('toast-region');
   if (!region) return;
@@ -71,10 +73,11 @@ export function toast(message, { type = 'info', duration = 4500 } = {}) {
     <button class="toast__close" type="button" aria-label="Cerrar notificación">${icon('i-close')}</button>`;
 
   let timer;
+  // Hides the notification with its exit animation
   const dismiss = () => {
     clearTimeout(timer);
     el.classList.add('toast--leaving');
-    // Respaldo por si animationend no se dispara.
+    // Fallback in case animationend does not fire.
     setTimeout(() => el.remove(), 400);
     el.addEventListener('animationend', () => el.remove(), { once: true });
   };

@@ -48,6 +48,7 @@ class SecurityTest {
     @Autowired
     private ObjectMapper json;
 
+    // Logs in with the given email and returns the JWT
     private String login(String email) throws Exception {
         String body = mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"" + email + "\",\"password\":\"Demo-Password-1\"}"))
@@ -56,6 +57,7 @@ class SecurityTest {
         return json.readTree(body).get("accessToken").asText();
     }
 
+    // Adds the JWT of the given user to the request
     private MockHttpServletRequestBuilder as(String email, MockHttpServletRequestBuilder request) throws Exception {
         return request.header("Authorization", "Bearer " + login(email));
     }

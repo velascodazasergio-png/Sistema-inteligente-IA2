@@ -23,6 +23,7 @@ public class DemoPasswordInitializer implements ApplicationRunner {
     private final PasswordEncoder passwordEncoder;
     private final String demoPassword;
 
+    // Injects the repository, the encoder and the configured demo password
     public DemoPasswordInitializer(UserRepository userRepository, PasswordEncoder passwordEncoder,
                                    @Value("${app.security.demo-password:}") String demoPassword) {
         this.userRepository = userRepository;
@@ -30,6 +31,7 @@ public class DemoPasswordInitializer implements ApplicationRunner {
         this.demoPassword = demoPassword;
     }
 
+    // On startup, assigns the demo password to users that have none
     @Override
     @Transactional
     public void run(ApplicationArguments args) {

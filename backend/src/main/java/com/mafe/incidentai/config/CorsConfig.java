@@ -14,6 +14,7 @@ public class CorsConfig implements WebMvcConfigurer {
     @Value("${app.cors.allowed-origins:http://localhost:*,http://127.0.0.1:*}")
     private String[] allowedOrigins;
 
+    // Allows the configured frontend origins to call /api/**
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")

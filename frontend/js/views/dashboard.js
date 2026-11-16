@@ -1,7 +1,7 @@
-// Dashboard (RF07): estado general del soporte, filtrable por fecha, categoría y prioridad.
-// - KPI, categorías y evolución semanal/mensual: GET /api/v1/analytics/dashboard (SQL en el backend).
-// - Estado, prioridad y tiempos de resolución: GET /api/v1/incidents con los mismos filtros.
-// - Comparación temporal: el mismo endpoint para el periodo anterior de igual duración.
+// Dashboard (RF07): overall support status, filtered by date, category and priority.
+// - KPIs, categories and weekly/monthly trend: GET /api/v1/analytics/dashboard (SQL in the backend).
+// - Status, priority and resolution times: GET /api/v1/incidents with the same filters.
+// - Period comparison: the same endpoint for the previous period of equal length.
 
 import { pageHeader, icon, escapeHtml, avatar } from '../ui.js';
 import { kpiCard, animateCounters } from '../components/kpi-card.js';
@@ -24,6 +24,7 @@ const PRESETS = [
   { value: 'custom', label: 'Personalizado' },
 ];
 
+// Empty card that will hold a chart
 const chartCard = (id, title, subtitle, wide = false) => `
   <section class="card chart-card${wide ? ' chart-card--wide' : ''}" aria-labelledby="${id}-title">
     <div class="chart-card__head">
@@ -35,6 +36,7 @@ const chartCard = (id, title, subtitle, wide = false) => `
     <div id="${id}">${skeletonChart(220)}</div>
   </section>`;
 
+// Weekly or monthly rows → line chart data
 const trendSeries = (rows, labelFn) => ({
   labels: rows.map((r) => labelFn(r)),
   series: [
@@ -43,6 +45,7 @@ const trendSeries = (rows, labelFn) => ({
   ],
 });
 
+// Dashboard view: filters, summary, KPIs and charts
 export async function render(container, { route, signal }) {
   container.innerHTML = `
     ${pageHeader(route)}
@@ -96,7 +99,7 @@ export async function render(container, { route, signal }) {
   const $ = (id) => container.querySelector(id);
   let charts = null;
 
-  // El selector de periodo rellena las fechas; editar una fecha pasa a "Personalizado".
+  // The period selector fills the dates; editing a date switches to "Personalizado".
   form.elements.period.addEventListener('change', () => {
     const value = form.elements.period.value;
     if (value === 'all') {
@@ -108,7 +111,7 @@ export async function render(container, { route, signal }) {
       form.elements.endDate.value = range.endDate;
     }
   });
-  // #/dashboard?periodo=30 abre el dashboard con un periodo rápido ya aplicado.
+  // #/dashboard?periodo=30 opens the dashboard with a quick period already applied.
   const linkedPeriod = routeParams().get('periodo');
   if (PRESETS.some((p) => p.value === linkedPeriod && !['all', 'custom'].includes(p.value))) {
     form.elements.period.value = linkedPeriod;
@@ -119,15 +122,17 @@ export async function render(container, { route, signal }) {
     form.elements.period.value = form.elements.startDate.value || form.elements.endDate.value ? 'custom' : 'all';
   }));
 
+  // KPI cards, with the trend against the previous period
   function kpisHtml(d, dist, prev) {
     const pending = (d.totalIncidents ?? 0) - (d.resolvedIncidents ?? 0);
     const period = prev ? `${prev.days} días anteriores` : null;
+    // Change against the previous period, or nothing without one
     const trend = (current, previous, goodWhen) => {
       const delta = prev ? pctChange(current, previous) : null;
       return delta == null ? undefined : { delta, goodWhen, period };
     };
     const p = prev?.data;
-    // Series semanales reales para los minigráficos de las tarjetas
+    // Real weekly series for the card sparklines
     const weeks = d.weeklyTrends ?? [];
     const reported = weeks.map((w) => w.totalReported);
     const resolved = weeks.map((w) => w.totalResolved);
@@ -147,7 +152,7 @@ export async function render(container, { route, signal }) {
       </div>`;
   }
 
-  // Resumen del periodo: frases calculadas con los datos reales del backend
+  // Period summary: sentences computed from the real backend data
   function heroHtml(d, dist, prev) {
     const now = new Date();
     const hour = now.getHours();
@@ -157,6 +162,7 @@ export async function render(container, { route, signal }) {
     const rate = d.resolutionRatePercentage ?? 0;
     const top = d.topCategories?.[0];
     const delta = prev ? pctChange(d.totalIncidents, prev.data.totalIncidents) : null;
+    // Number in Colombian Spanish format
     const fmt = (n, digits = 1) => Number(n).toLocaleString('es-CO', { maximumFractionDigits: digits });
     const circumference = 2 * Math.PI * 52;
     const offset = circumference * (1 - Math.min(Math.max(rate, 0), 100) / 100);
@@ -196,6 +202,7 @@ export async function render(container, { route, signal }) {
       </div>`;
   }
 
+  // Paints the whole dashboard with the loaded data
   function draw(d, incidents, prev) {
     const dist = distributions(incidents);
     $('#d-hero').innerHTML = heroHtml(d, dist, prev);
@@ -243,6 +250,7 @@ export async function render(container, { route, signal }) {
       </ul>` : '<p class="cell-muted">No hay incidentes en este periodo.</p>';
   }
 
+  // Loads the indicators, incidents and previous period with the filters
   async function load() {
     const filters = Object.fromEntries(new FormData(form));
     delete filters.period;
@@ -253,7 +261,7 @@ export async function render(container, { route, signal }) {
     errorEl.textContent = '';
     scope.textContent = 'Cargando…';
 
-    // Comparación temporal solo con un rango cerrado: el periodo anterior tiene la misma duración.
+    // Period comparison only with a closed range: the previous period has the same length.
     const prevRange = previousPeriod(filters.startDate, filters.endDate);
     let dashboard;
     let incidents;
@@ -286,7 +294,7 @@ export async function render(container, { route, signal }) {
       form.elements.categoryId.insertAdjacentHTML('beforeend', categories
         .map((c) => `<option value="${c.id}">${escapeHtml(c.name)}</option>`).join(''));
     })
-    .catch(() => {}); // Si falla, el filtro queda en "Todas"; el error principal lo muestra load().
+    .catch(() => {}); // If it fails, the filter stays at "Todas"; load() shows the main error.
 
   await load();
 }

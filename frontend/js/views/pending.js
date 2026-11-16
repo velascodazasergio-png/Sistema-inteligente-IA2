@@ -1,15 +1,17 @@
-// Vista para secciones sin endpoints en el backend todavía.
-// No muestra datos de ejemplo: indica qué datos necesita la sección,
-// para coordinar los contratos con la persona responsable del backend.
+// View for sections that do not have backend endpoints yet.
+// It shows no sample data: it lists the data the section needs,
+// to agree on the contracts with the backend owner.
 
 import { icon, escapeHtml, pageHeader } from '../ui.js';
 import { getApiBaseUrl } from '../config.js';
 
+// List of requirements with an icon
 const list = (items, className, iconName) => `
   <ul class="requirements ${className}">
     ${items.map((item) => `<li>${icon(iconName)}<span>${escapeHtml(item)}</span></li>`).join('')}
   </ul>`;
 
+// Shows what a section still needs from the backend
 export function render(container, { route }) {
   container.innerHTML = `
     ${pageHeader(route)}

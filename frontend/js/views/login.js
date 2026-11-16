@@ -1,5 +1,5 @@
-// Inicio de sesión: correo y contraseña → JWT (POST /api/v1/auth/login).
-// Tras entrar, cada rol llega a su propia sección de inicio.
+// Login: email and password → JWT (POST /api/v1/auth/login).
+// After logging in, each role lands on its own home section.
 
 import { icon, escapeHtml, toast, setBusy } from '../ui.js';
 import { login } from '../services/auth.service.js';
@@ -7,7 +7,7 @@ import { homeFor, ROLE_LABEL } from '../auth.js';
 import { routeParams, navigate } from '../router.js';
 import { showServerFieldErrors } from '../components/form-errors.js';
 
-// Usuarios de data.sql, uno por rol, para probar cada interfaz
+// data.sql users, one per role, to try each interface
 const DEMO_ACCOUNTS = [
   { role: 'ADMIN', name: 'Sarah Jenkins', email: 'sarah.jenkins@enterprise.io', what: 'Todo el sistema, verificación de artículos y configuración.' },
   { role: 'SUPPORT_TECHNICIAN', name: 'Marcus Vance', email: 'marcus.vance@enterprise.io', what: 'Atiende incidentes, redacta artículos y consulta la IA.' },
@@ -21,6 +21,7 @@ const RULES = {
   password: (v) => (v ? '' : 'Escribe tu contraseña.'),
 };
 
+// Login view: demo accounts, form and validation
 export async function render(container) {
   container.innerHTML = `
     <div class="auth">
@@ -69,6 +70,7 @@ export async function render(container) {
   const formError = container.querySelector('#l-error');
   const touched = new Set();
 
+  // Validates one field and shows its error
   const validateField = (name) => {
     const field = form.elements[name];
     const value = name === 'email' ? field.value.trim() : field.value;
@@ -116,7 +118,7 @@ export async function render(container) {
     try {
       const user = await login(form.elements.email.value, form.elements.password.value);
       toast(`Hola, ${user.fullName}. Entraste como ${ROLE_LABEL[user.role] ?? user.role}.`, { type: 'success' });
-      // Vuelve a la sección que pidió antes de iniciar sesión (si su rol puede verla; si no, el router redirige)
+      // Goes back to the section requested before logging in (if the role can see it; otherwise the router redirects)
       navigate(routeParams().get('next') || homeFor(user.role));
     } catch (error) {
       setBusy(button, false);

@@ -1,5 +1,5 @@
-// Tarjeta de indicador (KPI) con icono, valor, tendencia y barra de progreso.
-// El valor siempre viene del backend; si no hay valor se muestra "—".
+// Indicator (KPI) card with icon, value, trend and progress bar.
+// The value always comes from the backend; with no value it shows "—".
 
 import { icon, escapeHtml } from '../ui.js';
 
@@ -21,6 +21,7 @@ const FORMATTERS = {
   duration: formatDuration,
 };
 
+// Trend arrow and percentage, green or red depending on what is good
 function trendHtml(trend) {
   if (!trend || !Number.isFinite(trend.delta)) return '';
   const { delta, goodWhen = 'up', period = 'periodo anterior' } = trend;
@@ -35,16 +36,16 @@ function trendHtml(trend) {
 
 /**
  * @param {object} o
- * @param {string} o.label     Texto del indicador.
- * @param {number|null} o.value Valor real recibido del backend.
+ * @param {string} o.label     Indicator text.
+ * @param {number|null} o.value Real value received from the backend.
  * @param {'number'|'percent'|'duration'} [o.format]
- * @param {string} o.icon      Id del icono del sprite.
+ * @param {string} o.icon      Icon id in the sprite.
  * @param {'primary'|'accent'|'success'|'warning'|'danger'|'info'|'pink'} [o.tone]
  * @param {{delta:number, goodWhen?:'up'|'down', period?:string}} [o.trend]
- *        Variación porcentual frente al periodo anterior (si hay histórico).
- * @param {number} [o.progress] 0–100: dibuja una barra de progreso.
- * @param {string} [o.hint]    Texto auxiliar en el pie.
- * @param {number[]} [o.spark] Serie corta (p. ej. semanal) para un minigráfico de tendencia.
+ *        Percentage change against the previous period (when there is history).
+ * @param {number} [o.progress] 0–100: draws a progress bar.
+ * @param {string} [o.hint]    Helper text in the footer.
+ * @param {number[]} [o.spark] Short series (e.g. weekly) for a trend sparkline.
  */
 export function kpiCard({ label, value, format = 'number', icon: iconName, tone = 'primary', trend, progress, hint, spark }) {
   const hasValue = typeof value === 'number' && Number.isFinite(value);
@@ -71,7 +72,7 @@ export function kpiCard({ label, value, format = 'number', icon: iconName, tone 
     </article>`;
 }
 
-// Minigráfico de línea y área. Usa el color del tono de la tarjeta (--kpi-color).
+// Line and area sparkline. Uses the color of the card tone (--kpi-color).
 function sparkHtml(values, label) {
   const data = (values ?? []).filter(Number.isFinite);
   if (data.length < 2) return '';
@@ -90,16 +91,18 @@ function sparkHtml(values, label) {
     </svg>`;
 }
 
-// Cuenta de 0 al valor real cuando la tarjeta entra en pantalla (una vez).
+// Counts from 0 to the real value when the card enters the screen (once).
 export function animateCounters(root) {
   if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+  // Animates one number from 0 to its value
   const run = (el) => {
     const target = Number(el.dataset.countTo);
     const fmt = FORMATTERS[el.dataset.format] ?? FORMATTERS.number;
     const integer = Number.isInteger(target) && el.dataset.format === 'number';
     const start = performance.now();
     const duration = 900;
+    // One animation frame (ease-out)
     const tick = (now) => {
       const t = Math.min((now - start) / duration, 1);
       const current = target * (1 - (1 - t) ** 3);

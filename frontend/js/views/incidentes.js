@@ -1,9 +1,9 @@
-// Incidentes (RF01): registro, consulta, filtrado y cambio de estado.
+// Incidents (RF01): registration, lookup, filtering and status changes.
 // Endpoints: GET/POST /api/v1/incidents, PATCH /api/v1/incidents/{id}/status
 //
-// Según el rol:
-// - Administrador y técnico: todos los incidentes, filtro por usuario y cambio de estado.
-// - Usuario (EMPLOYEE): "Mis incidentes". Solo los suyos, los reporta a su nombre y no cambia estados.
+// By role:
+// - Administrator and technician: every incident, filter by user and status changes.
+// - User (EMPLOYEE): "Mis incidentes". Only their own, reported in their name, no status changes.
 
 import { pageHeader, icon, escapeHtml, toast, setBusy, avatar } from '../ui.js';
 import { createDataTable } from '../components/data-table.js';
@@ -17,10 +17,11 @@ import { routeParams } from '../router.js';
 import { showServerFieldErrors, attachCounter } from '../components/form-errors.js';
 import { isEmployee, currentUser } from '../auth.js';
 
+// <option> list with a first empty option
 const selectOptions = (items, placeholder) =>
   `<option value="">${escapeHtml(placeholder)}</option>${items.map((i) => `<option value="${i.id}">${escapeHtml(i.name)}</option>`).join('')}`;
 
-// Reglas del CreateIncidentRequestDTO, validadas también aquí para avisar antes de enviar.
+// CreateIncidentRequestDTO rules, also validated here to warn before sending.
 const RULES = {
   title: (v) => (!v ? 'El título es obligatorio.' : v.length < 5 || v.length > 150 ? 'Debe tener entre 5 y 150 caracteres.' : ''),
   description: (v) => (!v ? 'La descripción es obligatoria.' : v.length < 20 ? 'Describe el problema con al menos 20 caracteres.' : v.length > 4000 ? 'Máximo 4000 caracteres.' : ''),
@@ -29,9 +30,10 @@ const RULES = {
   userId: (v) => (v ? '' : 'Elige el usuario responsable.'),
 };
 
+// Incidents view: filters, table, detail, status change and new incident
 export async function render(container, { route, signal }) {
   const employee = isEmployee();
-  // El usuario siempre reporta a su nombre: no elige responsable
+  // The user always reports in their own name: no reporter to choose
   const rules = employee ? Object.fromEntries(Object.entries(RULES).filter(([name]) => name !== 'userId')) : RULES;
 
   container.innerHTML = `
@@ -76,7 +78,7 @@ export async function render(container, { route, signal }) {
     initialSort: { key: 'createdAt', dir: 'desc' },
     columns: [
       { key: 'id', label: 'ID', align: 'right', render: (r) => `<span class="cell-id">#${r.id}</span>`, text: (r) => String(r.id) },
-      // Título y categoría en la misma celda: ahorra una columna y mantiene la tabla dentro de la pantalla
+      // Title and category in the same cell: saves a column and keeps the table on screen
       {
         key: 'title', label: 'Incidente · categoría',
         render: (r) => `<span class="cell-stack"><span class="cell-title" title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</span>
@@ -91,7 +93,7 @@ export async function render(container, { route, signal }) {
         key: 'status', label: 'Estado', render: (r) => badge(ESTADO_INCIDENTE, r.status),
         text: (r) => labelOf(ESTADO_INCIDENTE, r.status), sortValue: (r) => Object.keys(ESTADO_INCIDENTE).indexOf(r.status),
       },
-      // En "Mis incidentes" todos son del mismo usuario: la columna sobra
+      // In "Mis incidentes" every row belongs to the same user: the column is not needed
       ...(employee ? [] : [{ key: 'userFullName', label: 'Responsable', render: (r) => `<span class="person cell-muted">${avatar(r.userFullName)}${escapeHtml(r.userFullName)}</span>` }]),
       {
         key: 'createdAt', label: 'Fecha', render: (r) => `<span class="cell-muted" title="${formatDateTime(r.createdAt)}">${formatDate(r.createdAt)}</span>`,
@@ -110,7 +112,7 @@ export async function render(container, { route, signal }) {
     onRowClick: (row) => openDetail(row),
   });
 
-  // Botones de la columna Acciones (la tabla ignora los clics en botones para la fila).
+  // Buttons of the Actions column (the table ignores button clicks for the row).
   container.querySelector('#inc-table').addEventListener('click', (event) => {
     const button = event.target.closest('[data-row-action]');
     if (!button) return;
@@ -123,14 +125,16 @@ export async function render(container, { route, signal }) {
     }
   });
 
+  // Current values of the filter form
   const readFilters = () => Object.fromEntries(new FormData(form));
 
-  // Tras crear o actualizar, se respeta el filtro de estado ya aplicado.
+  // After creating or updating, the applied status filter is kept.
   const showRows = () => {
     const { status } = readFilters();
     table.setRows(status ? incidents.filter((i) => i.status === status) : incidents);
   };
 
+  // Fills the category and user filters
   const fill = () => {
     const keep = readFilters();
     form.elements.categoryId.innerHTML = selectOptions(catalogs.categories, 'Todas');
@@ -141,6 +145,7 @@ export async function render(container, { route, signal }) {
     }
   };
 
+  // Loads the incidents with the current filters
   async function load() {
     const filters = readFilters();
     if (filters.startDate && filters.endDate && filters.startDate > filters.endDate) {
@@ -168,13 +173,13 @@ export async function render(container, { route, signal }) {
   form.addEventListener('reset', () => setTimeout(load));
   createButton.addEventListener('click', () => openCreate());
 
-  // Primera carga: incidentes y catálogos en paralelo.
+  // First load: incidents and catalogs in parallel.
   table.setLoading(true);
   try {
     const [rows, categories, users] = await Promise.all([
       listIncidents({}, { signal }),
       listCategories({}, { signal }),
-      // El directorio de usuarios es solo para el personal de soporte
+      // The user directory is only for support staff
       employee ? [] : listUsers({}, { signal }),
     ]);
     incidents = rows;
@@ -194,8 +199,8 @@ export async function render(container, { route, signal }) {
   table.setLoading(false);
   showRows();
 
-  // #/incidentes?id=12 abre directamente el detalle (enlaces del dashboard).
-  // #/incidentes?nuevo=1 abre el formulario de registro (acceso rápido del dashboard).
+  // #/incidentes?id=12 opens the detail directly (dashboard links).
+  // #/incidentes?nuevo=1 opens the registration form (dashboard shortcut).
   if (routeParams().get('nuevo') === '1') openCreate();
 
   const linkedId = routeParams().get('id');
@@ -205,7 +210,7 @@ export async function render(container, { route, signal }) {
       .catch((error) => { if (!signal.aborted) toast(error.message, { type: 'error' }); });
   }
 
-  /* ---------- Detalle y cambio de estado ---------- */
+  /* ---------- Detail and status change ---------- */
   function openDetail(incident) {
     const closed = incident.status === 'CLOSED';
     const modal = openModal({
@@ -242,7 +247,7 @@ export async function render(container, { route, signal }) {
         </div>`,
     });
 
-    // Al seguir un enlace se cierra el modal (el router cambia de vista).
+    // Following a link closes the modal (the router changes the view).
     modal.body.querySelectorAll('.detail-links a').forEach((a) => a.addEventListener('click', () => modal.close()));
 
     const statusForm = modal.body.querySelector('[data-status-form]');
@@ -253,7 +258,7 @@ export async function render(container, { route, signal }) {
         toast('El incidente ya tiene ese estado.', { type: 'info' });
         return;
       }
-      // Cerrar es irreversible: el backend ya no permite cambiar el estado.
+      // Closing cannot be undone: the backend no longer allows status changes.
       if (next === 'CLOSED') {
         const ok = await confirmDialog({
           title: `Cerrar incidente #${incident.id}`,
@@ -325,6 +330,7 @@ export async function render(container, { route, signal }) {
     const touched = new Set();
     attachCounter(createForm.elements.description, createForm.querySelector('[data-counter]'));
 
+    // Validates one form field and shows its error
     const validateField = (name) => {
       const field = createForm.elements[name];
       const message = RULES[name](field.value.trim());
@@ -340,7 +346,7 @@ export async function render(container, { route, signal }) {
       field.addEventListener('change', () => { if (touched.has(name)) validateField(name); });
     });
 
-    // Confirmar antes de descartar lo escrito.
+    // Ask before discarding what was typed.
     modal.body.querySelector('[data-cancel]').addEventListener('click', async () => {
       const dirty = [...new FormData(createForm).values()].some((v) => String(v).trim());
       if (dirty && !(await confirmDialog({ title: 'Descartar incidente', message: 'Se perderá lo que escribiste en el formulario.', confirmLabel: 'Descartar', danger: true }))) return;
@@ -369,7 +375,7 @@ export async function render(container, { route, signal }) {
         openDetail(created);
       } catch (error) {
         setBusy(button, false);
-        // 400 con errores por campo: se muestran junto a cada uno; el resto, en un aviso
+        // 400 with per-field errors: shown next to each field; the rest, in a toast
         const shown = showServerFieldErrors(createForm, error, (name) => `c-${name}-error`);
         toast(shown ? 'Revisa los campos marcados.' : error.message, { type: 'error' });
       }

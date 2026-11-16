@@ -1,13 +1,13 @@
-// Gráficos SVG nativos, sin librerías: barras horizontales, columnas,
-// líneas y dona. Todos comparten:
-//  - tooltip al pasar el cursor
-//  - animación de entrada (se desactiva con prefers-reduced-motion)
-//  - estado vacío cuando no hay datos
-//  - redibujado al cambiar el tamaño del contenedor
-//  - tabla oculta con los mismos datos para lectores de pantalla
+// Native SVG charts, no libraries: horizontal bars, columns,
+// lines and donut. All of them share:
+//  - tooltip on hover
+//  - entry animation (disabled with prefers-reduced-motion)
+//  - empty state when there is no data
+//  - redraw when the container is resized
+//  - hidden table with the same data for screen readers
 //
-// Cada función devuelve { update(data), destroy() }. Pasa `signal` (el que
-// el router entrega a cada vista) para liberar recursos al cambiar de sección.
+// Each function returns { update(data), destroy() }. Pass `signal` (the one
+// the router gives each view) to free resources when the section changes.
 
 import { escapeHtml, icon } from '../ui.js';
 
@@ -16,6 +16,7 @@ export const CHART_COLORS = ['--chart-1', '--chart-2', '--chart-3', '--chart-4',
   .map((name) => `var(${name})`);
 
 const numberFormat = new Intl.NumberFormat('es-CO', { maximumFractionDigits: 1 });
+// Number in Colombian Spanish format
 export const formatNumber = (value) => numberFormat.format(value);
 
 let uid = 0;
@@ -30,20 +31,23 @@ function svgEl(name, attrs = {}, parent) {
   return node;
 }
 
+// Adds an SVG text node
 function svgText(parent, text, attrs) {
   const node = svgEl('text', attrs, parent);
   node.textContent = text;
   return node;
 }
 
+// Cuts a long text and adds "…"
 function truncate(text, maxChars) {
   const value = String(text);
   return value.length > maxChars ? `${value.slice(0, Math.max(1, maxChars - 1))}…` : value;
 }
 
+// Share of the total as a percentage text
 const percent = (value, total) => (total ? `${formatNumber((value / total) * 100)} %` : '—');
 
-// Escala "redonda" para el eje Y: 0, 5, 10, 15, 20…
+// "Round" scale for the Y axis: 0, 5, 10, 15, 20…
 function niceScale(maxValue, ticks = 4, integer = true) {
   if (!(maxValue > 0)) return { max: ticks, step: 1 };
   let step = maxValue / ticks;
@@ -54,6 +58,7 @@ function niceScale(maxValue, ticks = 4, integer = true) {
   return { max: step * ticks, step };
 }
 
+// Creates an SVG linear gradient and returns its id
 function gradient(defs, { vertical = false, from, to, fromOpacity = 1, toOpacity = 1 }) {
   const id = `chart-grad-${++uid}`;
   const grad = svgEl('linearGradient', { id, x1: 0, y1: vertical ? 1 : 0, x2: vertical ? 0 : 1, y2: 0 }, defs);
@@ -64,6 +69,7 @@ function gradient(defs, { vertical = false, from, to, fromOpacity = 1, toOpacity
   return `url(#${id})`;
 }
 
+// Draws the Y axis lines and labels
 function drawYAxis(svg, { m, iw, ih, max, step, format }) {
   for (let v = 0; v <= max + 1e-9; v += step) {
     const y = m.top + ih - (v / max) * ih;
@@ -72,12 +78,13 @@ function drawYAxis(svg, { m, iw, ih, max, step, format }) {
   }
 }
 
-// Cada cuántas etiquetas del eje X mostrar una, para que no se monten.
+// Show one X-axis label every N, so labels do not overlap.
 const labelEvery = (count, innerWidth, minSpace = 64) => Math.max(1, Math.ceil((count * minSpace) / innerWidth));
 
 /* ---------- Tooltip compartido ---------- */
 let tooltipEl;
 
+// Shows the shared tooltip next to the cursor
 function showTooltip(html, x, y) {
   if (!tooltipEl) {
     tooltipEl = document.createElement('div');
@@ -95,21 +102,25 @@ function showTooltip(html, x, y) {
   tooltipEl.style.translate = `${Math.max(8, left)}px ${top}px`;
 }
 
+// Hides the tooltip
 function hideTooltip() {
   if (tooltipEl) tooltipEl.hidden = true;
 }
 
+// Shows a tooltip while the cursor is over the element
 function bindTooltip(node, html) {
   node.addEventListener('pointermove', (event) => showTooltip(html, event.clientX, event.clientY));
   node.addEventListener('pointerleave', hideTooltip);
 }
 
+// One line of the tooltip (color, label, value)
 const tooltipRow = (label, value, color) => `
   <span class="tt-row">
     ${color ? `<i class="swatch" style="--swatch:${escapeHtml(color)}"></i>` : ''}
     <span>${escapeHtml(label)}</span><b>${escapeHtml(value)}</b>
   </span>`;
 
+// Chart legend
 const legendHtml = (items) => `
   <ul class="chart-legend">
     ${items.map((item) => `
@@ -120,6 +131,7 @@ const legendHtml = (items) => `
       </li>`).join('')}
   </ul>`;
 
+// Hidden table with the chart data for screen readers
 const srTable = (title, headers, rows) => `
   <table class="sr-only">
     <caption>${escapeHtml(title)}</caption>
@@ -127,13 +139,14 @@ const srTable = (title, headers, rows) => `
     <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
   </table>`;
 
+// Message shown when the chart has no data
 const emptyHtml = (message) => `
   <div class="chart-empty">
     ${icon('i-chart')}
     <span>${escapeHtml(message)}</span>
   </div>`;
 
-/* ---------- Ciclo de vida común ---------- */
+/* ---------- Shared lifecycle ---------- */
 function createChart(container, options, { isEmpty, draw, table }) {
   const state = { format: formatNumber, emptyMessage: 'No hay datos para los filtros seleccionados.', ...options };
   let lastWidth = 0;
@@ -141,6 +154,7 @@ function createChart(container, options, { isEmpty, draw, table }) {
 
   container.classList.add('chart');
 
+  // Redraws the chart at the current container width
   const render = () => {
     const width = Math.round(container.clientWidth);
     if (!width) return;
@@ -171,6 +185,7 @@ function createChart(container, options, { isEmpty, draw, table }) {
   observer.observe(container);
   render();
 
+  // Stops watching the size and hides the tooltip
   const destroy = () => {
     observer.disconnect();
     hideTooltip();
@@ -178,6 +193,7 @@ function createChart(container, options, { isEmpty, draw, table }) {
   state.signal?.addEventListener('abort', destroy, { once: true });
 
   return {
+    // Replaces the data and redraws with the animation
     update(data) {
       state.data = data;
       animate = true;
@@ -187,7 +203,7 @@ function createChart(container, options, { isEmpty, draw, table }) {
   };
 }
 
-/* ---------- Barras horizontales (categorías con nombres largos) ---------- */
+/* ---------- Horizontal bars (categories with long names) ---------- */
 // data: [{ label, value, color? }]
 export function barChart(container, options) {
   return createChart(container, options, {
@@ -196,6 +212,7 @@ export function barChart(container, options) {
       headers: [labelHeader, valueHeader],
       rows: data.map((d) => [d.label, format(d.value)]),
     }),
+    // Draws the horizontal bars
     draw({ data, format }, width) {
       const rowHeight = 46;
       const barHeight = 10;
@@ -234,6 +251,7 @@ export function columnChart(container, options) {
       headers: [labelHeader, valueHeader],
       rows: data.map((d) => [d.label, format(d.value)]),
     }),
+    // Draws the vertical columns
     draw({ data, format, height = 240, integer = true }, width) {
       const { max, step } = niceScale(Math.max(...data.map((d) => d.value)), 4, integer);
       const m = { top: 12, right: 4, bottom: 28, left: 14 + format(max).length * 6.5 };
@@ -271,7 +289,7 @@ export function columnChart(container, options) {
   });
 }
 
-/* ---------- Líneas (evolución en el tiempo, varias series) ---------- */
+/* ---------- Lines (evolution over time, several series) ---------- */
 // data: { labels: ['Sem 1', …], series: [{ name, values: [n, …], color? }] }
 export function lineChart(container, options) {
   return createChart(container, options, {
@@ -280,6 +298,7 @@ export function lineChart(container, options) {
       headers: [labelHeader, ...data.series.map((s) => s.name)],
       rows: data.labels.map((label, i) => [label, ...data.series.map((s) => format(s.values[i] ?? 0))]),
     }),
+    // Draws the lines, their points and the hover columns
     draw({ data, format, height = 260, integer = true }, width) {
       const { labels, series } = data;
       const colors = series.map((s, i) => s.color ?? CHART_COLORS[i % CHART_COLORS.length]);
@@ -288,7 +307,9 @@ export function lineChart(container, options) {
       const iw = width - m.left - m.right;
       const ih = height - m.top - m.bottom;
       const n = labels.length;
+      // X position of point i
       const xAt = (i) => m.left + (n === 1 ? iw / 2 : (i / (n - 1)) * iw);
+      // Y position of value v
       const yAt = (v) => m.top + ih - (v / max) * ih;
 
       const wrapper = document.createElement('div');
@@ -321,11 +342,11 @@ export function lineChart(container, options) {
         }
       });
 
-      // Columnas invisibles para el tooltip con todas las series del periodo.
+      // Invisible columns for the tooltip with every series of the period.
       const guide = svgEl('line', { y1: m.top, y2: m.top + ih, class: 'line-guide' }, svg);
       const slot = n > 1 ? iw / (n - 1) : iw;
       labels.forEach((label, i) => {
-        // Franja centrada en el punto, recortada al área del gráfico (el primero y el último quedaban medio afuera)
+        // Band centered on the point, clipped to the chart area (the first and last ones stuck out)
         const x0 = Math.max(m.left, xAt(i) - slot / 2);
         const x1 = Math.min(m.left + iw, xAt(i) + slot / 2);
         const hit = svgEl('rect', { x: x0, y: m.top, width: Math.max(1, x1 - x0), height: ih, class: 'hit' }, svg);
@@ -357,6 +378,7 @@ export function donutChart(container, options) {
         rows: data.map((d) => [d.label, format(d.value), percent(d.value, total)]),
       };
     },
+    // Draws the donut and its center total
     draw({ data, format, size = 200, centerLabel = 'Total' }, width) {
       const diameter = Math.min(size, width);
       const stroke = Math.max(16, diameter * 0.12);
@@ -372,7 +394,7 @@ export function donutChart(container, options) {
       const svg = svgEl('svg', { width: diameter, height: diameter, viewBox: `0 0 ${diameter} ${diameter}`, class: 'donut-svg' });
       wrapper.append(svg);
 
-      // El grupo exterior se anima; el interior rota para empezar arriba.
+      // The outer group is animated; the inner one is rotated to start at the top.
       const ring = svgEl('g', { class: 'donut' }, svg);
       const rotated = svgEl('g', { transform: `rotate(-90 ${center} ${center})` }, ring);
       svgEl('circle', { cx: center, cy: center, r, 'stroke-width': stroke, class: 'donut-track' }, rotated);

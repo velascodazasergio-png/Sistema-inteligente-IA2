@@ -42,6 +42,7 @@ public class Rating {
     @JoinColumn(name = "evaluator_user_id", nullable = false)
     private User evaluatorUser;
 
+    // Sets the rating date before the first insert
     @PrePersist
     protected void onCreate() {
         this.ratedAt = LocalDateTime.now();

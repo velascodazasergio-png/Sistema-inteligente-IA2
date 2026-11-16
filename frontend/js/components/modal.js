@@ -1,6 +1,6 @@
-// Modal basado en <dialog> nativo: el navegador ya gestiona el foco
-// atrapado, la tecla Escape y el bloqueo del fondo. Aquí se añaden
-// animaciones de entrada/salida y la devolución del foco al cerrar.
+// Modal based on the native <dialog>: the browser already handles focus
+// trapping, the Escape key and blocking the background. This adds
+// enter/exit animations and returns the focus on close.
 
 import { icon, escapeHtml } from '../ui.js';
 
@@ -9,7 +9,7 @@ let uid = 0;
 /**
  * @param {object} o
  * @param {string} o.title
- * @param {string|Node} [o.body]  HTML ya escapado o un nodo DOM.
+ * @param {string|Node} [o.body]  Already escaped HTML or a DOM node.
  * @param {Array<{label:string, variant?:'primary'|'ghost'|'danger', value?:any,
  *   autofocus?:boolean, onClick?:(ctx:{close:Function})=>void}>} [o.actions]
  * @param {'sm'|'md'|'lg'} [o.size]
@@ -37,14 +37,16 @@ export function openModal({ title, body = '', actions = [], size = 'md', onClose
   let closing = false;
   let result;
 
+  // Closes the dialog with the exit animation and returns the value
   function close(value) {
     if (closing) return;
     closing = true;
     result = value;
     dialog.classList.add('modal--closing');
+    // Really closes the <dialog> once the animation ends
     const finish = () => dialog.open && dialog.close();
     dialog.addEventListener('animationend', finish, { once: true });
-    setTimeout(finish, 320); // respaldo si no hay animación
+    setTimeout(finish, 320); // fallback if there is no animation
   }
 
   const footer = dialog.querySelector('.modal__footer');
@@ -59,12 +61,12 @@ export function openModal({ title, body = '', actions = [], size = 'md', onClose
   });
 
   dialog.querySelector('[data-close]').addEventListener('click', () => close());
-  // Escape: se intercepta para cerrar con animación.
+  // Escape: intercepted to close with the animation.
   dialog.addEventListener('cancel', (event) => {
     event.preventDefault();
     close();
   });
-  // Clic en el fondo oscuro (fuera del contenido).
+  // Click on the dark backdrop (outside the content).
   dialog.addEventListener('click', (event) => {
     if (event.target === dialog) close();
   });
@@ -80,7 +82,7 @@ export function openModal({ title, body = '', actions = [], size = 'md', onClose
   return { element: dialog, body: bodyEl, close };
 }
 
-// Confirmación sí/no. Devuelve una promesa con true o false.
+// Yes/no confirmation. Returns a promise with true or false.
 export function confirmDialog({ title, message, confirmLabel = 'Confirmar', cancelLabel = 'Cancelar', danger = false }) {
   return new Promise((resolve) => {
     openModal({

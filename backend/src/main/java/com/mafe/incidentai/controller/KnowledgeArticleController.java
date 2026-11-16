@@ -35,6 +35,7 @@ public class KnowledgeArticleController {
     private final KnowledgeArticleService knowledgeArticleService;
     private final AccessPolicy accessPolicy;
 
+    // GET /knowledge-articles: search with optional filters
     @Operation(summary = "Search knowledge articles", description = "Optional filters: q (text in the title or content), categoryId, active and verified.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Articles that match the filters, newest first"),
@@ -54,6 +55,7 @@ public class KnowledgeArticleController {
         return ResponseEntity.ok(knowledgeArticleService.searchArticles(q, categoryId, active, verified));
     }
 
+    // GET /knowledge-articles/{id}: one article (employees only see published ones)
     @Operation(summary = "Get a knowledge article by ID")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Article detail"),
@@ -66,6 +68,7 @@ public class KnowledgeArticleController {
         return ResponseEntity.ok(article);
     }
 
+    // POST /knowledge-articles: creates an article (active, unverified)
     @Operation(summary = "Create a knowledge article", description = "The article starts active and unverified.")
     @ApiResponses({
         @ApiResponse(responseCode = "201", description = "Article created"),
@@ -78,6 +81,7 @@ public class KnowledgeArticleController {
         return ResponseEntity.status(HttpStatus.CREATED).body(knowledgeArticleService.createArticle(request));
     }
 
+    // PUT /knowledge-articles/{id}: edits an article
     @Operation(summary = "Update a knowledge article", description = "If the title or the content changes, the article becomes unverified again.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Article updated"),
@@ -92,6 +96,7 @@ public class KnowledgeArticleController {
         return ResponseEntity.ok(knowledgeArticleService.updateArticle(articleId, request));
     }
 
+    // PATCH /knowledge-articles/{id}/status: activates, deactivates or verifies an article
     @Operation(summary = "Activate, deactivate or verify a knowledge article", description = "Omitted fields do not change.")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Status updated"),

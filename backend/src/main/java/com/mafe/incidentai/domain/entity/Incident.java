@@ -70,6 +70,7 @@ public class Incident {
     @OneToMany(mappedBy = "incident", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<AiQuery> aiQueries = new ArrayList<>();
 
+    // Sets the creation/update dates and the OPEN status before the first insert
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
@@ -82,6 +83,7 @@ public class Incident {
         }
     }
 
+    // Updates the modification date and records when the incident was resolved
     @PreUpdate
     protected void onUpdate() {
         this.updatedAt = LocalDateTime.now();

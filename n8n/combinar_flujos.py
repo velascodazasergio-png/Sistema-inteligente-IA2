@@ -1,11 +1,11 @@
-"""Genera n8n/workflows/03-flujos-combinados.json a partir de los flujos 01 y 02.
+"""Builds n8n/workflows/03-flujos-combinados.json from workflows 01 and 02.
 
-El resultado es UN workflow con dos cadenas independientes (dos webhooks, sin conexiones entre ellas):
-- "01 · …": indexación de la base de conocimiento (webhook index-knowledge-base)
-- "02 · …": asistencia RAG (webhook analyze-incident)
+The result is ONE workflow with two independent chains (two webhooks, no connections between them):
+- "01 · …": knowledge base indexing (webhook index-knowledge-base)
+- "02 · …": RAG assistance (webhook analyze-incident)
 
-Los flujos 01 y 02 siguen siendo la fuente de verdad: si cambian, vuelve a ejecutar este script.
-Uso (desde la raíz del repositorio):  python3 n8n/combinar_flujos.py
+Workflows 01 and 02 remain the source of truth: if they change, run this script again.
+Usage (from the repository root):  python3 n8n/combinar_flujos.py
 """
 import copy
 import json
@@ -16,11 +16,11 @@ from pathlib import Path
 BASE = Path(__file__).resolve().parent / 'workflows'
 SOURCES = [('01', '01-indexacion-base-conocimiento.json'), ('02', '02-asistencia-rag.json')]
 OUTPUT = BASE / '03-flujos-combinados.json'
-GAP_Y = 400  # separación vertical entre las dos cadenas en el lienzo
+GAP_Y = 400  # vertical gap between the two chains on the canvas
 
 
 def rename_refs(value, mapping):
-    """Actualiza $('Nombre') en código y expresiones."""
+    """Updates $('Node name') references in code and expressions."""
     if isinstance(value, str):
         return re.sub(r"\$\('([^']+)'\)", lambda m: f"$('{mapping.get(m.group(1), m.group(1))}')", value)
     if isinstance(value, list):
@@ -31,6 +31,7 @@ def rename_refs(value, mapping):
 
 
 def prefixed(prefix, workflow, offset_y):
+    """Copies a workflow with "<prefix> · " in every node name, new ids and its nodes moved down by offset_y."""
     mapping = {n['name']: f'{prefix} · {n["name"]}' for n in workflow['nodes']}
     nodes = []
     for node in workflow['nodes']:
@@ -50,6 +51,7 @@ def prefixed(prefix, workflow, offset_y):
 
 
 def main():
+    """Merges both workflows, adds an explanatory sticky note and writes the combined JSON."""
     flows = [(p, json.loads((BASE / f).read_text(encoding='utf-8'))) for p, f in SOURCES]
     names = [n['name'] for _, w in flows for n in w['nodes']]
     assert len(names) == sum(len(w['nodes']) for _, w in flows)
@@ -89,7 +91,7 @@ def main():
         'pinData': {},
     }
     OUTPUT.write_text(json.dumps(combined, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
-    print(f'{OUTPUT.name}: {len(all_nodes)} nodos, {len(all_connections)} conexiones')
+    print(f'{OUTPUT.name}: {len(all_nodes)} nodes, {len(all_connections)} connections')
 
 
 if __name__ == '__main__':

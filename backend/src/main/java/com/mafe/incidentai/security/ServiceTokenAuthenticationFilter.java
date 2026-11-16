@@ -25,11 +25,13 @@ class ServiceTokenAuthenticationFilter extends OncePerRequestFilter {
         this.expectedToken = token == null ? new byte[0] : token.getBytes(StandardCharsets.UTF_8);
     }
 
+    // Skipped when no token is configured or the request does not send one
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return expectedToken.length == 0 || request.getHeader(CallbackTokenFilter.HEADER) == null;
     }
 
+    // Authenticates the request as SERVICE (n8n) when the token matches
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

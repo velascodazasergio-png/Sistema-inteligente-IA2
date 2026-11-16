@@ -17,7 +17,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class CurrentUser {
 
+    // Minimal data of the logged-in user (from the JWT)
     public record AuthUser(Long id, String email, UserRole role) {
+        // true if the user has the given role
         public boolean is(UserRole other) {
             return role == other;
         }
@@ -25,6 +27,7 @@ public class CurrentUser {
 
     private final UserRepository userRepository;
 
+    // Current user, or 401 if the request has no session
     public AuthUser get() {
         return find().orElseThrow(() -> new AuthenticationCredentialsNotFoundException("Authentication required"));
     }

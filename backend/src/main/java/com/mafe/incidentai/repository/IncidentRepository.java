@@ -14,8 +14,11 @@ import java.util.List;
 // Incident repository with support for dynamic specifications and the 10 RF06 analytics queries
 public interface IncidentRepository extends JpaRepository<Incident, Long>, JpaSpecificationExecutor<Incident> {
 
+    // Incidents in a given status
     List<Incident> findByStatus(IncidentStatus status);
+    // Incidents of a category with a given priority
     List<Incident> findByCategoryIdAndPriority(Long categoryId, Priority priority);
+    // Incidents reported by a user, newest first
     List<Incident> findByUserIdOrderByCreatedAtDesc(Long userId);
 
     // Optional filters shared by the analytics queries: a null parameter does not filter

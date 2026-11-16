@@ -28,10 +28,12 @@ public class CallbackTokenFilter extends OncePerRequestFilter {
 
     private final byte[] expectedToken;
 
+    // Reads the expected callback token (empty = check disabled)
     public CallbackTokenFilter(@Value("${app.callback.token:}") String token) {
         this.expectedToken = token == null ? new byte[0] : token.getBytes(StandardCharsets.UTF_8);
     }
 
+    // Only checks POST requests to the n8n callback paths, and only when a token is configured
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return expectedToken.length == 0
@@ -39,6 +41,7 @@ public class CallbackTokenFilter extends OncePerRequestFilter {
                 || !PROTECTED_PATHS.matcher(request.getRequestURI()).matches();
     }
 
+    // Rejects the request with 401 when X-Callback-Token is missing or wrong
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {

@@ -7,6 +7,7 @@ import java.util.Optional;
 
 // Repository for CRUD operations and lookups on the User entity
 public interface UserRepository extends JpaRepository<User, Long> {
+    // User by email (used at login)
     Optional<User> findByEmail(String email);
 }
 

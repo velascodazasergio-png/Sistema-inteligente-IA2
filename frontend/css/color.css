@@ -1,14 +1,14 @@
 /* ==========================================================
-   Capa de color: cada módulo tiene su propio acento.
-   El router pone <html data-module="ruta"> y esta hoja ajusta
-   la sidebar, el encabezado, las tarjetas y los botones.
-   Se carga al final para sobrescribir los estilos base.
+   Color layer: each module has its own accent.
+   The router sets <html data-module="route"> and this sheet adjusts
+   the sidebar, the header, the cards and the buttons.
+   It is loaded last to override the base styles.
    ========================================================== */
 
-/* ---------- Paleta por módulo ----------
-   --module / --module-2: acento y su pareja del degradado.
-   --module-text: versión clara para texto sobre fondo oscuro (AA).
-   --module-btn: tonos oscuros para el botón (texto blanco AA). */
+/* ---------- Palette per module ----------
+   --module / --module-2: accent and its gradient partner.
+   --module-text: light version for text on a dark background (AA).
+   --module-btn: dark shades for the button (white text, AA). */
 :root {
   --module: #3b82f6;
   --module-2: #06b6d4;
@@ -22,7 +22,7 @@
   --pink-text: #f9a8d4;
   --pink-soft: rgba(236, 72, 153, 0.16);
 
-  /* Fondo con más color */
+  /* More colorful background */
   --glow-primary: rgba(59, 130, 246, 0.18);
   --glow-accent: rgba(168, 85, 247, 0.16);
 }
@@ -79,7 +79,7 @@ body {
   transition: background-image var(--dur-slow);
 }
 
-/* Franja de color bajo la barra superior */
+/* Color stripe under the top bar */
 .topbar {
   border-image: linear-gradient(90deg, var(--module), var(--module-2), transparent 80%) 1;
 }
@@ -90,7 +90,7 @@ body {
   box-shadow: 0 6px 22px -6px rgba(236, 72, 153, 0.7);
 }
 
-/* ---------- Sidebar: cada sección con su color ---------- */
+/* ---------- Sidebar: each section with its color ---------- */
 .nav-link { --nav: #3b82f6; --nav-2: #06b6d4; }
 .nav-link[data-route="incidentes"] { --nav: #f97316; --nav-2: #f43f5e; }
 .nav-link[data-route="conocimiento"] { --nav: #10b981; --nav-2: #84cc16; }
@@ -128,7 +128,7 @@ body {
   color: color-mix(in srgb, var(--nav) 65%, #fff);
 }
 
-/* ---------- Encabezado de página ---------- */
+/* ---------- Page header ---------- */
 .page-header__icon {
   border-color: color-mix(in srgb, var(--module) 45%, transparent);
   background:
@@ -159,7 +159,7 @@ body {
   opacity: 0.75;
 }
 
-/* ---------- Botón principal con el color del módulo ---------- */
+/* ---------- Primary button with the module color ---------- */
 .btn--primary {
   background: var(--module-btn);
   box-shadow:
@@ -173,7 +173,7 @@ body {
     0 12px 30px -8px var(--module);
 }
 
-/* Foco y controles de formulario */
+/* Focus and form controls */
 .input:focus,
 .input:focus-visible {
   border-color: var(--module);
@@ -185,7 +185,7 @@ input[type="radio"] {
   accent-color: var(--module);
 }
 
-/* ---------- KPI: fondo tintado, filo y valor de color ---------- */
+/* ---------- KPI: tinted background, edge and colored value ---------- */
 .kpi[data-tone="info"] { --kpi-color: var(--info); --kpi-soft: var(--info-soft); }
 .kpi[data-tone="pink"] { --kpi-color: var(--pink); --kpi-soft: var(--pink-soft); }
 
@@ -237,7 +237,7 @@ input[type="radio"] {
   background: color-mix(in srgb, var(--module) 7%, transparent);
 }
 
-/* ---------- Insignias más vivas ---------- */
+/* ---------- Brighter badges ---------- */
 .badge--info { background: rgba(59, 130, 246, 0.2); border-color: rgba(96, 165, 250, 0.5); color: #93c5fd; }
 .badge--accent { background: rgba(168, 85, 247, 0.2); border-color: rgba(192, 132, 252, 0.5); color: #d8b4fe; }
 .badge--success { background: rgba(16, 185, 129, 0.2); border-color: rgba(52, 211, 153, 0.5); color: #6ee7b7; }
@@ -245,7 +245,7 @@ input[type="radio"] {
 .badge--danger { background: rgba(239, 68, 68, 0.22); border-color: rgba(248, 113, 113, 0.55); color: #fca5a5; }
 .badge--neutral { background: rgba(100, 116, 139, 0.2); border-color: rgba(148, 163, 184, 0.4); }
 
-/* ---------- Dashboard: héroe multicolor ---------- */
+/* ---------- Dashboard: multicolor hero ---------- */
 .hero {
   border-color: rgba(236, 72, 153, 0.28);
   background:
@@ -255,13 +255,13 @@ input[type="radio"] {
     linear-gradient(135deg, rgba(17, 26, 46, 0.95), rgba(12, 18, 32, 0.95));
 }
 
-/* ---------- Avatar del asistente con los colores del módulo ---------- */
+/* ---------- Assistant avatar with the module colors ---------- */
 .ai-avatar {
   background: linear-gradient(135deg, #a855f7, #ec4899);
   color: #fff;
 }
 
-/* ---------- Selector Tarjetas/Tabla y estados vacíos ---------- */
+/* ---------- Cards/Table switch and empty states ---------- */
 .segmented-toggle .btn[aria-pressed="true"] {
   background: color-mix(in srgb, var(--module) 22%, transparent);
   border-color: color-mix(in srgb, var(--module) 50%, transparent);

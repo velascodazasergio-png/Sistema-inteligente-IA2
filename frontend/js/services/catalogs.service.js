@@ -1,5 +1,5 @@
-// Catálogos para formularios y filtros: categorías y usuarios.
-// Contrato: backend/src/main/java/com/mafe/incidentai/controller/CatalogController.java
+// Catalogs for forms and filters: categories and users.
+// Contract: backend/src/main/java/com/mafe/incidentai/controller/CatalogController.java
 
 import { api } from '../api.js';
 
@@ -11,10 +11,10 @@ export const listCategories = ({ activeOnly = false } = {}, options) =>
 export const listUsers = ({ role } = {}, options) =>
   api.get('/api/v1/users', { ...options, query: { role } });
 
-// { id, fullName } → { id, name } para los <select>
+// { id, fullName } → { id, name } for the <select> elements
 export const toOptions = (users) => users.map((u) => ({ id: u.id, name: u.fullName }));
 
-// Etiquetas del enum UserRole
+// Labels of the UserRole enum
 export const ROLES = {
   EMPLOYEE: 'Empleado',
   SUPPORT_TECHNICIAN: 'Técnico de soporte',

@@ -12,6 +12,7 @@ import java.util.Optional;
 // Repository to read the usefulness ratings of AI responses
 public interface RatingRepository extends JpaRepository<Rating, Long> {
 
+    // Rating of an AI response, if it was rated
     Optional<Rating> findByAiResponseId(Long aiResponseId);
 
     // Computes the real average rating (1 to 5) given to AI responses

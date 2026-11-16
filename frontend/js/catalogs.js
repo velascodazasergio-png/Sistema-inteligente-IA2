@@ -1,5 +1,5 @@
-// Catálogos de valores del backend (enums de Java) con su etiqueta y color.
-// Deben coincidir con backend/src/main/java/com/mafe/incidentai/domain/enums.
+// Backend value catalogs (Java enums) with their label and color.
+// They must match backend/src/main/java/com/mafe/incidentai/domain/enums.
 
 import { escapeHtml } from './ui.js';
 
@@ -21,9 +21,9 @@ export const PRIORIDAD = {
 };
 
 // QueryStatus.
-// NO_RESULTS: n8n respondió sin documentos relevantes.
-// COMMUNICATION_ERROR: el backend no pudo entregar la consulta a n8n.
-// FAILED: n8n recibió la consulta pero falló al procesarla.
+// NO_RESULTS: n8n answered with no relevant documents.
+// COMMUNICATION_ERROR: the backend could not deliver the query to n8n.
+// FAILED: n8n received the query but failed to process it.
 export const ESTADO_CONSULTA = {
   PENDING: { label: 'Pendiente', tone: 'warning' },
   COMPLETED: { label: 'Respondida', tone: 'success' },
@@ -32,26 +32,27 @@ export const ESTADO_CONSULTA = {
   FAILED: { label: 'Error en la IA', tone: 'danger' },
 };
 
-// Estados en los que ya no se trabaja el incidente.
+// Statuses in which the incident is no longer being worked on.
 export const ESTADOS_FINALES = ['RESOLVED', 'CLOSED'];
 
-// Estado a mostrar para una consulta del historial (AiQueryHistoryResponseDTO).
-// Las consultas COMPLETED sin fuentes (registradas antes de existir NO_RESULTS)
-// también se muestran como "Sin resultados".
+// Status to display for a history query (AiQueryHistoryResponseDTO).
+// COMPLETED queries without sources (stored before NO_RESULTS existed)
+// are also shown as "Sin resultados".
 export function estadoConsulta(query) {
   if (query.queryStatus === 'COMPLETED' && !query.aiResponse?.sources?.length) return 'NO_RESULTS';
   return query.queryStatus;
 }
 
+// Spanish label of a catalog value
 export const labelOf = (catalog, value) => catalog[value]?.label ?? value ?? '—';
 
-// Opciones <option> para un catálogo.
+// <option> elements for a catalog.
 export const optionsHtml = (catalog, selected = '') => Object.entries(catalog)
   .map(([value, { label }]) => `<option value="${value}" ${value === selected ? 'selected' : ''}>${escapeHtml(label)}</option>`)
   .join('');
 
-// Etiqueta de color para un valor de catálogo. Valores desconocidos se
-// muestran tal cual, en gris, para no ocultar datos inesperados.
+// Colored badge for a catalog value. Unknown values are
+// shown as they are, in gray, so unexpected data is not hidden.
 export function badge(catalog, value) {
   const entry = catalog[value];
   const tone = entry?.tone ?? 'neutral';

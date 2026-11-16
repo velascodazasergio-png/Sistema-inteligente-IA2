@@ -1,17 +1,18 @@
-// Servicio de incidentes (RF01).
-// Contrato: backend/src/main/java/com/mafe/incidentai/controller/IncidentController.java
+// Incident service (RF01).
+// Contract: backend/src/main/java/com/mafe/incidentai/controller/IncidentController.java
 
 import { api } from '../api.js';
 
 const BASE = '/api/v1/incidents';
 
-// Fecha de un <input type="date"> (AAAA-MM-DD) → LocalDateTime ISO que espera Spring.
+// Date from an <input type="date"> (YYYY-MM-DD) → ISO LocalDateTime expected by Spring.
 export const startOfDay = (date) => (date ? `${date}T00:00:00` : undefined);
+// YYYY-MM-DD → last second of that day
 export const endOfDay = (date) => (date ? `${date}T23:59:59` : undefined);
 
 /**
- * GET /api/v1/incidents — todos los filtros son opcionales.
- * @param {{categoryId?, priority?, status?, userId?, startDate?, endDate?}} filters fechas en AAAA-MM-DD
+ * GET /api/v1/incidents — every filter is optional.
+ * @param {{categoryId?, priority?, status?, userId?, startDate?, endDate?}} filters dates as YYYY-MM-DD
  * @returns {Promise<IncidentResponseDTO[]>}
  */
 export function listIncidents(filters = {}, options) {

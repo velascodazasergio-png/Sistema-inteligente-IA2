@@ -29,6 +29,7 @@ public class AuthController {
     private final AuthService authService;
     private final CurrentUser currentUser;
 
+    // POST /auth/login: checks the credentials and returns a JWT
     @Operation(summary = "Log in and get a JWT",
             description = "Returns a Bearer token. Send it in the header Authorization: Bearer <token>.")
     @SecurityRequirements
@@ -42,6 +43,7 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    // GET /auth/me: profile of the logged-in user
     @Operation(summary = "Get the authenticated user")
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "User of the session"),

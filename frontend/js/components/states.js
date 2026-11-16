@@ -1,11 +1,11 @@
-// Estados de error compartidos por los módulos.
+// Error states shared by the modules.
 
 import { icon, escapeHtml } from '../ui.js';
 import { getApiBaseUrl } from '../config.js';
 import { isAdmin } from '../auth.js';
 
-// Bloque de error con botón "Reintentar". El texto viene de ApiError,
-// que ya traduce timeouts, falta de conexión y errores de Spring.
+// Error block with a "Reintentar" (retry) button. The text comes from ApiError,
+// which already translates timeouts, connection loss and Spring errors.
 export function errorState(container, error, onRetry) {
   const offline = error?.code === 'NETWORK_ERROR';
   container.innerHTML = `
@@ -22,7 +22,7 @@ export function errorState(container, error, onRetry) {
   container.querySelector('[data-retry]')?.addEventListener('click', onRetry);
 }
 
-// Mensaje simple dentro de una tarjeta (sin datos, sin selección…).
+// Simple message inside a card (no data, nothing selected…).
 export const emptyHtml = (title, text, iconName = 'i-inbox') => `
   <div class="empty-state empty-state--inline">
     <span class="empty-state__icon">${icon(iconName)}</span>
